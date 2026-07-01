@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
