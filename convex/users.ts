@@ -7,12 +7,21 @@ export const currentUser = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
+    // Try to find by email first (for email-otp users)
+    if (identity.email) {
+      const user = await ctx.db
+        .query("users")
+        .filter((q) => q.eq(q.field("email"), identity.email))
+        .first();
+      if (user) return user;
+    }
+
+    // Fallback: find by tokenSubject (works for anonymous and other auth methods)
     const user = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("email"), identity.email))
+      .filter((q) => q.eq(q.field("tokenSubject"), identity.subject))
       .first();
-
-    return user;
+    return user || null;
   },
 });
 
