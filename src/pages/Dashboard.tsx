@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
@@ -11,7 +11,20 @@ import {
   Wallet,
   PiggyBank,
   Info,
+  TrendingUp,
 } from "lucide-react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Area,
+  AreaChart,
+} from "recharts";
 
 function HealthScoreGauge({ score, status, message }: { score: number; status: string; message: string }) {
   const [animatedScore, setAnimatedScore] = useState(0);
@@ -113,20 +126,6 @@ function StatCard({ title, value, icon: Icon, trend, format = "currency" }: {
   );
 }
 
-function CategoryBar({ name, amount, percentage, color }: { name: string; amount: number; percentage: number; color: string }) {
-  const formatted = amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  return (
-    <div className="flex items-center gap-3 py-2">
-      <div className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: color }} />
-      <span className="text-xs flex-1 min-w-0 truncate">{name}</span>
-      <span className="text-xs text-muted-foreground">{formatted}</span>
-      <div className="w-20 h-1.5 bg-secondary rounded-full overflow-hidden shrink-0">
-        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(percentage, 100)}%`, backgroundColor: color }} />
-      </div>
-    </div>
-  );
-}
-
 function BudgetProgress({ categoryName, spent, budgetAmount, percentage }: {
   categoryName: string; spent: number; budgetAmount: number; percentage: number;
 }) {
@@ -160,6 +159,7 @@ export default function Dashboard() {
 
   const summary = useQuery(api.transactions.getMonthlySummary, { month: currentMonth });
   const health = useQuery(api.transactions.getFinancialHealthScore);
+  const evolution = useQuery(api.transactions.getMonthlyEvolution, { months: 6 });
   const categories = useQuery(api.categories.getAll);
 
   if (isLoading) return null;
@@ -266,9 +266,9 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Expenses by Category + Budgets */}
+        {/* Charts Row */}
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Expenses by Category */}
+          {/* Pie Chart - Expenses by Category */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -277,54 +277,194 @@ export default function Dashboard() {
           >
             <h3 className="text-xs font-medium mb-4">Despesas por Categoria</h3>
             {summary && summary.expensesByCategory.length > 0 ? (
-              <div className="divide-y">
-                {summary.expensesByCategory.map((item: any) => (
-                  <CategoryBar
-                    key={item.category._id}
-                    name={item.category.name}
-                    amount={item.total}
-                    percentage={summary.totalExpenses > 0 ? (item.total / summary.totalExpenses) * 100 : 0}
-                    color={item.category.color}
-                  />
-                ))}
+              <div className="flex flex-col items-center">
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={summary.expensesByCategory.map((item: any) => ({
+                        name: item.category.name,
+                        value: item.total,
+                        color: item.category.color,
+                      }))}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={90}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {summary.expensesByCategory.map((item: any, idx: number) => (
+                        <Cell
+                          key={item.category._id}
+                          fill={item.category.color}
+                          stroke="none"
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const data = payload[0].payload;
+                        return (
+                          <div className="rounded-sm border bg-card px-3 py-2 text-xs shadow-sm">
+                            <p className="font-medium mb-1">{data.name}</p>
+                            <p className="text-muted-foreground">
+                              {data.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            </p>
+                          </div>
+                        );
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Legend */}
+                <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-2">
+                  {summary.expensesByCategory.map((item: any) => (
+                    <div key={item.category._id} className="flex items-center gap-1.5">
+                      <div
+                        className="w-2 h-2 rounded-sm shrink-0"
+                        style={{ backgroundColor: item.category.color }}
+                      />
+                      <span className="text-[10px] text-muted-foreground">
+                        {item.category.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground text-center py-8">
+              <p className="text-xs text-muted-foreground text-center py-12">
                 Nenhuma despesa registrada este mês
               </p>
             )}
           </motion.div>
 
-          {/* Budget Progress */}
+          {/* Line Chart - Monthly Evolution */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             className="p-5 rounded-sm border bg-card"
           >
-            <h3 className="text-xs font-medium mb-4">Orçamentos</h3>
-            {summary && summary.budgetComparisons.length > 0 ? (
-              <div className="divide-y">
-                {summary.budgetComparisons.map((item: any) => (
-                  <BudgetProgress
-                    key={item.budget._id}
-                    categoryName={getCategoryName(item.budget.categoryId)}
-                    spent={item.spent}
-                    budgetAmount={item.budget.amount}
-                    percentage={item.percentage}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-medium">Evolução Mensal</h3>
+              <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
+            </div>
+            {evolution && evolution.length > 0 && evolution.some((e: any) => e.income > 0 || e.expenses > 0) ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={evolution}>
+                  <defs>
+                    <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="oklch(0.45 0.13 145)" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="oklch(0.45 0.13 145)" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="oklch(0.58 0.19 27.33)" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="oklch(0.58 0.19 27.33)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.92 0 0)" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 10, fill: "oklch(0.55 0 0)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    dy={8}
                   />
-                ))}
-              </div>
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "oklch(0.55 0 0)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    dx={-4}
+                    tickFormatter={(v: number) =>
+                      v >= 1000
+                        ? `${(v / 1000).toFixed(0)}k`
+                        : v.toFixed(0)
+                    }
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div className="rounded-sm border bg-card px-3 py-2 text-xs shadow-sm">
+                          <p className="font-medium mb-1.5">{label}</p>
+                          {payload.map((entry: any) => (
+                            <div key={entry.name} className="flex items-center justify-between gap-4 py-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <div
+                                  className="w-1.5 h-1.5 rounded-sm"
+                                  style={{ backgroundColor: entry.color }}
+                                />
+                                <span className="text-muted-foreground">
+                                  {entry.name === "income" ? "Receitas" : "Despesas"}
+                                </span>
+                              </div>
+                              <span className="tabular-nums">
+                                {entry.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="income"
+                    stroke="oklch(0.45 0.13 145)"
+                    fill="url(#incomeGrad)"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4, fill: "oklch(0.45 0.13 145)", stroke: "none" }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="expenses"
+                    stroke="oklch(0.58 0.19 27.33)"
+                    fill="url(#expenseGrad)"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4, fill: "oklch(0.58 0.19 27.33)", stroke: "none" }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             ) : (
-              <p className="text-xs text-muted-foreground text-center py-8">
-                <a href="/budgets" className="underline hover:text-foreground">
-                  Defina orçamentos
-                </a>{" "}
-                para acompanhar seus gastos
+              <p className="text-xs text-muted-foreground text-center py-12">
+                Adicione transações nos meses anteriores para ver a evolução
               </p>
             )}
           </motion.div>
         </div>
+
+        {/* Budget Progress */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="p-5 rounded-sm border bg-card"
+        >
+          <h3 className="text-xs font-medium mb-4">Orçamentos do Mês</h3>
+          {summary && summary.budgetComparisons.length > 0 ? (
+            <div className="grid sm:grid-cols-2 gap-x-8 gap-y-1">
+              {summary.budgetComparisons.map((item: any) => (
+                <BudgetProgress
+                  key={item.budget._id}
+                  categoryName={getCategoryName(item.budget.categoryId)}
+                  spent={item.spent}
+                  budgetAmount={item.budget.amount}
+                  percentage={item.percentage}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-8">
+              <a href="/budgets" className="underline hover:text-foreground">
+                Defina orçamentos
+              </a>{" "}
+              para acompanhar seus gastos
+            </p>
+          )}
+        </motion.div>
       </div>
     </DashboardLayout>
   );

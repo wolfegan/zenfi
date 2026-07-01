@@ -134,6 +134,47 @@ export const getMonthlySummary = query({
   },
 });
 
+export const getMonthlyEvolution = query({
+  args: { months: v.number() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+
+    const txs = await ctx.db
+      .query("transactions")
+      .withIndex("userId", (q) => q.eq("userId", userId))
+      .collect();
+
+    // Generate month labels for the last N months
+    const now = new Date();
+    const months: string[] = [];
+    for (let i = args.months - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+
+    return months.map((month) => {
+      const monthTx = txs.filter((t) => t.date.startsWith(month));
+      const income = monthTx
+        .filter((t) => t.type === "income")
+        .reduce((s, t) => s + t.amount, 0);
+      const expenses = monthTx
+        .filter((t) => t.type === "expense")
+        .reduce((s, t) => s + t.amount, 0);
+      return {
+        month,
+        label: new Date(month + "-01").toLocaleDateString("pt-BR", {
+          month: "short",
+          year: "2-digit",
+        }),
+        income,
+        expenses,
+        balance: income - expenses,
+      };
+    });
+  },
+});
+
 export const getFinancialHealthScore = query({
   args: {},
   handler: async (ctx) => {
