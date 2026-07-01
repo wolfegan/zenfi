@@ -1,5 +1,6 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { query, QueryCtx } from "./_generated/server";
+import { v } from "convex/values";
+import { mutation, query, QueryCtx } from "./_generated/server";
 
 /**
  * Get the current signed in user. Returns null if the user is not signed in.
@@ -31,3 +32,24 @@ export const getCurrentUser = async (ctx: QueryCtx) => {
   }
   return await ctx.db.get(userId);
 };
+
+export const updateProfile = mutation({
+  args: {
+    name: v.optional(v.string()),
+    monthlyIncome: v.optional(v.number()),
+    financialGoal: v.optional(v.string()),
+    onboardingCompleted: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const updates: Record<string, unknown> = {};
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.monthlyIncome !== undefined) updates.monthlyIncome = args.monthlyIncome;
+    if (args.financialGoal !== undefined) updates.financialGoal = args.financialGoal;
+    if (args.onboardingCompleted !== undefined) updates.onboardingCompleted = args.onboardingCompleted;
+
+    await ctx.db.patch(userId, updates);
+  },
+});

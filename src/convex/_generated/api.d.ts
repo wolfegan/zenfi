@@ -10,7 +10,12 @@
 
 import type * as auth from "../auth.js";
 import type * as auth_emailOtp from "../auth/emailOtp.js";
+import type * as budgets from "../budgets.js";
+import type * as categories from "../categories.js";
+import type * as creditCards from "../creditCards.js";
 import type * as http from "../http.js";
+import type * as investments from "../investments.js";
+import type * as transactions from "../transactions.js";
 import type * as users from "../users.js";
 
 import type {
@@ -22,7 +27,12 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   "auth/emailOtp": typeof auth_emailOtp;
+  budgets: typeof budgets;
+  categories: typeof categories;
+  creditCards: typeof creditCards;
   http: typeof http;
+  investments: typeof investments;
+  transactions: typeof transactions;
   users: typeof users;
 }>;
 
