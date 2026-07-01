@@ -120,22 +120,10 @@ class ErrorBoundary extends React.Component<
   }
 
   static getDerivedStateFromError() {
-    // Update state so the next render will show the fallback UI.
     return { hasError: true };
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // logErrorToMyService(
-    //   error,
-    //   // Example "componentStack":
-    //   //   in ComponentThatThrows (created by App)
-    //   //   in ErrorBoundary (created by App)
-    //   //   in div (created by App)
-    //   //   in App
-    //   info.componentStack,
-    //   // Warning: `captureOwnerStack` is not available in production.
-    //   React.captureOwnerStack(),
-    // );
     reportErrorToVly({
       error: error.message,
       stackTrace: error.stack,
@@ -149,17 +137,43 @@ class ErrorBoundary extends React.Component<
     });
   }
 
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
   render() {
     if (this.state.hasError) {
-      // You can render any custom fallback UI
       return (
-        <ErrorDialog
-          error={{
-            error: "An error occurred",
-            stack: "",
-          }}
-          setError={() => {}}
-        />
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+          <div className="max-w-md w-full text-center space-y-4">
+            <div className="w-12 h-12 rounded-sm bg-destructive/10 flex items-center justify-center mx-auto">
+              <span className="text-destructive text-lg font-medium">!</span>
+            </div>
+            <div>
+              <h2 className="text-base font-medium mb-1">Algo deu errado</h2>
+              <p className="text-xs text-muted-foreground">
+                Ocorreu um erro inesperado. Você pode tentar novamente ou recarregar a página.
+              </p>
+            </div>
+            <div className="flex gap-3 justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() => window.location.reload()}
+              >
+                Recarregar página
+              </Button>
+              <Button
+                size="sm"
+                className="text-xs"
+                onClick={this.handleRetry}
+              >
+                Tentar novamente
+              </Button>
+            </div>
+          </div>
+        </div>
       );
     }
 
