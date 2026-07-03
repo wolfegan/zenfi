@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query, action } from "./_generated/server";
 import { vly } from "../lib/vly-integrations";
+import { api } from "./_generated/api";
 
 export const getAll = query({
   args: {},

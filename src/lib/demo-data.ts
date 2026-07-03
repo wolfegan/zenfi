@@ -136,13 +136,6 @@ export const demoGoalsSummary = {
   count: 4,
 };
 
-// Net worth calculation demo
-export const demoNetWorth = {
-  totalAssets: 42160.60, // accounts balance (17590.60) + investments current value (18450) + achieved goals (5000) overpaid... let me recalculate
-  totalLiabilities: 10800, // active debts remaining amount
-  netWorth: 31360.60,
-};
-
 export const demoMonthlySummary = () => {
   const expenses = demoTransactions.filter((t) => t.type === "expense");
   const incomes = demoTransactions.filter((t) => t.type === "income");
