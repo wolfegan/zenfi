@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useSafeQuery } from "@/hooks/use-safe-query";
 import { motion } from "framer-motion";
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -23,8 +24,8 @@ export default function Investments() {
   const [editingInv, setEditingInv] = useState<any>(null);
   const [form, setForm] = useState({ name: "", type: "stocks", amount: "", currentValue: "", monthlyContribution: "0" });
 
-  const realInvestments = useQuery(api.investments.getAll);
-  const realSummary = useQuery(api.investments.getSummary);
+  const realInvestments = useSafeQuery(api.investments.getAll);
+  const realSummary = useSafeQuery(api.investments.getSummary);
   const createInv = useMutation(api.investments.create);
   const updateInv = useMutation(api.investments.update);
   const deleteInv = useMutation(api.investments.remove);

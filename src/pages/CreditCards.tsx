@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useSafeQuery } from "@/hooks/use-safe-query";
 import { motion } from "framer-motion";
 import { CreditCard, Plus, Pencil, Trash2, CheckCircle2, Circle } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -20,7 +21,7 @@ export default function CreditCardsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ name: "", limit: "", closingDay: "5", dueDay: "10", color: "#0a0a0a" });
 
-  const realCards = useQuery(api.creditCards.getAll);
+  const realCards = useSafeQuery(api.creditCards.getAll);
   const createCard = useMutation(api.creditCards.create);
   const updateCard = useMutation(api.creditCards.update);
   const deleteCard = useMutation(api.creditCards.remove);

@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useSafeQuery } from "@/hooks/use-safe-query";
 import { motion } from "framer-motion";
 import { Percent, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -21,9 +22,9 @@ export default function Budgets() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ categoryId: "", amount: "" });
 
-  const realBudgets = useQuery(api.budgets.getByMonth, { month: selectedMonth });
-  const realCategories = useQuery(api.categories.getAll);
-  const realTransactions = useQuery(api.transactions.getByMonth, { month: selectedMonth });
+  const realBudgets = useSafeQuery(api.budgets.getByMonth, { month: selectedMonth });
+  const realCategories = useSafeQuery(api.categories.getAll);
+  const realTransactions = useSafeQuery(api.transactions.getByMonth, { month: selectedMonth });
   const setBudget = useMutation(api.budgets.setBudget);
   const deleteBudget = useMutation(api.budgets.remove);
 

@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "convex/react";
+import { useSafeQuery } from "@/hooks/use-safe-query";
 import { api } from "@/convex/_generated/api";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -126,10 +126,10 @@ export default function Dashboard() {
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
   // Real queries
-  const realSummary = useQuery(api.transactions.getMonthlySummary, { month: currentMonth });
-  const realHealth = useQuery(api.transactions.getFinancialHealthScore);
-  const realEvolution = useQuery(api.transactions.getMonthlyEvolution, { months: 6 });
-  const realCategories = useQuery(api.categories.getAll);
+  const realSummary = useSafeQuery(api.transactions.getMonthlySummary, { month: currentMonth });
+  const realHealth = useSafeQuery(api.transactions.getFinancialHealthScore);
+  const realEvolution = useSafeQuery(api.transactions.getMonthlyEvolution, { months: 6 });
+  const realCategories = useSafeQuery(api.categories.getAll);
 
   // Demo data fallback: use demo when all real queries resolve to undefined (server error)
   const [useDemo, setUseDemo] = useState(false);

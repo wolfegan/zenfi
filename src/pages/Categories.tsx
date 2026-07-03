@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useSafeQuery } from "@/hooks/use-safe-query";
 import { motion } from "framer-motion";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -21,7 +22,7 @@ export default function Categories() {
   const [editingCat, setEditingCat] = useState<any>(null);
   const [form, setForm] = useState({ name: "", type: "expense" as "income" | "expense", icon: "ShoppingCart", color: "#0a0a0a", isFixed: false });
 
-  const realCategories = useQuery(api.categories.getAll);
+  const realCategories = useSafeQuery(api.categories.getAll);
   const createCat = useMutation(api.categories.create);
   const updateCat = useMutation(api.categories.update);
   const deleteCat = useMutation(api.categories.remove);

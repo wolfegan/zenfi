@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useSafeQuery } from "@/hooks/use-safe-query";
 import { motion } from "framer-motion";
 import { Calendar, Pencil, Plus, Trash2, ArrowDown, ArrowUp } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -26,9 +27,9 @@ export default function Transactions() {
   const [editingTx, setEditingTx] = useState<any>(null);
   const [form, setForm] = useState({ categoryId: "", amount: "", date: new Date().toISOString().split("T")[0], type: "expense" as "income" | "expense", description: "", isFixed: false, isCreditCard: false, creditCardId: "" });
 
-  const realTransactions = useQuery(api.transactions.getByMonth, { month: currentMonth() });
-  const realCategories = useQuery(api.categories.getAll);
-  const realCreditCards = useQuery(api.creditCards.getAll);
+  const realTransactions = useSafeQuery(api.transactions.getByMonth, { month: currentMonth() });
+  const realCategories = useSafeQuery(api.categories.getAll);
+  const realCreditCards = useSafeQuery(api.creditCards.getAll);
   const createTx = useMutation(api.transactions.create);
   const updateTx = useMutation(api.transactions.update);
   const deleteTx = useMutation(api.transactions.remove);
