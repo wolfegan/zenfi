@@ -7,37 +7,42 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
-  ArrowDown,
-  ArrowUp,
-  Wallet,
-  PiggyBank,
-  Info,
-  TrendingUp,
-  HandCoins,
-  Calendar,
-  CircleDollarSign,
-  CheckCircle2,
+  ArrowDown, ArrowUp, Wallet, PiggyBank, Info, TrendingUp, HandCoins,
+  Calendar, CircleDollarSign, CheckCircle2, Landmark, Target, X, ChevronRight,
 } from "lucide-react";
 import {
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Area,
-  AreaChart,
+  PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Area, AreaChart,
 } from "recharts";
 import {
-  demoMonthlySummary,
-  demoHealthScore,
-  demoEvolution,
-  demoCategories,
-  demoTransactions,
-  demoDebts,
+  demoMonthlySummary, demoHealthScore, demoEvolution, demoCategories,
+  demoTransactions, demoDebts, demoAccounts, demoGoals, demoGoalsSummary,
 } from "@/lib/demo-data";
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-8 animate-pulse">
+      <div className="h-8 bg-secondary rounded-sm w-48" />
+      <div className="grid lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-2 h-64 bg-secondary rounded-sm" />
+        <div className="lg:col-span-3 space-y-4">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="h-24 bg-secondary rounded-sm" />
+            <div className="h-24 bg-secondary rounded-sm" />
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="h-24 bg-secondary rounded-sm" />
+            <div className="h-24 bg-secondary rounded-sm" />
+          </div>
+        </div>
+      </div>
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="h-64 bg-secondary rounded-sm" />
+        <div className="h-64 bg-secondary rounded-sm" />
+      </div>
+    </div>
+  );
+}
 
 function HealthScoreGauge({ score, status, message }: { score: number; status: string; message: string }) {
   const [animatedScore, setAnimatedScore] = useState(0);
@@ -47,10 +52,7 @@ function HealthScoreGauge({ score, status, message }: { score: number; status: s
     const timer = setTimeout(() => {
       const interval = setInterval(() => {
         setAnimatedScore((prev) => {
-          if (prev >= score) {
-            clearInterval(interval);
-            return score;
-          }
+          if (prev >= score) { clearInterval(interval); return score; }
           return prev + 1;
         });
       }, 25);
@@ -77,9 +79,7 @@ function HealthScoreGauge({ score, status, message }: { score: number; status: s
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-4xl sm:text-5xl font-light tabular-nums" style={{ color: getScoreColor(animatedScore) }}>{animatedScore}</span>
-          <span className="text-[10px] text-muted-foreground mt-0.5 tracking-widest uppercase">
-            {status === "excellent" ? "Excelente" : status === "good" ? "Bom" : status === "fair" ? "Atenção" : "Crítico"}
-          </span>
+          <span className="text-[10px] text-muted-foreground mt-0.5 tracking-widest uppercase">{status === "excellent" ? "Excelente" : status === "good" ? "Bom" : status === "fair" ? "Atenção" : "Crítico"}</span>
         </div>
       </div>
       <p className="text-xs text-muted-foreground text-center mt-4 max-w-[220px] leading-relaxed">{message}</p>
@@ -109,14 +109,14 @@ function StatCard({ title, value, icon: Icon, trend, format = "currency" }: {
 function BudgetProgress({ categoryName, spent, budgetAmount, percentage }: {
   categoryName: string; spent: number; budgetAmount: number; percentage: number;
 }) {
-  const spentFormatted = spent.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  const budgetFormatted = budgetAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const isOver = percentage > 100;
   return (
     <div className="py-2.5">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-xs">{categoryName}</span>
-        <span className={`text-xs ${isOver ? "text-destructive" : "text-muted-foreground"}`}>{spentFormatted} / {budgetFormatted}</span>
+        <span className={`text-xs ${isOver ? "text-destructive" : "text-muted-foreground"}`}>
+          {spent.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} / {budgetAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+        </span>
       </div>
       <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all duration-500 ${isOver ? "bg-destructive" : percentage > 80 ? "bg-warning" : "bg-success"}`} style={{ width: `${Math.min(percentage, 100)}%` }} />
@@ -125,20 +125,38 @@ function BudgetProgress({ categoryName, spent, budgetAmount, percentage }: {
   );
 }
 
+// Month selector helper
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
+  const d = new Date();
+  d.setMonth(d.getMonth() - i);
+  return {
+    value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+    label: d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
+  };
+});
+
 export default function Dashboard() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (typeof window !== "undefined") {
+      return !localStorage.getItem("onboarding-dismissed");
+    }
+    return true;
+  });
 
   // Real queries
-  const realSummary = useSafeQuery(api.transactions.getMonthlySummary, { month: currentMonth });
+  const realSummary = useSafeQuery(api.transactions.getMonthlySummary, { month: selectedMonth });
   const realHealth = useSafeQuery(api.transactions.getFinancialHealthScore);
   const realEvolution = useSafeQuery(api.transactions.getMonthlyEvolution, { months: 6 });
   const realCategories = useSafeQuery(api.categories.getAll);
   const realDebts = useSafeQuery(api.debts.getAll);
+  const realAccounts = useSafeQuery(api.accounts.getAll);
+  const realGoals = useSafeQuery(api.goals.getAll);
 
-  // Demo data fallback: use demo when all real queries resolve to undefined (server error)
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
     if (!isLoading) {
@@ -152,138 +170,158 @@ export default function Dashboard() {
   const evolution = useDemo ? demoEvolution : (realEvolution ?? undefined);
   const categories = useDemo ? demoCategories : (realCategories ?? undefined);
   const debts = useDemo ? demoDebts : (realDebts ?? []);
+  const accounts = useDemo ? demoAccounts : (realAccounts ?? []);
+  const goals = useDemo ? demoGoals : (realGoals ?? []);
 
-  // Show browser notifications for debts due within 7 days
   useDebtNotifications(debts);
 
-  if (isLoading) return null;
+  if (isLoading) return <DashboardLayout><LoadingSkeleton /></DashboardLayout>;
   if (!isAuthenticated) { navigate("/auth"); return null; }
 
   const getCategoryName = (categoryId: string) => {
     return categories?.find((c: any) => c._id === categoryId)?.name || "Sem categoria";
   };
 
+  const dismissOnboarding = () => {
+    setShowOnboarding(false);
+    localStorage.setItem("onboarding-dismissed", "true");
+  };
+
+  // Net Worth calculation
+  const totalAccountsBalance = accounts.reduce((s: number, a: any) => s + a.balance, 0);
+  const totalDebtsRemaining = debts.filter((d: any) => !d.isPaid).reduce((s: number, d: any) => s + d.remainingAmount, 0);
+  const totalGoalsCurrent = goals.reduce((s: number, g: any) => s + g.currentAmount, 0);
+  const netWorth = totalAccountsBalance - totalDebtsRemaining;
+
+  const formatCurrency = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
+        {/* Onboarding */}
+        {showOnboarding && (
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+            className="rounded-sm border border-primary/20 bg-primary/5 px-4 py-4 relative">
+            <button onClick={dismissOnboarding} className="absolute top-3 right-3 text-muted-foreground hover:text-foreground">
+              <X className="w-3.5 h-3.5" />
+            </button>
+            <div className="flex items-start gap-3 pr-6">
+              <div className="w-8 h-8 rounded-sm bg-primary flex items-center justify-center shrink-0">
+                <Info className="w-4 h-4 text-primary-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium mb-1">Bem-vindo ao Finanças! 🎉</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Aqui você pode controlar suas <strong>receitas e despesas</strong>, definir <strong>orçamentos</strong>,
+                  acompanhar <strong>cartões de crédito</strong>, <strong>investimentos</strong>, <strong>dívidas</strong>,
+                  <strong> contas bancárias</strong> e <strong>metas financeiras</strong>.
+                  Tudo de forma simples e gratuita.
+                </p>
+                <div className="flex items-center gap-3 mt-3">
+                  <a href="/transactions" className="text-[10px] underline hover:text-foreground text-muted-foreground transition-colors">Adicionar transações</a>
+                  <a href="/categories" className="text-[10px] underline hover:text-foreground text-muted-foreground transition-colors">Criar categorias</a>
+                  <button onClick={dismissOnboarding} className="text-[10px] underline hover:text-foreground text-muted-foreground transition-colors">Dispensar</button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Demo mode badge */}
         {useDemo && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-sm bg-secondary/50 text-[10px] text-muted-foreground">
             <Info className="w-3 h-3" />
-            Modo demonstração — dados de exemplo.{" "}
+            Modo demonstração — dados de exemplo.{' '}
             <button onClick={() => window.location.reload()} className="underline hover:text-foreground">Recarregar</button> após fazer deploy.
           </div>
         )}
 
-        {/* Alerts Section */}
-        {(() => {
-          const activeDebts = debts.filter((d: any) => !d.isPaid);
-          const overdue = activeDebts.filter((d: any) => {
-            const due = new Date(d.dueDate + (d.dueDate.includes("T") ? "" : "T00:00:00"));
-            return due < now;
-          });
-          const dueSoon = activeDebts.filter((d: any) => {
-            const due = new Date(d.dueDate + (d.dueDate.includes("T") ? "" : "T00:00:00"));
-            const daysUntil = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-            return daysUntil >= 0 && daysUntil <= 7 && !overdue.includes(d);
-          });
+        {/* Alerts & Header row */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          {/* Alerts Section */}
+          {(() => {
+            const activeDebts = debts.filter((d: any) => !d.isPaid);
+            const overdue = activeDebts.filter((d: any) => {
+              const due = new Date(d.dueDate + (d.dueDate.includes("T") ? "" : "T00:00:00"));
+              return due < now;
+            });
+            const dueSoon = activeDebts.filter((d: any) => {
+              const due = new Date(d.dueDate + (d.dueDate.includes("T") ? "" : "T00:00:00"));
+              const daysUntil = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              return daysUntil >= 0 && daysUntil <= 7 && !overdue.includes(d);
+            });
 
-          if (!activeDebts.length) return null;
+            if (!activeDebts.length) return null;
 
-          return (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`rounded-sm border px-4 py-3 ${
-                overdue.length > 0
-                  ? "border-destructive/30 bg-destructive/5"
-                  : dueSoon.length > 0
-                    ? "border-warning/30 bg-warning/5"
-                    : "border-success/30 bg-success/5"
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                {/* Icon */}
-                <div className={`w-8 h-8 rounded-sm flex items-center justify-center shrink-0 ${
-                  overdue.length > 0
-                    ? "bg-destructive/10"
-                    : dueSoon.length > 0
-                      ? "bg-warning/10"
-                      : "bg-success/10"
-                }`}>
-                  {overdue.length > 0 ? (
-                    <span className="text-destructive text-sm font-bold">!</span>
-                  ) : dueSoon.length > 0 ? (
-                    <Calendar className={`w-4 h-4 text-warning`} />
-                  ) : (
-                    <CheckCircle2 className="w-4 h-4 text-success" />
-                  )}
-                </div>
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  {overdue.length > 0 && (
-                    <>
-                      <p className="text-xs font-medium text-destructive">
-                        {overdue.length} dívida{overdue.length !== 1 ? "s" : ""} atrasada{overdue.length !== 1 ? "s" : ""}
-                      </p>
-                      <div className="mt-1.5 space-y-1">
-                        {overdue.slice(0, 3).map((d: any) => (
+            return (
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                className={`rounded-sm border px-4 py-3 flex-1 ${overdue.length > 0 ? "border-destructive/30 bg-destructive/5" : dueSoon.length > 0 ? "border-warning/30 bg-warning/5" : "border-success/30 bg-success/5"}`}>
+                <div className="flex items-start gap-3">
+                  <div className={`w-8 h-8 rounded-sm flex items-center justify-center shrink-0 ${overdue.length > 0 ? "bg-destructive/10" : dueSoon.length > 0 ? "bg-warning/10" : "bg-success/10"}`}>
+                    {overdue.length > 0 ? <span className="text-destructive text-sm font-bold">!</span> : dueSoon.length > 0 ? <Calendar className="w-4 h-4 text-warning" /> : <CheckCircle2 className="w-4 h-4 text-success" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {overdue.length > 0 && (
+                      <><p className="text-xs font-medium text-destructive">{overdue.length} dívida{overdue.length !== 1 ? "s" : ""} atrasada{overdue.length !== 1 ? "s" : ""}</p>
+                        <div className="mt-1.5 space-y-1">{overdue.slice(0, 3).map((d: any) => (
                           <div key={d._id} className="flex items-center justify-between text-[10px]">
                             <span className="text-muted-foreground truncate">{d.creditor}</span>
-                            <span className="tabular-nums text-destructive font-medium ml-2 shrink-0">
-                              {d.remainingAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                            </span>
+                            <span className="tabular-nums text-destructive font-medium ml-2 shrink-0">{d.remainingAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                           </div>
-                        ))}
-                        {overdue.length > 3 && (
-                          <p className="text-[10px] text-muted-foreground">e mais {overdue.length - 3}...</p>
-                        )}
-                      </div>
-                    </>
-                  )}
-                  {overdue.length === 0 && dueSoon.length > 0 && (
-                    <>
-                      <p className="text-xs font-medium text-warning">
-                        {dueSoon.length} dívida{dueSoon.length !== 1 ? "s" : ""} vence{dueSoon.length === 1 ? "" : "m"} nos próximos 7 dias
-                      </p>
-                      <div className="mt-1.5 space-y-1">
-                        {dueSoon.slice(0, 3).map((d: any) => {
+                        ))}{overdue.length > 3 && <p className="text-[10px] text-muted-foreground">e mais {overdue.length - 3}...</p>}</div></>
+                    )}
+                    {overdue.length === 0 && dueSoon.length > 0 && (
+                      <><p className="text-xs font-medium text-warning">{dueSoon.length} dívida{dueSoon.length !== 1 ? "s" : ""} vence{dueSoon.length === 1 ? "" : "m"} nos próximos 7 dias</p>
+                        <div className="mt-1.5 space-y-1">{dueSoon.slice(0, 3).map((d: any) => {
                           const due = new Date(d.dueDate + (d.dueDate.includes("T") ? "" : "T00:00:00"));
                           const daysUntil = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
                           const dayLabel = daysUntil === 0 ? "hoje" : daysUntil === 1 ? "amanhã" : `em ${daysUntil} dias`;
                           return (
                             <div key={d._id} className="flex items-center justify-between text-[10px]">
                               <span className="text-muted-foreground truncate">{d.creditor} · {dayLabel}</span>
-                              <span className="tabular-nums font-medium ml-2 shrink-0">
-                                {d.remainingAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                              </span>
+                              <span className="tabular-nums font-medium ml-2 shrink-0">{d.remainingAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                             </div>
                           );
-                        })}
-                        {dueSoon.length > 3 && (
-                          <p className="text-[10px] text-muted-foreground">e mais {dueSoon.length - 3}...</p>
-                        )}
-                      </div>
-                    </>
-                  )}
-                  {overdue.length === 0 && dueSoon.length === 0 && (
-                    <p className="text-xs font-medium text-success">
-                      Todas as dívidas em dia! 🎉
-                    </p>
-                  )}
-                  <a href="/debts" className="text-[10px] text-muted-foreground underline hover:text-foreground transition-colors mt-1.5 inline-block">
-                    Ver todas as dívidas
-                  </a>
+                        })}{dueSoon.length > 3 && <p className="text-[10px] text-muted-foreground">e mais {dueSoon.length - 3}...</p>}</div></>
+                    )}
+                    {overdue.length === 0 && dueSoon.length === 0 && <p className="text-xs font-medium text-success">Todas as dívidas em dia! 🎉</p>}
+                    <a href="/debts" className="text-[10px] text-muted-foreground underline hover:text-foreground transition-colors mt-1.5 inline-block">Ver todas as dívidas</a>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          );
-        })()}
+              </motion.div>
+            );
+          })()}
+
+          {/* Month selector */}
+          <div className="shrink-0">
+            <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}
+              className="text-xs h-9 rounded-sm border bg-background px-3 text-muted-foreground focus:outline-none w-full sm:w-auto">
+              {MONTH_OPTIONS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Net Worth Card */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+          className="p-6 rounded-sm border bg-card">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-muted-foreground">Patrimônio Líquido</span>
+            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+              <span className="flex items-center gap-1"><Landmark className="w-3 h-3" /> Ativos: {formatCurrency(totalAccountsBalance)}</span>
+              <span className="flex items-center gap-1"><HandCoins className="w-3 h-3" /> Passivos: {formatCurrency(totalDebtsRemaining)}</span>
+            </div>
+          </div>
+          <p className={`text-2xl sm:text-3xl font-light tabular-nums ${netWorth >= 0 ? "text-success" : "text-destructive"}`}>
+            {formatCurrency(netWorth)}
+          </p>
+        </motion.div>
 
         {/* Header */}
-        <div>
-          <h1 className="text-lg font-medium tracking-tight">Dashboard</h1>
-          <p className="text-xs text-muted-foreground mt-1">Resumo financeiro de {currentMonth}</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-medium tracking-tight">Dashboard</h1>
+            <p className="text-xs text-muted-foreground mt-1">Resumo financeiro de {selectedMonth}</p>
+          </div>
         </div>
 
         {/* Health Score + Stats Grid */}
@@ -321,7 +359,6 @@ export default function Dashboard() {
 
         {/* Charts Row */}
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Pie Chart */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="p-5 rounded-sm border bg-card">
             <h3 className="text-xs font-medium mb-4">Despesas por Categoria</h3>
             {summary && summary.expensesByCategory.length > 0 ? (
@@ -350,7 +387,6 @@ export default function Dashboard() {
             ) : <p className="text-xs text-muted-foreground text-center py-12">Nenhuma despesa registrada este mês</p>}
           </motion.div>
 
-          {/* Line Chart */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="p-5 rounded-sm border bg-card">
             <div className="flex items-center justify-between mb-4"><h3 className="text-xs font-medium">Evolução Mensal</h3><TrendingUp className="w-3.5 h-3.5 text-muted-foreground" /></div>
             {evolution && evolution.length > 0 && evolution.some((e: any) => e.income > 0 || e.expenses > 0) ? (
@@ -383,7 +419,10 @@ export default function Dashboard() {
 
         {/* Budget Progress */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="p-5 rounded-sm border bg-card">
-          <h3 className="text-xs font-medium mb-4">Orçamentos do Mês</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-medium">Orçamentos do Mês</h3>
+            <a href="/budgets" className="text-[10px] text-muted-foreground underline hover:text-foreground transition-colors">Gerenciar</a>
+          </div>
           {summary && summary.budgetComparisons.length > 0 ? (
             <div className="grid sm:grid-cols-2 gap-x-8 gap-y-1">
               {summary.budgetComparisons.map((item: any) => (
@@ -393,44 +432,27 @@ export default function Dashboard() {
           ) : <p className="text-xs text-muted-foreground text-center py-8"><a href="/budgets" className="underline hover:text-foreground">Defina orçamentos</a> para acompanhar seus gastos</p>}
         </motion.div>
 
-        {/* Debts Section */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="p-5 rounded-sm border bg-card">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-medium">Dívidas Pendentes</h3>
-            <a href="/debts" className="text-[10px] text-muted-foreground underline hover:text-foreground transition-colors">Gerenciar</a>
-          </div>
-          {debts.filter((d: any) => !d.isPaid).length > 0 ? (
-            <div className="space-y-0 divide-y">
-              {/* Summary mini-card */}
-              <div className="flex items-center justify-between py-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-sm bg-destructive/10 flex items-center justify-center">
-                    <HandCoins className="w-4 h-4 text-destructive" />
+        {/* Bottom row: Debts + Goals */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Debts Section */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="p-5 rounded-sm border bg-card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-medium">Dívidas Pendentes</h3>
+              <a href="/debts" className="text-[10px] text-muted-foreground underline hover:text-foreground transition-colors">Gerenciar</a>
+            </div>
+            {debts.filter((d: any) => !d.isPaid).length > 0 ? (
+              <div className="space-y-0 divide-y">
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-sm bg-destructive/10 flex items-center justify-center"><HandCoins className="w-4 h-4 text-destructive" /></div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Total a pagar</span>
+                      <p className="text-base font-medium tabular-nums">{formatCurrency(debts.filter((d: any) => !d.isPaid).reduce((s: number, d: any) => s + d.remainingAmount, 0))}</p>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground">Total a pagar</span>
-                    <p className="text-base font-medium tabular-nums">
-                      {debts
-                        .filter((d: any) => !d.isPaid)
-                        .reduce((s: number, d: any) => s + d.remainingAmount, 0)
-                        .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    </p>
-                  </div>
+                  <span className="text-[10px] text-muted-foreground">{debts.filter((d: any) => !d.isPaid).length} pendente{(debts.filter((d: any) => !d.isPaid).length) !== 1 ? "s" : ""}</span>
                 </div>
-                <span className="text-[10px] text-muted-foreground">
-                  {debts.filter((d: any) => !d.isPaid).length} pendente{(debts.filter((d: any) => !d.isPaid).length) !== 1 ? "s" : ""}
-                </span>
-              </div>
-              {/* Upcoming debts */}
-              {debts
-                .filter((d: any) => !d.isPaid)
-                .sort((a: any, b: any) => {
-                  const dateA = new Date(a.dueDate + (a.dueDate.includes("T") ? "" : "T00:00:00"));
-                  const dateB = new Date(b.dueDate + (b.dueDate.includes("T") ? "" : "T00:00:00"));
-                  return dateA.getTime() - dateB.getTime();
-                })
-                .slice(0, 4)
-                .map((debt: any) => {
+                {debts.filter((d: any) => !d.isPaid).sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()).slice(0, 4).map((debt: any) => {
                   const dueDate = new Date(debt.dueDate + (debt.dueDate.includes("T") ? "" : "T00:00:00"));
                   const isOverdue = dueDate < now;
                   const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -439,43 +461,68 @@ export default function Dashboard() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium truncate">{debt.creditor}</span>
-                          {isOverdue && (
-                            <span className="text-[10px] px-1 py-0.5 rounded-sm bg-destructive/10 text-destructive font-medium">
-                              Atrasada
-                            </span>
-                          )}
+                          {isOverdue && <span className="text-[10px] px-1 py-0.5 rounded-sm bg-destructive/10 text-destructive font-medium">Atrasada</span>}
                         </div>
                         <div className="flex items-center gap-3 mt-0.5">
                           <div className="flex items-center gap-1">
                             <CircleDollarSign className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-[10px] tabular-nums text-muted-foreground">
-                              Restam {debt.remainingAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                            </span>
+                            <span className="text-[10px] tabular-nums text-muted-foreground">Restam {formatCurrency(debt.remainingAmount)}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Calendar className="w-3 h-3 text-muted-foreground" />
                             <span className={`text-[10px] tabular-nums ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}>
                               {dueDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                              {!isOverdue && daysUntilDue <= 7 && (
-                                <span className="ml-1 text-warning">({daysUntilDue}d)</span>
-                              )}
+                              {!isOverdue && daysUntilDue <= 7 && <span className="ml-1 text-warning">({daysUntilDue}d)</span>}
                             </span>
                           </div>
                         </div>
                       </div>
-                      <span className="text-xs tabular-nums ml-4 shrink-0">
-                        {debt.totalAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                      </span>
+                      <span className="text-xs tabular-nums ml-4 shrink-0">{formatCurrency(debt.totalAmount)}</span>
                     </div>
                   );
                 })}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">Nenhuma dívida pendente</div>
+            )}
+          </motion.div>
+
+          {/* Goals Section */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="p-5 rounded-sm border bg-card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-medium">Metas Financeiras</h3>
+              <a href="/goals" className="text-[10px] text-muted-foreground underline hover:text-foreground transition-colors">Gerenciar</a>
             </div>
-          ) : (
-            <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
-              Nenhuma dívida pendente
-            </div>
-          )}
-        </motion.div>
+            {goals.filter((g: any) => !g.isAchieved).length > 0 ? (
+              <div className="space-y-3">
+                {goals.filter((g: any) => !g.isAchieved).slice(0, 3).map((goal: any) => {
+                  const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
+                  return (
+                    <div key={goal._id}>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <Target className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs truncate">{goal.name}</span>
+                        </div>
+                        <span className="text-xs tabular-nums text-muted-foreground">{formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}</span>
+                      </div>
+                      <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-500 bg-success" style={{ width: `${Math.min(progress, 100)}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+                {goals.filter((g: any) => !g.isAchieved).length > 3 && (
+                  <p className="text-[10px] text-muted-foreground text-center pt-1">e mais {goals.filter((g: any) => !g.isAchieved).length - 3} meta{(goals.filter((g: any) => !g.isAchieved).length - 3) !== 1 ? "s" : ""}...</p>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
+                <a href="/goals" className="underline hover:text-foreground">Crie metas financeiras</a> para acompanhar seu progresso
+              </div>
+            )}
+          </motion.div>
+        </div>
       </div>
     </DashboardLayout>
   );

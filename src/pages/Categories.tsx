@@ -1,5 +1,6 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription as AlertDesc, AlertDialogFooter as AlertFoot, AlertDialogHeader as AlertHead, AlertDialogTitle as AlertTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,6 +11,7 @@ import { useSafeQuery } from "@/hooks/use-safe-query";
 import { motion } from "framer-motion";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useNavigate } from "react-router";
 import { demoCategories } from "@/lib/demo-data";
 
@@ -44,7 +46,8 @@ export default function Categories() {
     } catch (error) { console.error(error); }
   };
 
-  const handleDelete = async (id: any) => { if (confirm("Tem certeza?")) { if (!useDemo) await deleteCat({ id }); } };
+  const [deleteId, setDeleteId] = useState<any>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const expenseCats = categories?.filter((c: any) => c.type === "expense") || [];
   const incomeCats = categories?.filter((c: any) => c.type === "income") || [];
@@ -84,7 +87,7 @@ export default function Categories() {
                 <div className="flex-1 min-w-0"><p className="text-sm truncate">{cat.name}</p>{cat.isFixed && <p className="text-[10px] text-muted-foreground">Fixo</p>}</div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingCat(cat); setForm({ name: cat.name, type: cat.type, icon: cat.icon, color: cat.color, isFixed: cat.isFixed }); setDialogOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(cat._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteId(cat._id); setDeleteDialogOpen(true); }}><Trash2 className="w-3.5 h-3.5" /></Button>
                 </div>
               </motion.div>
             ))}
@@ -100,7 +103,7 @@ export default function Categories() {
                 <div className="flex-1 min-w-0"><p className="text-sm truncate">{cat.name}</p></div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingCat(cat); setForm({ name: cat.name, type: cat.type, icon: cat.icon, color: cat.color, isFixed: cat.isFixed }); setDialogOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(cat._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteId(cat._id); setDeleteDialogOpen(true); }}><Trash2 className="w-3.5 h-3.5" /></Button>
                 </div>
               </motion.div>
             ))}
@@ -108,6 +111,22 @@ export default function Categories() {
           </div>
         </div>
       </div>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="sm:max-w-[340px]">
+          <AlertHead><AlertTitle className="text-sm font-medium">Excluir categoria?</AlertTitle>
+            <AlertDesc className="text-xs">Esta ação não pode ser desfeita. Todas as transações e orçamentos vinculados também serão removidos.</AlertDesc>
+          </AlertHead>
+          <AlertFoot>
+            <AlertDialogCancel className="text-xs">Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="text-xs bg-destructive hover:bg-destructive/90" onClick={async () => {
+              if (deleteId) { if (!useDemo) await deleteCat({ id: deleteId }); toast.success("Categoria excluída!"); }
+              setDeleteDialogOpen(false); setDeleteId(null);
+            }}>Excluir</AlertDialogAction>
+          </AlertFoot>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

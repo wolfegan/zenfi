@@ -1,5 +1,5 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription as AlertDesc, AlertDialogFooter as AlertFoot, AlertDialogHeader as AlertHead, AlertDialogTitle as AlertTitle } from "@/components/ui/alert-dialog";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -12,6 +12,7 @@ import { useSafeQuery } from "@/hooks/use-safe-query";
 import { motion } from "framer-motion";
 import { Calendar, Pencil, Plus, Trash2, ArrowDown, ArrowUp } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useNavigate } from "react-router";
 import { demoTransactions, demoCategories } from "@/lib/demo-data";
 
@@ -66,7 +67,8 @@ export default function Transactions() {
     } catch (error) { console.error("Transaction error:", error); }
   };
 
-  const handleDelete = async (id: any) => { if (confirm("Tem certeza?")) { if (!useDemo) await deleteTx({ id }); } };
+  const [deleteId, setDeleteId] = useState<any>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const findCategory = (id: string) => categories?.find((c: any) => c._id === id);
 
@@ -128,7 +130,7 @@ export default function Transactions() {
                 <div className={`text-sm font-medium tabular-nums ${tx.type === "income" ? "text-success" : ""}`}>{tx.type === "income" ? "+" : "-"}{tx.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="w-3.5 h-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(tx._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteId(tx._id); setDeleteDialogOpen(true); }}><Trash2 className="w-3.5 h-3.5" /></Button>
                 </div>
               </motion.div>
             );
@@ -141,6 +143,22 @@ export default function Transactions() {
           )}
         </div>
       </div>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="sm:max-w-[340px]">
+          <AlertHead><AlertTitle className="text-sm font-medium">Excluir transação?</AlertTitle>
+            <AlertDesc className="text-xs">Esta ação não pode ser desfeita.</AlertDesc>
+          </AlertHead>
+          <AlertFoot>
+            <AlertDialogCancel className="text-xs">Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="text-xs bg-destructive hover:bg-destructive/90" onClick={async () => {
+              if (deleteId) { if (!useDemo) await deleteTx({ id: deleteId }); toast.success("Transação excluída!"); }
+              setDeleteDialogOpen(false); setDeleteId(null);
+            }}>Excluir</AlertDialogAction>
+          </AlertFoot>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }
