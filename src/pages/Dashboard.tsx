@@ -12,6 +12,9 @@ import {
   PiggyBank,
   Info,
   TrendingUp,
+  HandCoins,
+  Calendar,
+  CircleDollarSign,
 } from "lucide-react";
 import {
   PieChart,
@@ -31,6 +34,7 @@ import {
   demoEvolution,
   demoCategories,
   demoTransactions,
+  demoDebts,
 } from "@/lib/demo-data";
 
 function HealthScoreGauge({ score, status, message }: { score: number; status: string; message: string }) {
@@ -130,20 +134,22 @@ export default function Dashboard() {
   const realHealth = useSafeQuery(api.transactions.getFinancialHealthScore);
   const realEvolution = useSafeQuery(api.transactions.getMonthlyEvolution, { months: 6 });
   const realCategories = useSafeQuery(api.categories.getAll);
+  const realDebts = useSafeQuery(api.debts.getAll);
 
   // Demo data fallback: use demo when all real queries resolve to undefined (server error)
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
     if (!isLoading) {
-      const allFailed = realSummary === undefined && realHealth === undefined && realEvolution === undefined && realCategories === undefined;
+      const allFailed = realSummary === undefined && realHealth === undefined && realEvolution === undefined && realCategories === undefined && realDebts === undefined;
       setUseDemo(allFailed);
     }
-  }, [isLoading, realSummary, realHealth, realEvolution, realCategories]);
+  }, [isLoading, realSummary, realHealth, realEvolution, realCategories, realDebts]);
 
   const summary = useDemo ? demoMonthlySummary() : (realSummary ?? undefined);
   const health = useDemo ? demoHealthScore : (realHealth ?? undefined);
   const evolution = useDemo ? demoEvolution : (realEvolution ?? undefined);
   const categories = useDemo ? demoCategories : (realCategories ?? undefined);
+  const debts = useDemo ? demoDebts : (realDebts ?? []);
 
   if (isLoading) return null;
   if (!isAuthenticated) { navigate("/auth"); return null; }
@@ -275,6 +281,90 @@ export default function Dashboard() {
               ))}
             </div>
           ) : <p className="text-xs text-muted-foreground text-center py-8"><a href="/budgets" className="underline hover:text-foreground">Defina orçamentos</a> para acompanhar seus gastos</p>}
+        </motion.div>
+
+        {/* Debts Section */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="p-5 rounded-sm border bg-card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-medium">Dívidas Pendentes</h3>
+            <a href="/debts" className="text-[10px] text-muted-foreground underline hover:text-foreground transition-colors">Gerenciar</a>
+          </div>
+          {debts.filter((d: any) => !d.isPaid).length > 0 ? (
+            <div className="space-y-0 divide-y">
+              {/* Summary mini-card */}
+              <div className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-sm bg-destructive/10 flex items-center justify-center">
+                    <HandCoins className="w-4 h-4 text-destructive" />
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Total a pagar</span>
+                    <p className="text-base font-medium tabular-nums">
+                      {debts
+                        .filter((d: any) => !d.isPaid)
+                        .reduce((s: number, d: any) => s + d.remainingAmount, 0)
+                        .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] text-muted-foreground">
+                  {debts.filter((d: any) => !d.isPaid).length} pendente{(debts.filter((d: any) => !d.isPaid).length) !== 1 ? "s" : ""}
+                </span>
+              </div>
+              {/* Upcoming debts */}
+              {debts
+                .filter((d: any) => !d.isPaid)
+                .sort((a: any, b: any) => {
+                  const dateA = new Date(a.dueDate + (a.dueDate.includes("T") ? "" : "T00:00:00"));
+                  const dateB = new Date(b.dueDate + (b.dueDate.includes("T") ? "" : "T00:00:00"));
+                  return dateA.getTime() - dateB.getTime();
+                })
+                .slice(0, 4)
+                .map((debt: any) => {
+                  const dueDate = new Date(debt.dueDate + (debt.dueDate.includes("T") ? "" : "T00:00:00"));
+                  const isOverdue = dueDate < now;
+                  const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                  return (
+                    <div key={debt._id} className="flex items-center justify-between py-2.5 group">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium truncate">{debt.creditor}</span>
+                          {isOverdue && (
+                            <span className="text-[10px] px-1 py-0.5 rounded-sm bg-destructive/10 text-destructive font-medium">
+                              Atrasada
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <div className="flex items-center gap-1">
+                            <CircleDollarSign className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-[10px] tabular-nums text-muted-foreground">
+                              Restam {debt.remainingAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-muted-foreground" />
+                            <span className={`text-[10px] tabular-nums ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}>
+                              {dueDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                              {!isOverdue && daysUntilDue <= 7 && (
+                                <span className="ml-1 text-warning">({daysUntilDue}d)</span>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xs tabular-nums ml-4 shrink-0">
+                        {debt.totalAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </span>
+                    </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
+              Nenhuma dívida pendente
+            </div>
+          )}
         </motion.div>
       </div>
     </DashboardLayout>
