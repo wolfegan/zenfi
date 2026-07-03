@@ -6,9 +6,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
-import { api } from "@/convex/_generated/api";
-import { useMutation } from "convex/react";
-import { useSafeQuery } from "@/hooks/use-safe-query";
+import { useTransactions, useCategories, useCreditCards } from "@/hooks/use-supabase";
 import { motion } from "framer-motion";
 import { Calendar, Pencil, Plus, Trash2, ArrowDown, ArrowUp } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -28,23 +26,21 @@ export default function Transactions() {
   const [editingTx, setEditingTx] = useState<any>(null);
   const [form, setForm] = useState({ categoryId: "", amount: "", date: new Date().toISOString().split("T")[0], type: "expense" as "income" | "expense", description: "", isFixed: false, isCreditCard: false, creditCardId: "" });
 
-  const realTransactions = useSafeQuery(api.transactions.getByMonth, { month: currentMonth() });
-  const realCategories = useSafeQuery(api.categories.getAll);
-  const realCreditCards = useSafeQuery(api.creditCards.getAll);
-  const createTx = useMutation(api.transactions.create);
-  const updateTx = useMutation(api.transactions.update);
-  const deleteTx = useMutation(api.transactions.remove);
+  const { data: realTransactions, loading: txsLoading } = useTransactions();
+  const { data: realCategories } = useCategories();
+  const { data: realCreditCards } = useCreditCards();
+  const { create, update, remove } = useTransactions();
 
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
-    if (!isLoading) {
-      setUseDemo(realTransactions === undefined && realCategories === undefined);
+    if (!isLoading && !txsLoading) {
+      setUseDemo(realTransactions.length === 0 && realCategories.length === 0);
     }
-  }, [isLoading, realTransactions, realCategories]);
+  }, [isLoading, txsLoading, realTransactions, realCategories]);
 
-  const transactions = useDemo ? demoTransactions : (realTransactions ?? []);
-  const categories = useDemo ? demoCategories : (realCategories ?? []);
-  const creditCards = useDemo ? [] : (realCreditCards ?? []);
+  const txs = useDemo ? demoTransactions : realTransactions;
+  const categories = useDemo ? demoCategories : realCategories;
+  const creditCards = useDemo ? [] : realCreditCards;
 
   if (isLoading) return null;
   if (!isAuthenticated) { navigate("/auth"); return null; }
@@ -60,8 +56,8 @@ export default function Transactions() {
     if (isNaN(amount) || amount <= 0) return;
     try {
       if (!useDemo) {
-        if (editingTx) { await updateTx({ id: editingTx._id, categoryId: form.categoryId as any, amount, date: form.date, type: form.type, description: form.description || undefined, isFixed: form.isFixed, isCreditCard: form.isCreditCard, creditCardId: form.isCreditCard && form.creditCardId ? form.creditCardId as any : undefined }); }
-        else { await createTx({ categoryId: form.categoryId as any, amount, date: form.date, type: form.type, description: form.description || undefined, isFixed: form.isFixed, isCreditCard: form.isCreditCard, creditCardId: form.isCreditCard && form.creditCardId ? form.creditCardId as any : undefined }); }
+        if (editingTx) { await update(editingTx.id, { category_id: form.categoryId, amount, date: form.date, type: form.type, description: form.description || undefined, is_fixed: form.isFixed, is_credit_card: form.isCreditCard, credit_card_id: form.isCreditCard && form.creditCardId ? form.creditCardId : null }); }
+        else { await create({ category_id: form.categoryId, amount, date: form.date, type: form.type, description: form.description || undefined, is_fixed: form.isFixed, is_credit_card: form.isCreditCard, credit_card_id: form.isCreditCard && form.creditCardId ? form.creditCardId : null }); }
       }
       setDialogOpen(false); resetForm();
     } catch (error) { console.error("Transaction error:", error); }
@@ -70,7 +66,7 @@ export default function Transactions() {
   const [deleteId, setDeleteId] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  const findCategory = (id: string) => categories?.find((c: any) => c._id === id);
+  const findCategory = (id: string) => categories?.find((c: any) => c.id === id);
 
   return (
     <DashboardLayout>
@@ -92,7 +88,7 @@ export default function Transactions() {
                 <div><label className="text-xs text-muted-foreground mb-1.5 block">Categoria</label>
                   <Select value={form.categoryId} onValueChange={(v) => setForm({ ...form, categoryId: v })}>
                     <SelectTrigger className="text-xs h-9"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>{(form.type === "expense" ? expenseCategories : incomeCategories).map((cat: any) => <SelectItem key={cat._id} value={cat._id} className="text-xs">{cat.name}</SelectItem>)}</SelectContent>
+                    <SelectContent>{(form.type === "expense" ? expenseCategories : incomeCategories).map((cat: any) => <SelectItem key={cat.id} value={cat.id} className="text-xs">{cat.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div><label className="text-xs text-muted-foreground mb-1.5 block">Data</label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
@@ -105,7 +101,7 @@ export default function Transactions() {
                   <div><label className="text-xs text-muted-foreground mb-1.5 block">Selecionar Cartão</label>
                     <Select value={form.creditCardId} onValueChange={(v) => setForm({ ...form, creditCardId: v })}>
                       <SelectTrigger className="text-xs h-9"><SelectValue placeholder="Selecione o cartão..." /></SelectTrigger>
-                      <SelectContent>{creditCards.map((card: any) => <SelectItem key={card._id} value={card._id} className="text-xs">{card.name}</SelectItem>)}</SelectContent>
+                      <SelectContent>{creditCards.map((card: any) => <SelectItem key={card.id} value={card.id} className="text-xs">{card.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                 )}
@@ -116,35 +112,34 @@ export default function Transactions() {
         </div>
 
         <div className="space-y-2">
-          {transactions && transactions.length > 0 ? transactions.map((tx: any, i: number) => {
-            const cat = findCategory(tx.categoryId);
+          {txs && txs.length > 0 ? txs.map((tx: any, i: number) => {
+            const cat = findCategory(tx.category_id);
             return (
-              <motion.div key={tx._id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="flex items-center gap-4 p-4 rounded-sm border bg-card hover:shadow-sm transition-shadow group">
+              <motion.div key={tx.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="flex items-center gap-4 p-4 rounded-sm border bg-card hover:shadow-sm transition-shadow group">
                 <div className="w-9 h-9 rounded-sm flex items-center justify-center shrink-0" style={{ backgroundColor: cat?.color ? `${cat.color}15` : "oklch(0.92 0 0)" }}>
                   {tx.type === "income" ? <ArrowUp className="w-4 h-4" style={{ color: cat?.color || "oklch(0.45 0.13 145)" }} /> : <ArrowDown className="w-4 h-4" style={{ color: cat?.color || "oklch(0.58 0.19 27.33)" }} />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2"><span className="text-sm font-medium truncate">{tx.description || cat?.name || "Sem categoria"}</span>{tx.isFixed && <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-secondary text-muted-foreground">Fixo</span>}{tx.isCreditCard && <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-secondary text-muted-foreground">Cartão</span>}</div>
+                  <div className="flex items-center gap-2"><span className="text-sm font-medium truncate">{tx.description || cat?.name || "Sem categoria"}</span>{tx.is_fixed && <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-secondary text-muted-foreground">Fixo</span>}{tx.is_credit_card && <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-secondary text-muted-foreground">Cartão</span>}</div>
                   <div className="flex items-center gap-2 mt-0.5"><span className="text-xs text-muted-foreground">{cat?.name}</span><span className="text-xs text-muted-foreground">·</span><span className="text-xs text-muted-foreground">{new Date(tx.date + "T12:00:00").toLocaleDateString("pt-BR")}</span></div>
                 </div>
                 <div className={`text-sm font-medium tabular-nums ${tx.type === "income" ? "text-success" : ""}`}>{tx.type === "income" ? "+" : "-"}{tx.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="w-3.5 h-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteId(tx._id); setDeleteDialogOpen(true); }}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteId(tx.id); setDeleteDialogOpen(true); }}><Trash2 className="w-3.5 h-3.5" /></Button>
                 </div>
               </motion.div>
             );
           }) : (
             <div className="text-center py-12">
               <div className="w-12 h-12 rounded-sm bg-secondary flex items-center justify-center mx-auto mb-3"><Calendar className="w-5 h-5 text-muted-foreground" /></div>
-              <p className="text-xs text-muted-foreground mb-4">Nenhuma transação este mês</p>
+              <p className="text-xs text-muted-foreground mb-4">Nenhuma transação encontrada</p>
               <Button size="sm" className="text-xs" onClick={() => setDialogOpen(true)}><Plus className="w-3.5 h-3.5 mr-1.5" />Adicionar primeira transação</Button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Delete confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="sm:max-w-[340px]">
           <AlertHead><AlertTitle className="text-sm font-medium">Excluir transação?</AlertTitle>
@@ -153,7 +148,7 @@ export default function Transactions() {
           <AlertFoot>
             <AlertDialogCancel className="text-xs">Cancelar</AlertDialogCancel>
             <AlertDialogAction className="text-xs bg-destructive hover:bg-destructive/90" onClick={async () => {
-              if (deleteId) { if (!useDemo) await deleteTx({ id: deleteId }); toast.success("Transação excluída!"); }
+              if (deleteId) { if (!useDemo) await remove(deleteId); toast.success("Transação excluída!"); }
               setDeleteDialogOpen(false); setDeleteId(null);
             }}>Excluir</AlertDialogAction>
           </AlertFoot>

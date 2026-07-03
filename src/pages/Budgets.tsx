@@ -4,9 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
-import { api } from "@/convex/_generated/api";
-import { useMutation } from "convex/react";
-import { useSafeQuery } from "@/hooks/use-safe-query";
+import { useBudgets, useCategories } from "@/hooks/use-supabase";
 import { motion } from "framer-motion";
 import { Percent, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -22,24 +20,25 @@ export default function Budgets() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ categoryId: "", amount: "" });
 
-  const realBudgets = useSafeQuery(api.budgets.getByMonth, { month: selectedMonth });
-  const realCategories = useSafeQuery(api.categories.getAll);
-  const realTransactions = useSafeQuery(api.transactions.getByMonth, { month: selectedMonth });
-  const setBudget = useMutation(api.budgets.setBudget);
-  const deleteBudget = useMutation(api.budgets.remove);
+  const { getByMonth, setBudget, remove } = useBudgets();
+  const { data: realCategories } = useCategories();
+  const [realBudgets, setRealBudgets] = useState<any[]>([]);
+
+  useEffect(() => {
+    getByMonth(selectedMonth).then(setRealBudgets);
+  }, [selectedMonth, getByMonth]);
 
   const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => { if (!isLoading) setUseDemo(realBudgets === undefined && realCategories === undefined); }, [isLoading, realBudgets, realCategories]);
+  useEffect(() => { if (!isLoading) setUseDemo(realBudgets.length === 0 && realCategories.length === 0); }, [isLoading, realBudgets, realCategories]);
 
-  const budgets = useDemo ? demoBudgets : (realBudgets ?? []);
-  const categories = useDemo ? demoCategories : (realCategories ?? []);
-  const transactions = useDemo ? demoTransactions : (realTransactions ?? []);
+  const budgets = useDemo ? demoBudgets : realBudgets;
+  const categories = useDemo ? demoCategories : realCategories;
   const expenseCategories = categories?.filter((c: any) => c.type === "expense") || [];
 
   if (isLoading) return null;
   if (!isAuthenticated) { navigate("/auth"); return null; }
 
-  const getSpent = (categoryId: string) => (transactions || []).filter((t: any) => t.categoryId === categoryId && t.type === "expense").reduce((s: number, t: any) => s + t.amount, 0);
+  const getSpent = (categoryId: string) => (useDemo ? demoTransactions : []).filter((t: any) => t.category_id === categoryId && t.type === "expense").reduce((s: number, t: any) => s + t.amount, 0);
 
   return (
     <DashboardLayout>
@@ -56,12 +55,12 @@ export default function Budgets() {
                 <div><label className="text-xs text-muted-foreground mb-1.5 block">Categoria</label>
                   <Select value={form.categoryId} onValueChange={(v) => setForm({ ...form, categoryId: v })}>
                     <SelectTrigger className="text-xs h-9"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>{expenseCategories.map((cat: any) => <SelectItem key={cat._id} value={cat._id} className="text-xs">{cat.name}</SelectItem>)}</SelectContent>
+                    <SelectContent>{expenseCategories.map((cat: any) => <SelectItem key={cat.id} value={cat.id} className="text-xs">{cat.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div><label className="text-xs text-muted-foreground mb-1.5 block">Limite Mensal</label><Input type="number" step="0.01" min="0" placeholder="0,00" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
               </div>
-              <DialogFooter><Button variant="outline" size="sm" className="text-xs" onClick={() => setDialogOpen(false)}>Cancelar</Button><Button size="sm" className="text-xs" onClick={async () => { if (form.categoryId && form.amount) { if (!useDemo) await setBudget({ categoryId: form.categoryId as any, month: selectedMonth, amount: parseFloat(form.amount) }); setDialogOpen(false); setForm({ categoryId: "", amount: "" }); }}}>Definir</Button></DialogFooter>
+              <DialogFooter><Button variant="outline" size="sm" className="text-xs" onClick={() => setDialogOpen(false)}>Cancelar</Button><Button size="sm" className="text-xs" onClick={async () => { if (form.categoryId && form.amount) { if (!useDemo) await setBudget(form.categoryId, selectedMonth, parseFloat(form.amount)); setDialogOpen(false); setForm({ categoryId: "", amount: "" }); }}}>Definir</Button></DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
@@ -69,13 +68,13 @@ export default function Budgets() {
         {budgets && budgets.length > 0 ? (
           <div className="space-y-2">
             {budgets.map((budget: any, i: number) => {
-              const cat = expenseCategories.find((c: any) => c._id === budget.categoryId);
-              const spent = getSpent(budget.categoryId);
+              const cat = expenseCategories.find((c: any) => c.id === budget.category_id);
+              const spent = getSpent(budget.category_id);
               const percentage = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
               const isOver = percentage > 100;
               const isWarning = percentage > 80 && !isOver;
               return (
-                <motion.div key={budget._id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="p-5 rounded-sm border bg-card">
+                <motion.div key={budget.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="p-5 rounded-sm border bg-card">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-sm flex items-center justify-center" style={{ backgroundColor: cat?.color ? `${cat.color}15` : "oklch(0.92 0 0)" }}><span className="text-xs text-muted-foreground">{cat?.icon?.[0] || "•"}</span></div>
@@ -83,7 +82,7 @@ export default function Budgets() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className={`text-xs font-medium tabular-nums ${isOver ? "text-destructive" : isWarning ? "text-warning" : "text-success"}`}>{percentage.toFixed(0)}%</span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { if (!useDemo) deleteBudget({ id: budget._id }); }}><Trash2 className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { if (!useDemo) remove(budget.id); }}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className={`h-full rounded-full transition-all duration-500 ${isOver ? "bg-destructive" : isWarning ? "bg-warning" : "bg-success"}`} style={{ width: `${Math.min(percentage, 100)}%` }} /></div>

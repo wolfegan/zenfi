@@ -2,11 +2,11 @@ import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 interface DebtNotification {
-  _id: string;
+  id: string;
   creditor: string;
-  remainingAmount: number;
-  dueDate: string;
-  isPaid: boolean;
+  remaining_amount: number;
+  due_date: string;
+  is_paid: boolean;
 }
 
 const NOTIFICATION_KEY = "debt-notifications-shown";
@@ -64,16 +64,16 @@ export function useDebtNotifications(debts: DebtNotification[] | undefined) {
   useEffect(() => {
     if (!debts || !debts.length || hasRun.current) return;
 
-    const active = debts.filter((d) => !d.isPaid);
+    const active = debts.filter((d) => !d.is_paid);
     if (!active.length) return;
 
-    const shownIds = getShownNotifications();
+    const shownIds: string[] = getShownNotifications().map(String);
     const newNotifications: DebtNotification[] = [];
 
     for (const debt of active) {
-      if (shownIds.includes(debt._id)) continue;
+      if (shownIds.includes(debt.id)) continue;
 
-      const { days, overdue } = getDaysUntil(debt.dueDate);
+      const { days, overdue } = getDaysUntil(debt.due_date);
 
       // Show for overdue or due within 7 days
       if (overdue || (days >= 0 && days <= 7)) {
@@ -91,12 +91,11 @@ export function useDebtNotifications(debts: DebtNotification[] | undefined) {
 
     // Show notifications
     for (const debt of newNotifications) {
-      const { days, overdue } = getDaysUntil(debt.dueDate);
+      const { days, overdue } = getDaysUntil(debt.due_date);
 
       if (overdue) {
-        // Overdue notification
         const title = `💰 Dívida atrasada: ${debt.creditor}`;
-        const body = `${formatCurrency(debt.remainingAmount)} — vencimento venceu!`;
+        const body = `${formatCurrency(debt.remaining_amount)} — vencimento venceu!`;
         sendBrowserNotification(title, body);
         toast.error(title, {
           description: body,
@@ -107,11 +106,10 @@ export function useDebtNotifications(debts: DebtNotification[] | undefined) {
           },
         });
       } else {
-        // Due soon notification
         const dayLabel =
           days === 0 ? "vence hoje!" : days === 1 ? "vence amanhã!" : `vence em ${days} dias`;
         const title = `📅 ${debt.creditor} ${dayLabel}`;
-        const body = `${formatCurrency(debt.remainingAmount)} restantes`;
+        const body = `${formatCurrency(debt.remaining_amount)} restantes`;
         sendBrowserNotification(title, body);
         toast.warning(title, {
           description: body,
@@ -124,7 +122,7 @@ export function useDebtNotifications(debts: DebtNotification[] | undefined) {
       }
     }
 
-    markShown(newNotifications.map((d) => d._id));
+    markShown(newNotifications.map((d) => d.id));
     hasRun.current = true;
   }, [debts]);
 }

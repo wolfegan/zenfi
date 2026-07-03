@@ -1,84 +1,58 @@
-import { DocId } from "convex/server";
+/* eslint-disable */
+/**
+ * Generated data model types.
+ *
+ * THIS CODE IS AUTOMATICALLY GENERATED.
+ *
+ * To regenerate, run `npx convex dev`.
+ * @module
+ */
 
-export type DataModel = {
-  users: {
-    _id: DocId<"users">;
-    name?: string;
-    image?: string;
-    email?: string;
-    emailVerificationTime?: number;
-    isAnonymous?: boolean;
-    role?: string;
-    monthlyIncome?: number;
-    financialGoal?: string;
-    onboardingCompleted?: boolean;
-  };
-  categories: {
-    _id: DocId<"categories">;
-    userId: DocId<"users">;
-    name: string;
-    type: "income" | "expense";
-    icon: string;
-    color: string;
-    isFixed: boolean;
-    order?: number;
-  };
-  transactions: {
-    _id: DocId<"transactions">;
-    userId: DocId<"users">;
-    categoryId: DocId<"categories">;
-    amount: number;
-    date: string;
-    type: "income" | "expense";
-    description?: string;
-    isFixed: boolean;
-    isCreditCard: boolean;
-    creditCardId?: DocId<"creditCards">;
-    createdAt: number;
-  };
-  monthlyBudgets: {
-    _id: DocId<"monthlyBudgets">;
-    userId: DocId<"users">;
-    categoryId: DocId<"categories">;
-    month: string;
-    amount: number;
-  };
-  creditCards: {
-    _id: DocId<"creditCards">;
-    userId: DocId<"users">;
-    name: string;
-    limit: number;
-    closingDay: number;
-    dueDay: number;
-    color: string;
-    createdAt: number;
-  };
-  creditCardBills: {
-    _id: DocId<"creditCardBills">;
-    userId: DocId<"users">;
-    creditCardId: DocId<"creditCards">;
-    month: string;
-    totalAmount: number;
-    isPaid: boolean;
-    dueDate: string;
-    closingDate: string;
-    createdAt: number;
-  };
-  investments: {
-    _id: DocId<"investments">;
-    userId: DocId<"users">;
-    name: string;
-    type: "stocks" | "crypto" | "real_estate" | "fixed_income" | "other";
-    amount: number;
-    currentValue: number;
-    monthlyContribution: number;
-    createdAt: number;
-  };
-  // Auth tables from convex-auth
-  authAccounts: { _id: DocId<"authAccounts"> };
-  authSessions: { _id: DocId<"authSessions"> };
-  authVerificationTokens: { _id: DocId<"authVerificationTokens"> };
-};
+import { AnyDataModel } from "convex/server";
+import type { GenericId } from "convex/values";
 
-export type TableNames = keyof DataModel;
-export type Doc<T extends TableNames> = DataModel[T];
+/**
+ * No `schema.ts` file found!
+ *
+ * This generated code has permissive types like `Doc = any` because
+ * Convex doesn't know your schema. If you'd like more type safety, see
+ * https://docs.convex.dev/using/schemas for instructions on how to add a
+ * schema file.
+ *
+ * After you change a schema, rerun codegen with `npx convex dev`.
+ */
+
+/**
+ * The names of all of your Convex tables.
+ */
+export type TableNames = string;
+
+/**
+ * The type of a document stored in Convex.
+ */
+export type Doc = any;
+
+/**
+ * An identifier for a document in Convex.
+ *
+ * Convex documents are uniquely identified by their `Id`, which is accessible
+ * on the `_id` field. To learn more, see [Document IDs](https://docs.convex.dev/using/document-ids).
+ *
+ * Documents can be loaded using `db.get(tableName, id)` in query and mutation functions.
+ *
+ * IDs are just strings at runtime, but this type can be used to distinguish them from other
+ * strings when type checking.
+ */
+export type Id<TableName extends TableNames = TableNames> =
+  GenericId<TableName>;
+
+/**
+ * A type describing your Convex data model.
+ *
+ * This type includes information about what tables you have, the type of
+ * documents stored in those tables, and the indexes defined on them.
+ *
+ * This type is used to parameterize methods like `queryGeneric` and
+ * `mutationGeneric` to make them type-safe.
+ */
+export type DataModel = AnyDataModel;

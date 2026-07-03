@@ -1,22 +1,22 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useDebtNotifications } from "@/hooks/use-debt-notifications";
-import { useSafeQuery } from "@/hooks/use-safe-query";
-import { api } from "@/convex/_generated/api";
+import { useCategories, useMonthlySummary, useMonthlyEvolution, useFinancialHealthScore, useDebts, useAccounts, useGoals } from "@/hooks/use-supabase";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
   ArrowDown, ArrowUp, Wallet, PiggyBank, Info, TrendingUp, HandCoins,
-  Calendar, CircleDollarSign, CheckCircle2, Landmark, Target, X, ChevronRight,
+  Calendar, CircleDollarSign, CheckCircle2, Landmark, Target, X,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Area, AreaChart,
 } from "recharts";
 import {
-  demoMonthlySummary, demoHealthScore, demoEvolution, demoCategories,
-  demoTransactions, demoDebts, demoAccounts, demoGoals, demoGoalsSummary,
+  demoMonthlySummary, demoHealthScore, demoEvolution, demoCategories as demoCat,
+  demoTransactions, demoDebts as demoDebtList, demoAccounts as demoAcc,
+  demoGoals as demoGoalList,
 } from "@/lib/demo-data";
 
 function LoadingSkeleton() {
@@ -125,7 +125,6 @@ function BudgetProgress({ categoryName, spent, budgetAmount, percentage }: {
   );
 }
 
-// Month selector helper
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
   const d = new Date();
   d.setMonth(d.getMonth() - i);
@@ -136,7 +135,7 @@ const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
 });
 
 export default function Dashboard() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const now = new Date();
   const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -148,30 +147,30 @@ export default function Dashboard() {
     return true;
   });
 
-  // Real queries
-  const realSummary = useSafeQuery(api.transactions.getMonthlySummary, { month: selectedMonth });
-  const realHealth = useSafeQuery(api.transactions.getFinancialHealthScore);
-  const realEvolution = useSafeQuery(api.transactions.getMonthlyEvolution, { months: 6 });
-  const realCategories = useSafeQuery(api.categories.getAll);
-  const realDebts = useSafeQuery(api.debts.getAll);
-  const realAccounts = useSafeQuery(api.accounts.getAll);
-  const realGoals = useSafeQuery(api.goals.getAll);
+  // Supabase hooks
+  const { data: realSummary, loading: summaryLoading } = useMonthlySummary(selectedMonth);
+  const { data: realHealth } = useFinancialHealthScore();
+  const { data: realEvolution } = useMonthlyEvolution(6);
+  const { data: realCategories } = useCategories();
+  const { data: realDebts } = useDebts();
+  const { data: realAccounts } = useAccounts();
+  const { data: realGoals } = useGoals();
 
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
-    if (!isLoading) {
-      const allFailed = realSummary === undefined && realHealth === undefined && realEvolution === undefined && realCategories === undefined && realDebts === undefined;
+    if (!isLoading && !summaryLoading) {
+      const allFailed = realSummary === null && realHealth === null && realEvolution.length === 0 && realCategories.length === 0;
       setUseDemo(allFailed);
     }
-  }, [isLoading, realSummary, realHealth, realEvolution, realCategories, realDebts]);
+  }, [isLoading, summaryLoading, realSummary, realHealth, realEvolution, realCategories]);
 
   const summary = useDemo ? demoMonthlySummary() : (realSummary ?? undefined);
   const health = useDemo ? demoHealthScore : (realHealth ?? undefined);
-  const evolution = useDemo ? demoEvolution : (realEvolution ?? undefined);
-  const categories = useDemo ? demoCategories : (realCategories ?? undefined);
-  const debts = useDemo ? demoDebts : (realDebts ?? []);
-  const accounts = useDemo ? demoAccounts : (realAccounts ?? []);
-  const goals = useDemo ? demoGoals : (realGoals ?? []);
+  const evolution = useDemo ? demoEvolution : (realEvolution ?? []);
+  const categories = useDemo ? demoCat : realCategories;
+  const debts = useDemo ? demoDebtList : realDebts;
+  const accounts = useDemo ? demoAcc : realAccounts;
+  const goals = useDemo ? demoGoalList : realGoals;
 
   useDebtNotifications(debts);
 
@@ -179,7 +178,7 @@ export default function Dashboard() {
   if (!isAuthenticated) { navigate("/auth"); return null; }
 
   const getCategoryName = (categoryId: string) => {
-    return categories?.find((c: any) => c._id === categoryId)?.name || "Sem categoria";
+    return categories?.find((c: any) => c.id === categoryId)?.name || "Sem categoria";
   };
 
   const dismissOnboarding = () => {
@@ -187,10 +186,8 @@ export default function Dashboard() {
     localStorage.setItem("onboarding-dismissed", "true");
   };
 
-  // Net Worth calculation
   const totalAccountsBalance = accounts.reduce((s: number, a: any) => s + a.balance, 0);
-  const totalDebtsRemaining = debts.filter((d: any) => !d.isPaid).reduce((s: number, d: any) => s + d.remainingAmount, 0);
-  const totalGoalsCurrent = goals.reduce((s: number, g: any) => s + g.currentAmount, 0);
+  const totalDebtsRemaining = debts.filter((d: any) => !d.is_paid).reduce((s: number, d: any) => s + d.remaining_amount, 0);
   const netWorth = totalAccountsBalance - totalDebtsRemaining;
 
   const formatCurrency = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -198,7 +195,6 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        {/* Onboarding */}
         {showOnboarding && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
             className="rounded-sm border border-primary/20 bg-primary/5 px-4 py-4 relative">
@@ -227,26 +223,23 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        {/* Demo mode badge */}
         {useDemo && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-sm bg-secondary/50 text-[10px] text-muted-foreground">
             <Info className="w-3 h-3" />
             Modo demonstração — dados de exemplo.{' '}
-            <button onClick={() => window.location.reload()} className="underline hover:text-foreground">Recarregar</button> após fazer deploy.
+            <button onClick={() => window.location.reload()} className="underline hover:text-foreground">Recarregar</button> após configurar Supabase.
           </div>
         )}
 
-        {/* Alerts & Header row */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          {/* Alerts Section */}
           {(() => {
-            const activeDebts = debts.filter((d: any) => !d.isPaid);
+            const activeDebts = debts.filter((d: any) => !d.is_paid);
             const overdue = activeDebts.filter((d: any) => {
-              const due = new Date(d.dueDate + (d.dueDate.includes("T") ? "" : "T00:00:00"));
+              const due = new Date(d.due_date + (d.due_date.includes("T") ? "" : "T00:00:00"));
               return due < now;
             });
             const dueSoon = activeDebts.filter((d: any) => {
-              const due = new Date(d.dueDate + (d.dueDate.includes("T") ? "" : "T00:00:00"));
+              const due = new Date(d.due_date + (d.due_date.includes("T") ? "" : "T00:00:00"));
               const daysUntil = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
               return daysUntil >= 0 && daysUntil <= 7 && !overdue.includes(d);
             });
@@ -264,22 +257,22 @@ export default function Dashboard() {
                     {overdue.length > 0 && (
                       <><p className="text-xs font-medium text-destructive">{overdue.length} dívida{overdue.length !== 1 ? "s" : ""} atrasada{overdue.length !== 1 ? "s" : ""}</p>
                         <div className="mt-1.5 space-y-1">{overdue.slice(0, 3).map((d: any) => (
-                          <div key={d._id} className="flex items-center justify-between text-[10px]">
+                          <div key={d.id} className="flex items-center justify-between text-[10px]">
                             <span className="text-muted-foreground truncate">{d.creditor}</span>
-                            <span className="tabular-nums text-destructive font-medium ml-2 shrink-0">{d.remainingAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                            <span className="tabular-nums text-destructive font-medium ml-2 shrink-0">{d.remaining_amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                           </div>
                         ))}{overdue.length > 3 && <p className="text-[10px] text-muted-foreground">e mais {overdue.length - 3}...</p>}</div></>
                     )}
                     {overdue.length === 0 && dueSoon.length > 0 && (
                       <><p className="text-xs font-medium text-warning">{dueSoon.length} dívida{dueSoon.length !== 1 ? "s" : ""} vence{dueSoon.length === 1 ? "" : "m"} nos próximos 7 dias</p>
                         <div className="mt-1.5 space-y-1">{dueSoon.slice(0, 3).map((d: any) => {
-                          const due = new Date(d.dueDate + (d.dueDate.includes("T") ? "" : "T00:00:00"));
+                          const due = new Date(d.due_date + (d.due_date.includes("T") ? "" : "T00:00:00"));
                           const daysUntil = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
                           const dayLabel = daysUntil === 0 ? "hoje" : daysUntil === 1 ? "amanhã" : `em ${daysUntil} dias`;
                           return (
-                            <div key={d._id} className="flex items-center justify-between text-[10px]">
+                            <div key={d.id} className="flex items-center justify-between text-[10px]">
                               <span className="text-muted-foreground truncate">{d.creditor} · {dayLabel}</span>
-                              <span className="tabular-nums font-medium ml-2 shrink-0">{d.remainingAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                              <span className="tabular-nums font-medium ml-2 shrink-0">{d.remaining_amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                             </div>
                           );
                         })}{dueSoon.length > 3 && <p className="text-[10px] text-muted-foreground">e mais {dueSoon.length - 3}...</p>}</div></>
@@ -292,7 +285,6 @@ export default function Dashboard() {
             );
           })()}
 
-          {/* Month selector */}
           <div className="shrink-0">
             <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}
               className="text-xs h-9 rounded-sm border bg-background px-3 text-muted-foreground focus:outline-none w-full sm:w-auto">
@@ -301,7 +293,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Net Worth Card */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
           className="p-6 rounded-sm border bg-card">
           <div className="flex items-center justify-between mb-1">
@@ -316,7 +307,6 @@ export default function Dashboard() {
           </p>
         </motion.div>
 
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-medium tracking-tight">Dashboard</h1>
@@ -324,7 +314,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Health Score + Stats Grid */}
         <div className="grid lg:grid-cols-5 gap-6">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-2 p-6 rounded-sm border bg-card flex flex-col items-center justify-center">
             {health ? <HealthScoreGauge score={health.score} status={health.status} message={health.message} /> : (
@@ -357,7 +346,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Charts Row */}
         <div className="grid lg:grid-cols-2 gap-6">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="p-5 rounded-sm border bg-card">
             <h3 className="text-xs font-medium mb-4">Despesas por Categoria</h3>
@@ -366,7 +354,7 @@ export default function Dashboard() {
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie data={summary.expensesByCategory.map((item: any) => ({ name: item.category.name, value: item.total, color: item.category.color }))} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={2} dataKey="value">
-                      {summary.expensesByCategory.map((item: any) => <Cell key={item.category._id} fill={item.category.color} stroke="none" />)}
+                      {summary.expensesByCategory.map((item: any) => <Cell key={item.category.id} fill={item.category.color} stroke="none" />)}
                     </Pie>
                     <Tooltip content={({ active, payload }) => {
                       if (!active || !payload?.length) return null;
@@ -377,7 +365,7 @@ export default function Dashboard() {
                 </ResponsiveContainer>
                 <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-2">
                   {summary.expensesByCategory.map((item: any) => (
-                    <div key={item.category._id} className="flex items-center gap-1.5">
+                    <div key={item.category.id} className="flex items-center gap-1.5">
                       <div className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: item.category.color }} />
                       <span className="text-[10px] text-muted-foreground">{item.category.name}</span>
                     </div>
@@ -406,7 +394,7 @@ export default function Dashboard() {
                       {payload.map((entry: any) => <div key={entry.name} className="flex items-center justify-between gap-4 py-0.5">
                         <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-sm" style={{ backgroundColor: entry.color }} /><span className="text-muted-foreground">{entry.name === "income" ? "Receitas" : "Despesas"}</span></div>
                         <span className="tabular-nums">{entry.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
-                      </div>)}
+                      </div>)},
                     </div>;
                   }} />
                   <Area type="monotone" dataKey="income" stroke="oklch(0.45 0.13 145)" fill="url(#incomeGrad)" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "oklch(0.45 0.13 145)", stroke: "none" }} />
@@ -417,7 +405,6 @@ export default function Dashboard() {
           </motion.div>
         </div>
 
-        {/* Budget Progress */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="p-5 rounded-sm border bg-card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xs font-medium">Orçamentos do Mês</h3>
@@ -426,38 +413,36 @@ export default function Dashboard() {
           {summary && summary.budgetComparisons.length > 0 ? (
             <div className="grid sm:grid-cols-2 gap-x-8 gap-y-1">
               {summary.budgetComparisons.map((item: any) => (
-                <BudgetProgress key={item.budget._id} categoryName={getCategoryName(item.budget.categoryId)} spent={item.spent} budgetAmount={item.budget.amount} percentage={item.percentage} />
+                <BudgetProgress key={item.budget.id} categoryName={getCategoryName(item.budget.category_id)} spent={item.spent} budgetAmount={item.budget.amount} percentage={item.percentage} />
               ))}
             </div>
           ) : <p className="text-xs text-muted-foreground text-center py-8"><a href="/budgets" className="underline hover:text-foreground">Defina orçamentos</a> para acompanhar seus gastos</p>}
         </motion.div>
 
-        {/* Bottom row: Debts + Goals */}
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Debts Section */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="p-5 rounded-sm border bg-card">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs font-medium">Dívidas Pendentes</h3>
               <a href="/debts" className="text-[10px] text-muted-foreground underline hover:text-foreground transition-colors">Gerenciar</a>
             </div>
-            {debts.filter((d: any) => !d.isPaid).length > 0 ? (
+            {debts.filter((d: any) => !d.is_paid).length > 0 ? (
               <div className="space-y-0 divide-y">
                 <div className="flex items-center justify-between py-3">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-sm bg-destructive/10 flex items-center justify-center"><HandCoins className="w-4 h-4 text-destructive" /></div>
                     <div>
                       <span className="text-xs text-muted-foreground">Total a pagar</span>
-                      <p className="text-base font-medium tabular-nums">{formatCurrency(debts.filter((d: any) => !d.isPaid).reduce((s: number, d: any) => s + d.remainingAmount, 0))}</p>
+                      <p className="text-base font-medium tabular-nums">{formatCurrency(debts.filter((d: any) => !d.is_paid).reduce((s: number, d: any) => s + d.remaining_amount, 0))}</p>
                     </div>
                   </div>
-                  <span className="text-[10px] text-muted-foreground">{debts.filter((d: any) => !d.isPaid).length} pendente{(debts.filter((d: any) => !d.isPaid).length) !== 1 ? "s" : ""}</span>
+                  <span className="text-[10px] text-muted-foreground">{debts.filter((d: any) => !d.is_paid).length} pendente{(debts.filter((d: any) => !d.is_paid).length) !== 1 ? "s" : ""}</span>
                 </div>
-                {debts.filter((d: any) => !d.isPaid).sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()).slice(0, 4).map((debt: any) => {
-                  const dueDate = new Date(debt.dueDate + (debt.dueDate.includes("T") ? "" : "T00:00:00"));
+                {debts.filter((d: any) => !d.is_paid).sort((a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()).slice(0, 4).map((debt: any) => {
+                  const dueDate = new Date(debt.due_date + (debt.due_date.includes("T") ? "" : "T00:00:00"));
                   const isOverdue = dueDate < now;
                   const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
                   return (
-                    <div key={debt._id} className="flex items-center justify-between py-2.5 group">
+                    <div key={debt.id} className="flex items-center justify-between py-2.5 group">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium truncate">{debt.creditor}</span>
@@ -466,7 +451,7 @@ export default function Dashboard() {
                         <div className="flex items-center gap-3 mt-0.5">
                           <div className="flex items-center gap-1">
                             <CircleDollarSign className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-[10px] tabular-nums text-muted-foreground">Restam {formatCurrency(debt.remainingAmount)}</span>
+                            <span className="text-[10px] tabular-nums text-muted-foreground">Restam {formatCurrency(debt.remaining_amount)}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Calendar className="w-3 h-3 text-muted-foreground" />
@@ -477,7 +462,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </div>
-                      <span className="text-xs tabular-nums ml-4 shrink-0">{formatCurrency(debt.totalAmount)}</span>
+                      <span className="text-xs tabular-nums ml-4 shrink-0">{formatCurrency(debt.total_amount)}</span>
                     </div>
                   );
                 })}
@@ -487,24 +472,23 @@ export default function Dashboard() {
             )}
           </motion.div>
 
-          {/* Goals Section */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="p-5 rounded-sm border bg-card">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs font-medium">Metas Financeiras</h3>
               <a href="/goals" className="text-[10px] text-muted-foreground underline hover:text-foreground transition-colors">Gerenciar</a>
             </div>
-            {goals.filter((g: any) => !g.isAchieved).length > 0 ? (
+            {goals.filter((g: any) => !g.is_achieved).length > 0 ? (
               <div className="space-y-3">
-                {goals.filter((g: any) => !g.isAchieved).slice(0, 3).map((goal: any) => {
-                  const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
+                {goals.filter((g: any) => !g.is_achieved).slice(0, 3).map((goal: any) => {
+                  const progress = goal.target_amount > 0 ? (goal.current_amount / goal.target_amount) * 100 : 0;
                   return (
-                    <div key={goal._id}>
+                    <div key={goal.id}>
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
                           <Target className="w-3 h-3 text-muted-foreground" />
                           <span className="text-xs truncate">{goal.name}</span>
                         </div>
-                        <span className="text-xs tabular-nums text-muted-foreground">{formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}</span>
+                        <span className="text-xs tabular-nums text-muted-foreground">{formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)}</span>
                       </div>
                       <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-500 bg-success" style={{ width: `${Math.min(progress, 100)}%` }} />
@@ -512,8 +496,8 @@ export default function Dashboard() {
                     </div>
                   );
                 })}
-                {goals.filter((g: any) => !g.isAchieved).length > 3 && (
-                  <p className="text-[10px] text-muted-foreground text-center pt-1">e mais {goals.filter((g: any) => !g.isAchieved).length - 3} meta{(goals.filter((g: any) => !g.isAchieved).length - 3) !== 1 ? "s" : ""}...</p>
+                {goals.filter((g: any) => !g.is_achieved).length > 3 && (
+                  <p className="text-[10px] text-muted-foreground text-center pt-1">e mais {goals.filter((g: any) => !g.is_achieved).length - 3} meta{(goals.filter((g: any) => !g.is_achieved).length - 3) !== 1 ? "s" : ""}...</p>
                 )}
               </div>
             ) : (

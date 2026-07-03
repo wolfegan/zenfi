@@ -1,5 +1,5 @@
-// Demo data for visualization without Convex backend
-// These match the shapes returned by the Convex queries
+// Demo data for visualization without Supabase backend
+// Uses snake_case to match Supabase column naming
 
 const now = new Date();
 const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -15,125 +15,86 @@ const monthLabel = (offset: number) => {
 };
 
 export const demoCategories = [
-  { _id: "cat-1" as any, userId: "user-1" as any, name: "Alimentação", type: "expense" as const, icon: "ShoppingCart", color: "#0a0a0a", isFixed: false, order: 0 },
-  { _id: "cat-2" as any, userId: "user-1" as any, name: "Transporte", type: "expense" as const, icon: "Car", color: "#444444", isFixed: false, order: 1 },
-  { _id: "cat-3" as any, userId: "user-1" as any, name: "Moradia", type: "expense" as const, icon: "Home", color: "#666666", isFixed: true, order: 2 },
-  { _id: "cat-4" as any, userId: "user-1" as any, name: "Lazer", type: "expense" as const, icon: "Coffee", color: "#888888", isFixed: false, order: 3 },
-  { _id: "cat-5" as any, userId: "user-1" as any, name: "Assinaturas", type: "expense" as const, icon: "Wifi", color: "#aaaaaa", isFixed: true, order: 4 },
-  { _id: "cat-6" as any, userId: "user-1" as any, name: "Saúde", type: "expense" as const, icon: "Heart", color: "#c44", isFixed: false, order: 5 },
-  { _id: "cat-7" as any, userId: "user-1" as any, name: "Salário", type: "income" as const, icon: "Briefcase", color: "#2a7", isFixed: true, order: 6 },
-  { _id: "cat-8" as any, userId: "user-1" as any, name: "Freelance", type: "income" as const, icon: "PiggyBank", color: "#27a", isFixed: false, order: 7 },
+  { id: "cat-1", user_id: "user-1", name: "Alimentação", type: "expense" as const, icon: "ShoppingCart", color: "#0a0a0a", is_fixed: false, order: 0, created_at: Date.now() },
+  { id: "cat-2", user_id: "user-1", name: "Transporte", type: "expense" as const, icon: "Car", color: "#444444", is_fixed: false, order: 1, created_at: Date.now() },
+  { id: "cat-3", user_id: "user-1", name: "Moradia", type: "expense" as const, icon: "Home", color: "#666666", is_fixed: true, order: 2, created_at: Date.now() },
+  { id: "cat-4", user_id: "user-1", name: "Lazer", type: "expense" as const, icon: "Coffee", color: "#888888", is_fixed: false, order: 3, created_at: Date.now() },
+  { id: "cat-5", user_id: "user-1", name: "Assinaturas", type: "expense" as const, icon: "Wifi", color: "#aaaaaa", is_fixed: true, order: 4, created_at: Date.now() },
+  { id: "cat-6", user_id: "user-1", name: "Saúde", type: "expense" as const, icon: "Heart", color: "#c44", is_fixed: false, order: 5, created_at: Date.now() },
+  { id: "cat-7", user_id: "user-1", name: "Salário", type: "income" as const, icon: "Briefcase", color: "#2a7", is_fixed: true, order: 6, created_at: Date.now() },
+  { id: "cat-8", user_id: "user-1", name: "Freelance", type: "income" as const, icon: "PiggyBank", color: "#27a", is_fixed: false, order: 7, created_at: Date.now() },
 ];
 
 export const demoBudgets = [
-  { _id: "budget-1" as any, userId: "user-1" as any, categoryId: "cat-1" as any, month: currentMonth, amount: 1200 },
-  { _id: "budget-2" as any, userId: "user-1" as any, categoryId: "cat-2" as any, month: currentMonth, amount: 500 },
-  { _id: "budget-3" as any, userId: "user-1" as any, categoryId: "cat-3" as any, month: currentMonth, amount: 2500 },
-  { _id: "budget-4" as any, userId: "user-1" as any, categoryId: "cat-4" as any, month: currentMonth, amount: 800 },
+  { id: "budget-1", user_id: "user-1", category_id: "cat-1", month: currentMonth, amount: 1200, created_at: Date.now() },
+  { id: "budget-2", user_id: "user-1", category_id: "cat-2", month: currentMonth, amount: 500, created_at: Date.now() },
+  { id: "budget-3", user_id: "user-1", category_id: "cat-3", month: currentMonth, amount: 2500, created_at: Date.now() },
+  { id: "budget-4", user_id: "user-1", category_id: "cat-4", month: currentMonth, amount: 800, created_at: Date.now() },
 ];
 
 export const demoTransactions = [
-  { _id: "tx-1" as any, userId: "user-1" as any, categoryId: "cat-7" as any, amount: 8000, date: `${currentMonth}-05`, type: "income" as const, description: "Salário mensal", isFixed: true, isCreditCard: false, createdAt: Date.now() - 86400000 * 25 },
-  { _id: "tx-2" as any, userId: "user-1" as any, categoryId: "cat-8" as any, amount: 1500, date: `${currentMonth}-12`, type: "income" as const, description: "Projeto de design", isFixed: false, isCreditCard: false, createdAt: Date.now() - 86400000 * 18 },
-  { _id: "tx-3" as any, userId: "user-1" as any, categoryId: "cat-3" as any, amount: 2200, date: `${currentMonth}-01`, type: "expense" as const, description: "Aluguel", isFixed: true, isCreditCard: false, createdAt: Date.now() - 86400000 * 29 },
-  { _id: "tx-4" as any, userId: "user-1" as any, categoryId: "cat-5" as any, amount: 89.90, date: `${currentMonth}-03`, type: "expense" as const, description: "Streaming", isFixed: true, isCreditCard: true, creditCardId: "card-1" as any, createdAt: Date.now() - 86400000 * 27 },
-  { _id: "tx-5" as any, userId: "user-1" as any, categoryId: "cat-1" as any, amount: 356.50, date: `${currentMonth}-08`, type: "expense" as const, description: "Supermercado", isFixed: false, isCreditCard: false, createdAt: Date.now() - 86400000 * 22 },
-  { _id: "tx-6" as any, userId: "user-1" as any, categoryId: "cat-1" as any, amount: 89.00, date: `${currentMonth}-10`, type: "expense" as const, description: "Restaurante", isFixed: false, isCreditCard: true, creditCardId: "card-1" as any, createdAt: Date.now() - 86400000 * 20 },
-  { _id: "tx-7" as any, userId: "user-1" as any, categoryId: "cat-2" as any, amount: 45.00, date: `${currentMonth}-11`, type: "expense" as const, description: "Uber", isFixed: false, isCreditCard: false, createdAt: Date.now() - 86400000 * 19 },
-  { _id: "tx-8" as any, userId: "user-1" as any, categoryId: "cat-2" as any, amount: 250.00, date: `${currentMonth}-15`, type: "expense" as const, description: "Gasolina", isFixed: false, isCreditCard: false, createdAt: Date.now() - 86400000 * 15 },
-  { _id: "tx-9" as any, userId: "user-1" as any, categoryId: "cat-4" as any, amount: 180.00, date: `${currentMonth}-14`, type: "expense" as const, description: "Cinema e jantar", isFixed: false, isCreditCard: true, creditCardId: "card-1" as any, createdAt: Date.now() - 86400000 * 16 },
-  { _id: "tx-10" as any, userId: "user-1" as any, categoryId: "cat-6" as any, amount: 300.00, date: `${currentMonth}-18`, type: "expense" as const, description: "Plano de saúde", isFixed: true, isCreditCard: false, createdAt: Date.now() - 86400000 * 12 },
-  { _id: "tx-11" as any, userId: "user-1" as any, categoryId: "cat-1" as any, amount: 215.00, date: `${currentMonth}-20`, type: "expense" as const, description: "Feira", isFixed: false, isCreditCard: false, createdAt: Date.now() - 86400000 * 10 },
-  { _id: "tx-12" as any, userId: "user-1" as any, categoryId: "cat-4" as any, amount: 50.00, date: `${currentMonth}-22`, type: "expense" as const, description: "Cerveja com amigos", isFixed: false, isCreditCard: false, createdAt: Date.now() - 86400000 * 8 },
+  { id: "tx-1", user_id: "user-1", category_id: "cat-7", amount: 8000, date: `${currentMonth}-05`, type: "income" as const, description: "Salário mensal", is_fixed: true, is_credit_card: false, credit_card_id: null, created_at: Date.now() - 86400000 * 25 },
+  { id: "tx-2", user_id: "user-1", category_id: "cat-8", amount: 1500, date: `${currentMonth}-12`, type: "income" as const, description: "Projeto de design", is_fixed: false, is_credit_card: false, credit_card_id: null, created_at: Date.now() - 86400000 * 18 },
+  { id: "tx-3", user_id: "user-1", category_id: "cat-3", amount: 2200, date: `${currentMonth}-01`, type: "expense" as const, description: "Aluguel", is_fixed: true, is_credit_card: false, credit_card_id: null, created_at: Date.now() - 86400000 * 29 },
+  { id: "tx-4", user_id: "user-1", category_id: "cat-5", amount: 89.90, date: `${currentMonth}-03`, type: "expense" as const, description: "Streaming", is_fixed: true, is_credit_card: true, credit_card_id: "card-1", created_at: Date.now() - 86400000 * 27 },
+  { id: "tx-5", user_id: "user-1", category_id: "cat-1", amount: 356.50, date: `${currentMonth}-08`, type: "expense" as const, description: "Supermercado", is_fixed: false, is_credit_card: false, credit_card_id: null, created_at: Date.now() - 86400000 * 22 },
+  { id: "tx-6", user_id: "user-1", category_id: "cat-1", amount: 89.00, date: `${currentMonth}-10`, type: "expense" as const, description: "Restaurante", is_fixed: false, is_credit_card: true, credit_card_id: "card-1", created_at: Date.now() - 86400000 * 20 },
+  { id: "tx-7", user_id: "user-1", category_id: "cat-2", amount: 45.00, date: `${currentMonth}-11`, type: "expense" as const, description: "Uber", is_fixed: false, is_credit_card: false, credit_card_id: null, created_at: Date.now() - 86400000 * 19 },
+  { id: "tx-8", user_id: "user-1", category_id: "cat-2", amount: 250.00, date: `${currentMonth}-15`, type: "expense" as const, description: "Gasolina", is_fixed: false, is_credit_card: false, credit_card_id: null, created_at: Date.now() - 86400000 * 15 },
+  { id: "tx-9", user_id: "user-1", category_id: "cat-4", amount: 180.00, date: `${currentMonth}-14`, type: "expense" as const, description: "Cinema e jantar", is_fixed: false, is_credit_card: true, credit_card_id: "card-1", created_at: Date.now() - 86400000 * 16 },
+  { id: "tx-10", user_id: "user-1", category_id: "cat-6", amount: 300.00, date: `${currentMonth}-18`, type: "expense" as const, description: "Plano de saúde", is_fixed: true, is_credit_card: false, credit_card_id: null, created_at: Date.now() - 86400000 * 12 },
+  { id: "tx-11", user_id: "user-1", category_id: "cat-1", amount: 215.00, date: `${currentMonth}-20`, type: "expense" as const, description: "Feira", is_fixed: false, is_credit_card: false, credit_card_id: null, created_at: Date.now() - 86400000 * 10 },
+  { id: "tx-12", user_id: "user-1", category_id: "cat-4", amount: 50.00, date: `${currentMonth}-22`, type: "expense" as const, description: "Cerveja com amigos", is_fixed: false, is_credit_card: false, credit_card_id: null, created_at: Date.now() - 86400000 * 8 },
 ];
 
 export const demoCreditCards = [
   {
-    _id: "card-1" as any, userId: "user-1" as any, name: "Nubank", limit: 8000, closingDay: 3, dueDay: 10, color: "#666666", createdAt: Date.now(),
+    id: "card-1", user_id: "user-1", name: "Nubank", limit: 8000, closing_day: 3, due_day: 10, color: "#666666", created_at: Date.now(),
     bills: [
-      { _id: "bill-1" as any, userId: "user-1" as any, creditCardId: "card-1" as any, month: currentMonth, totalAmount: 320.90, isPaid: false, dueDate: `${currentMonth}-10`, closingDate: `${previousMonth(0)}-03`, createdAt: Date.now() },
-      { _id: "bill-2" as any, userId: "user-1" as any, creditCardId: "card-1" as any, month: previousMonth(1), totalAmount: 450.00, isPaid: true, dueDate: `${previousMonth(1)}-10`, closingDate: `${previousMonth(2)}-03`, createdAt: Date.now() - 86400000 * 30 },
+      { id: "bill-1", user_id: "user-1", credit_card_id: "card-1", month: currentMonth, total_amount: 320.90, is_paid: false, due_date: `${currentMonth}-10`, closing_date: `${previousMonth(0)}-03`, created_at: Date.now() },
+      { id: "bill-2", user_id: "user-1", credit_card_id: "card-1", month: previousMonth(1), total_amount: 450.00, is_paid: true, due_date: `${previousMonth(1)}-10`, closing_date: `${previousMonth(2)}-03`, created_at: Date.now() - 86400000 * 30 },
     ],
   },
   {
-    _id: "card-2" as any, userId: "user-1" as any, name: "Inter", limit: 5000, closingDay: 15, dueDay: 22, color: "#c44", createdAt: Date.now(),
+    id: "card-2", user_id: "user-1", name: "Inter", limit: 5000, closing_day: 15, due_day: 22, color: "#c44", created_at: Date.now(),
     bills: [
-      { _id: "bill-3" as any, userId: "user-1" as any, creditCardId: "card-2" as any, month: currentMonth, totalAmount: 0, isPaid: false, dueDate: `${currentMonth}-22`, closingDate: `${currentMonth}-15`, createdAt: Date.now() },
+      { id: "bill-3", user_id: "user-1", credit_card_id: "card-2", month: currentMonth, total_amount: 0, is_paid: false, due_date: `${currentMonth}-22`, closing_date: `${currentMonth}-15`, created_at: Date.now() },
     ],
   },
 ];
 
 export const demoInvestments = [
-  { _id: "inv-1" as any, userId: "user-1" as any, name: "Tesouro Selic", type: "fixed_income" as const, amount: 10000, currentValue: 10450, monthlyContribution: 500, createdAt: Date.now() - 86400000 * 180 },
-  { _id: "inv-2" as any, userId: "user-1" as any, name: "FIIs", type: "real_estate" as const, amount: 5000, currentValue: 5320, monthlyContribution: 200, createdAt: Date.now() - 86400000 * 90 },
-  { _id: "inv-3" as any, userId: "user-1" as any, name: "Bitcoin", type: "crypto" as const, amount: 2000, currentValue: 2680, monthlyContribution: 100, createdAt: Date.now() - 86400000 * 45 },
+  { id: "inv-1", user_id: "user-1", name: "Tesouro Selic", type: "fixed_income" as const, amount: 10000, current_value: 10450, monthly_contribution: 500, created_at: Date.now() - 86400000 * 180 },
+  { id: "inv-2", user_id: "user-1", name: "FIIs", type: "real_estate" as const, amount: 5000, current_value: 5320, monthly_contribution: 200, created_at: Date.now() - 86400000 * 90 },
+  { id: "inv-3", user_id: "user-1", name: "Bitcoin", type: "crypto" as const, amount: 2000, current_value: 2680, monthly_contribution: 100, created_at: Date.now() - 86400000 * 45 },
 ];
 
 export const demoDebts = [
-  {
-    _id: "debt-1" as any, userId: "user-1" as any,
-    creditor: "Fulano", description: "Empréstimo pessoal", totalAmount: 3000, remainingAmount: 1200, monthlyPayment: 300,
-    dueDate: `${currentMonth}-15`, startDate: previousMonth(5), isPaid: false, createdAt: Date.now() - 86400000 * 150,
-  },
-  {
-    _id: "debt-2" as any, userId: "user-1" as any,
-    creditor: "Crediário Y", description: "Compra de sofá parcelado", totalAmount: 2400, remainingAmount: 800, monthlyPayment: 200,
-    dueDate: `${currentMonth}-10`, startDate: previousMonth(3), isPaid: false, createdAt: Date.now() - 86400000 * 90,
-  },
-  {
-    _id: "debt-3" as any, userId: "user-1" as any,
-    creditor: "Cartão Magalu", description: "Compra de notebook", totalAmount: 3500, remainingAmount: 0, monthlyPayment: 0,
-    dueDate: `${previousMonth(1)}-20`, startDate: previousMonth(6), isPaid: true, createdAt: Date.now() - 86400000 * 180,
-  },
-  {
-    _id: "debt-4" as any, userId: "user-1" as any,
-    creditor: "Empréstimo Bancário", description: "Financiamento veicular", totalAmount: 15000, remainingAmount: 8800, monthlyPayment: 620,
-    dueDate: `${currentMonth}-05`, startDate: previousMonth(10), isPaid: false, createdAt: Date.now() - 86400000 * 300,
-  },
+  { id: "debt-1", user_id: "user-1", creditor: "Fulano", description: "Empréstimo pessoal", total_amount: 3000, remaining_amount: 1200, monthly_payment: 300, due_date: `${currentMonth}-15`, start_date: previousMonth(5), is_paid: false, created_at: Date.now() - 86400000 * 150 },
+  { id: "debt-2", user_id: "user-1", creditor: "Crediário Y", description: "Compra de sofá parcelado", total_amount: 2400, remaining_amount: 800, monthly_payment: 200, due_date: `${currentMonth}-10`, start_date: previousMonth(3), is_paid: false, created_at: Date.now() - 86400000 * 90 },
+  { id: "debt-3", user_id: "user-1", creditor: "Cartão Magalu", description: "Compra de notebook", total_amount: 3500, remaining_amount: 0, monthly_payment: 0, due_date: `${previousMonth(1)}-20`, start_date: previousMonth(6), is_paid: true, created_at: Date.now() - 86400000 * 180 },
+  { id: "debt-4", user_id: "user-1", creditor: "Empréstimo Bancário", description: "Financiamento veicular", total_amount: 15000, remaining_amount: 8800, monthly_payment: 620, due_date: `${currentMonth}-05`, start_date: previousMonth(10), is_paid: false, created_at: Date.now() - 86400000 * 300 },
 ];
 
 export const demoDebtsSummary = {
   totalOwed: 23900, totalRemaining: 10800, totalPaid: 13100, totalMonthly: 1120, activeCount: 3, paidCount: 1, count: 4,
 };
 
-// Demo bank accounts
 export const demoAccounts = [
-  { _id: "acc-1" as any, userId: "user-1" as any, name: "Conta Corrente", type: "checking" as const, balance: 5240.60, color: "#0a0a0a", createdAt: Date.now() - 86400000 * 365 },
-  { _id: "acc-2" as any, userId: "user-1" as any, name: "Poupança", type: "savings" as const, balance: 12000, color: "#2a7", createdAt: Date.now() - 86400000 * 180 },
-  { _id: "acc-3" as any, userId: "user-1" as any, name: "Carteira", type: "cash" as const, balance: 350, color: "#a72", createdAt: Date.now() - 86400000 * 60 },
+  { id: "acc-1", user_id: "user-1", name: "Conta Corrente", type: "checking" as const, balance: 5240.60, color: "#0a0a0a", created_at: Date.now() - 86400000 * 365 },
+  { id: "acc-2", user_id: "user-1", name: "Poupança", type: "savings" as const, balance: 12000, color: "#2a7", created_at: Date.now() - 86400000 * 180 },
+  { id: "acc-3", user_id: "user-1", name: "Carteira", type: "cash" as const, balance: 350, color: "#a72", created_at: Date.now() - 86400000 * 60 },
 ];
 
-// Demo financial goals
 export const demoGoals = [
-  {
-    _id: "goal-1" as any, userId: "user-1" as any,
-    name: "Reserva de Emergência", targetAmount: 15000, currentAmount: 8500, monthlyContribution: 1000,
-    targetDate: `${now.getFullYear() + 1}-06`, category: "emergency" as const, isAchieved: false, createdAt: Date.now() - 86400000 * 200,
-  },
-  {
-    _id: "goal-2" as any, userId: "user-1" as any,
-    name: "Viagem para Europa", targetAmount: 12000, currentAmount: 3200, monthlyContribution: 600,
-    targetDate: `${now.getFullYear() + 1}-12`, category: "travel" as const, isAchieved: false, createdAt: Date.now() - 86400000 * 120,
-  },
-  {
-    _id: "goal-3" as any, userId: "user-1" as any,
-    name: "Carro Novo", targetAmount: 35000, currentAmount: 5000, monthlyContribution: 800,
-    targetDate: `${now.getFullYear() + 2}-06`, category: "purchase" as const, isAchieved: false, createdAt: Date.now() - 86400000 * 90,
-  },
-  {
-    _id: "goal-4" as any, userId: "user-1" as any,
-    name: "Curso de Especialização", targetAmount: 5000, currentAmount: 5000, monthlyContribution: 0,
-    targetDate: `${currentMonth}-01`, category: "education" as const, isAchieved: true, createdAt: Date.now() - 86400000 * 60,
-  },
+  { id: "goal-1", user_id: "user-1", name: "Reserva de Emergência", target_amount: 15000, current_amount: 8500, monthly_contribution: 1000, target_date: `${now.getFullYear() + 1}-06`, category: "emergency" as const, is_achieved: false, created_at: Date.now() - 86400000 * 200 },
+  { id: "goal-2", user_id: "user-1", name: "Viagem para Europa", target_amount: 12000, current_amount: 3200, monthly_contribution: 600, target_date: `${now.getFullYear() + 1}-12`, category: "travel" as const, is_achieved: false, created_at: Date.now() - 86400000 * 120 },
+  { id: "goal-3", user_id: "user-1", name: "Carro Novo", target_amount: 35000, current_amount: 5000, monthly_contribution: 800, target_date: `${now.getFullYear() + 2}-06`, category: "purchase" as const, is_achieved: false, created_at: Date.now() - 86400000 * 90 },
+  { id: "goal-4", user_id: "user-1", name: "Curso de Especialização", target_amount: 5000, current_amount: 5000, monthly_contribution: 0, target_date: `${currentMonth}-01`, category: "education" as const, is_achieved: true, created_at: Date.now() - 86400000 * 60 },
 ];
 
 export const demoGoalsSummary = {
-  totalTarget: 67000,
-  totalCurrent: 21700,
-  totalProgress: 32.4,
-  activeGoals: 3,
-  achievedGoals: 1,
-  count: 4,
+  totalTarget: 67000, totalCurrent: 21700, totalProgress: 32.4, activeGoals: 3, achievedGoals: 1, count: 4,
 };
 
 export const demoMonthlySummary = () => {
@@ -146,7 +107,7 @@ export const demoMonthlySummary = () => {
     .filter((c) => c.type === "expense")
     .map((cat) => ({
       category: cat,
-      total: expenses.filter((t) => t.categoryId === cat._id).reduce((s, t) => s + t.amount, 0),
+      total: expenses.filter((t) => t.category_id === cat.id).reduce((s, t) => s + t.amount, 0),
     }))
     .filter((c) => c.total > 0);
 
@@ -154,27 +115,23 @@ export const demoMonthlySummary = () => {
     .filter((c) => c.type === "income")
     .map((cat) => ({
       category: cat,
-      total: incomes.filter((t) => t.categoryId === cat._id).reduce((s, t) => s + t.amount, 0),
+      total: incomes.filter((t) => t.category_id === cat.id).reduce((s, t) => s + t.amount, 0),
     }))
     .filter((c) => c.total > 0);
 
   const budgetComparisons = demoBudgets.map((budget) => {
-    const spent = expenses.filter((t) => t.categoryId === budget.categoryId).reduce((s, t) => s + t.amount, 0);
+    const spent = expenses.filter((t) => t.category_id === budget.category_id).reduce((s, t) => s + t.amount, 0);
     return { budget, spent, remaining: budget.amount - spent, percentage: budget.amount > 0 ? (spent / budget.amount) * 100 : 0 };
   });
 
   return {
-    totalIncome,
-    totalExpenses,
-    fixedExpenses: expenses.filter((t) => t.isFixed).reduce((s, t) => s + t.amount, 0),
-    variableExpenses: expenses.filter((t) => !t.isFixed).reduce((s, t) => s + t.amount, 0),
-    creditCardExpenses: expenses.filter((t) => t.isCreditCard).reduce((s, t) => s + t.amount, 0),
+    totalIncome, totalExpenses,
+    fixedExpenses: expenses.filter((t) => t.is_fixed).reduce((s, t) => s + t.amount, 0),
+    variableExpenses: expenses.filter((t) => !t.is_fixed).reduce((s, t) => s + t.amount, 0),
+    creditCardExpenses: expenses.filter((t) => t.is_credit_card).reduce((s, t) => s + t.amount, 0),
     balance: totalIncome - totalExpenses,
     savingsRate: totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome) * 100 : 0,
-    expensesByCategory,
-    incomeByCategory,
-    budgetComparisons,
-    transactionCount: demoTransactions.length,
+    expensesByCategory, incomeByCategory, budgetComparisons, transactionCount: demoTransactions.length,
   };
 };
 
@@ -188,22 +145,14 @@ export const demoEvolution = [
 ];
 
 export const demoHealthScore = {
-  score: 72,
-  status: "good" as const,
+  score: 72, status: "good" as const,
   message: "Você está no caminho certo. Alguns ajustes podem melhorar ainda mais.",
   components: {
-    savings: { score: 60, weight: 25 },
-    expenses: { score: 65, weight: 25 },
-    budget: { score: 78, weight: 25 },
-    credit: { score: 85, weight: 12.5 },
-    investment: { score: 70, weight: 12.5 },
+    savings: { score: 60, weight: 25 }, expenses: { score: 65, weight: 25 },
+    budget: { score: 78, weight: 25 }, credit: { score: 85, weight: 12.5 }, investment: { score: 70, weight: 12.5 },
   },
 };
 
 export const demoInvestmentsSummary = {
-  totalInvested: 17000,
-  totalCurrentValue: 18450,
-  totalReturn: 1450,
-  returnPercentage: 8.5,
-  count: 3,
+  totalInvested: 17000, totalCurrentValue: 18450, totalReturn: 1450, returnPercentage: 8.5, count: 3,
 };

@@ -3,11 +3,8 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription as AlertDesc, AlertDialogFooter as AlertFoot, AlertDialogHeader as AlertHead, AlertDialogTitle as AlertTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
-import { api } from "@/convex/_generated/api";
-import { useMutation } from "convex/react";
-import { useSafeQuery } from "@/hooks/use-safe-query";
+import { useCategories } from "@/hooks/use-supabase";
 import { motion } from "framer-motion";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -24,14 +21,11 @@ export default function Categories() {
   const [editingCat, setEditingCat] = useState<any>(null);
   const [form, setForm] = useState({ name: "", type: "expense" as "income" | "expense", icon: "ShoppingCart", color: "#0a0a0a", isFixed: false });
 
-  const realCategories = useSafeQuery(api.categories.getAll);
-  const createCat = useMutation(api.categories.create);
-  const updateCat = useMutation(api.categories.update);
-  const deleteCat = useMutation(api.categories.remove);
+  const { data: realCategories, loading: catsLoading, create, update, remove } = useCategories();
 
   const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => { if (!isLoading) setUseDemo(realCategories === undefined); }, [isLoading, realCategories]);
-  const categories = useDemo ? demoCategories : (realCategories ?? []);
+  useEffect(() => { if (!isLoading && !catsLoading) setUseDemo(realCategories.length === 0); }, [isLoading, catsLoading, realCategories]);
+  const categories = useDemo ? demoCategories : realCategories;
 
   if (isLoading) return null;
   if (!isAuthenticated) { navigate("/auth"); return null; }
@@ -41,7 +35,7 @@ export default function Categories() {
   const handleSubmit = async () => {
     if (!form.name) return;
     try {
-      if (!useDemo) { if (editingCat) await updateCat({ id: editingCat._id, name: form.name, icon: form.icon, color: form.color, isFixed: form.isFixed }); else await createCat({ name: form.name, type: form.type, icon: form.icon, color: form.color, isFixed: form.isFixed }); }
+      if (!useDemo) { if (editingCat) await update(editingCat.id, { name: form.name, icon: form.icon, color: form.color, is_fixed: form.isFixed }); else await create({ name: form.name, type: form.type, icon: form.icon, color: form.color, is_fixed: form.isFixed }); }
       setDialogOpen(false); resetForm();
     } catch (error) { console.error(error); }
   };
@@ -82,12 +76,12 @@ export default function Categories() {
         <div><h2 className="text-xs font-medium text-muted-foreground mb-3 tracking-wider uppercase">Despesas</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {expenseCats.map((cat: any, i: number) => (
-              <motion.div key={cat._id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="flex items-center gap-3 p-4 rounded-sm border bg-card group card-hover">
+              <motion.div key={cat.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="flex items-center gap-3 p-4 rounded-sm border bg-card group card-hover">
                 <div className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0" style={{ backgroundColor: `${cat.color}15` }}><span className="text-xs font-medium text-muted-foreground">{cat.icon[0]}</span></div>
-                <div className="flex-1 min-w-0"><p className="text-sm truncate">{cat.name}</p>{cat.isFixed && <p className="text-[10px] text-muted-foreground">Fixo</p>}</div>
+                <div className="flex-1 min-w-0"><p className="text-sm truncate">{cat.name}</p>{cat.is_fixed && <p className="text-[10px] text-muted-foreground">Fixo</p>}</div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingCat(cat); setForm({ name: cat.name, type: cat.type, icon: cat.icon, color: cat.color, isFixed: cat.isFixed }); setDialogOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteId(cat._id); setDeleteDialogOpen(true); }}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingCat(cat); setForm({ name: cat.name, type: cat.type, icon: cat.icon, color: cat.color, isFixed: cat.is_fixed }); setDialogOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteId(cat.id); setDeleteDialogOpen(true); }}><Trash2 className="w-3.5 h-3.5" /></Button>
                 </div>
               </motion.div>
             ))}
@@ -98,12 +92,12 @@ export default function Categories() {
         <div><h2 className="text-xs font-medium text-muted-foreground mb-3 tracking-wider uppercase">Receitas</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {incomeCats.map((cat: any, i: number) => (
-              <motion.div key={cat._id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="flex items-center gap-3 p-4 rounded-sm border bg-card group card-hover">
+              <motion.div key={cat.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="flex items-center gap-3 p-4 rounded-sm border bg-card group card-hover">
                 <div className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0" style={{ backgroundColor: `${cat.color}15` }}><span className="text-xs font-medium text-muted-foreground">{cat.icon[0]}</span></div>
                 <div className="flex-1 min-w-0"><p className="text-sm truncate">{cat.name}</p></div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingCat(cat); setForm({ name: cat.name, type: cat.type, icon: cat.icon, color: cat.color, isFixed: cat.isFixed }); setDialogOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteId(cat._id); setDeleteDialogOpen(true); }}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingCat(cat); setForm({ name: cat.name, type: cat.type, icon: cat.icon, color: cat.color, isFixed: cat.is_fixed }); setDialogOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteId(cat.id); setDeleteDialogOpen(true); }}><Trash2 className="w-3.5 h-3.5" /></Button>
                 </div>
               </motion.div>
             ))}
@@ -112,7 +106,6 @@ export default function Categories() {
         </div>
       </div>
 
-      {/* Delete confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="sm:max-w-[340px]">
           <AlertHead><AlertTitle className="text-sm font-medium">Excluir categoria?</AlertTitle>
@@ -121,7 +114,7 @@ export default function Categories() {
           <AlertFoot>
             <AlertDialogCancel className="text-xs">Cancelar</AlertDialogCancel>
             <AlertDialogAction className="text-xs bg-destructive hover:bg-destructive/90" onClick={async () => {
-              if (deleteId) { if (!useDemo) await deleteCat({ id: deleteId }); toast.success("Categoria excluída!"); }
+              if (deleteId) { if (!useDemo) await remove(deleteId); toast.success("Categoria excluída!"); }
               setDeleteDialogOpen(false); setDeleteId(null);
             }}>Excluir</AlertDialogAction>
           </AlertFoot>
