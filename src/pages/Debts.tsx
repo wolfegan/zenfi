@@ -102,7 +102,7 @@ export default function Debts() {
                   if (form.creditor && form.totalAmount && form.remainingAmount) {
                     const startDate = `${form.startYear}-${form.dueMonth}-${String(form.dueDay).padStart(2, "0")}`;
                     const dueDate = `${now.getFullYear()}-${form.dueMonth}-${String(form.dueDay).padStart(2, "0")}`;
-                    const data = { creditor: form.creditor, description: form.description || undefined, total_amount: parseFloat(form.totalAmount), remaining_amount: parseFloat(form.remainingAmount), monthly_payment: parseFloat(form.monthlyPayment) || 0, due_date: dueDate, start_date: startDate };
+                    const data = { creditor: form.creditor, description: form.description || null, total_amount: parseFloat(form.totalAmount), remaining_amount: parseFloat(form.remainingAmount), monthly_payment: parseFloat(form.monthlyPayment) || 0, due_date: dueDate, start_date: startDate };
                     if (!useDemo) { if (editingDebt) await update(editingDebt.id, data); else await create(data); }
                     setDialogOpen(false); resetForm(); setEditingDebt(null);
                   }

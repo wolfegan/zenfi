@@ -87,7 +87,7 @@ export default function Goals() {
               <DialogFooter><Button variant="outline" size="sm" className="text-xs" onClick={() => { setDialogOpen(false); resetForm(); setEditingGoal(null); }}>Cancelar</Button>
                 <Button size="sm" className="text-xs" onClick={async () => {
                   if (form.name && form.targetAmount) {
-                    const data = { name: form.name, target_amount: parseFloat(form.targetAmount), current_amount: parseFloat(form.currentAmount) || 0, monthly_contribution: parseFloat(form.monthlyContribution) || 0, target_date: form.targetDate || undefined, category: form.category as any };
+                    const data = { name: form.name, target_amount: parseFloat(form.targetAmount), current_amount: parseFloat(form.currentAmount) || 0, monthly_contribution: parseFloat(form.monthlyContribution) || 0, target_date: form.targetDate || null, category: form.category as any };
                     if (!useDemo) { if (editingGoal) await update(editingGoal.id, data); else await create(data); }
                     toast.success(editingGoal ? "Meta atualizada!" : "Meta criada!"); setDialogOpen(false); resetForm(); setEditingGoal(null);
                   }

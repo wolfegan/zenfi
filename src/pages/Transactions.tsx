@@ -9,15 +9,15 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTransactions, useCategories, useCreditCards } from "@/hooks/use-supabase";
 import { motion } from "framer-motion";
 import { Calendar, Pencil, Plus, Trash2, ArrowDown, ArrowUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router";
 import { demoTransactions, demoCategories } from "@/lib/demo-data";
 
-const currentMonth = () => {
+function currentMonth() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-};
+}
 
 export default function Transactions() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -26,10 +26,16 @@ export default function Transactions() {
   const [editingTx, setEditingTx] = useState<any>(null);
   const [form, setForm] = useState({ categoryId: "", amount: "", date: new Date().toISOString().split("T")[0], type: "expense" as "income" | "expense", description: "", isFixed: false, isCreditCard: false, creditCardId: "" });
 
-  const { data: realTransactions, loading: txsLoading } = useTransactions();
+  const month = currentMonth();
+  const { data: realTransactions, loading: txsLoading, create, update, remove } = useTransactions();
   const { data: realCategories } = useCategories();
   const { data: realCreditCards } = useCreditCards();
-  const { create, update, remove } = useTransactions();
+
+  // Filter to current month (matching original behavior)
+  const filteredRealTransactions = useMemo(
+    () => realTransactions.filter((t: any) => t.date.startsWith(month)),
+    [realTransactions, month]
+  );
 
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
@@ -38,7 +44,7 @@ export default function Transactions() {
     }
   }, [isLoading, txsLoading, realTransactions, realCategories]);
 
-  const txs = useDemo ? demoTransactions : realTransactions;
+  const txs = useDemo ? demoTransactions : filteredRealTransactions;
   const categories = useDemo ? demoCategories : realCategories;
   const creditCards = useDemo ? [] : realCreditCards;
 
@@ -56,8 +62,9 @@ export default function Transactions() {
     if (isNaN(amount) || amount <= 0) return;
     try {
       if (!useDemo) {
-        if (editingTx) { await update(editingTx.id, { category_id: form.categoryId, amount, date: form.date, type: form.type, description: form.description || undefined, is_fixed: form.isFixed, is_credit_card: form.isCreditCard, credit_card_id: form.isCreditCard && form.creditCardId ? form.creditCardId : null }); }
-        else { await create({ category_id: form.categoryId, amount, date: form.date, type: form.type, description: form.description || undefined, is_fixed: form.isFixed, is_credit_card: form.isCreditCard, credit_card_id: form.isCreditCard && form.creditCardId ? form.creditCardId : null }); }
+        const txData: any = { category_id: form.categoryId, amount, date: form.date, type: form.type, description: form.description || null, is_fixed: form.isFixed, is_credit_card: form.isCreditCard, credit_card_id: form.isCreditCard && form.creditCardId ? form.creditCardId : null };
+        if (editingTx) { await update(editingTx.id, txData); }
+        else { await create(txData); }
       }
       setDialogOpen(false); resetForm();
     } catch (error) { console.error("Transaction error:", error); }

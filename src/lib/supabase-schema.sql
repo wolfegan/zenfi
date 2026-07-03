@@ -38,7 +38,41 @@ CREATE TABLE categories (
 CREATE INDEX idx_categories_user_id ON categories(user_id);
 
 -- =============================================================================
--- Transactions
+-- Credit Cards (MUST be created before transactions due to FK reference)
+-- =============================================================================
+CREATE TABLE credit_cards (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  limit NUMERIC(12,2) NOT NULL,
+  closing_day INTEGER NOT NULL,
+  due_day INTEGER NOT NULL,
+  color TEXT NOT NULL DEFAULT '#666666',
+  created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT
+);
+
+CREATE INDEX idx_credit_cards_user_id ON credit_cards(user_id);
+
+-- =============================================================================
+-- Credit Card Bills
+-- =============================================================================
+CREATE TABLE credit_card_bills (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  credit_card_id UUID NOT NULL REFERENCES credit_cards(id) ON DELETE CASCADE,
+  month TEXT NOT NULL,
+  total_amount NUMERIC(12,2) NOT NULL,
+  is_paid BOOLEAN NOT NULL DEFAULT false,
+  due_date TEXT NOT NULL,
+  closing_date TEXT NOT NULL,
+  created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT
+);
+
+CREATE INDEX idx_credit_card_bills_card ON credit_card_bills(credit_card_id);
+CREATE INDEX idx_credit_card_bills_user_month ON credit_card_bills(user_id, month);
+
+-- =============================================================================
+-- Transactions (references categories and credit_cards)
 -- =============================================================================
 CREATE TABLE transactions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -73,40 +107,6 @@ CREATE TABLE monthly_budgets (
 
 CREATE INDEX idx_monthly_budgets_user_month ON monthly_budgets(user_id, month);
 CREATE INDEX idx_monthly_budgets_user_cat_month ON monthly_budgets(user_id, category_id, month);
-
--- =============================================================================
--- Credit Cards
--- =============================================================================
-CREATE TABLE credit_cards (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  limit NUMERIC(12,2) NOT NULL,
-  closing_day INTEGER NOT NULL,
-  due_day INTEGER NOT NULL,
-  color TEXT NOT NULL DEFAULT '#666666',
-  created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT
-);
-
-CREATE INDEX idx_credit_cards_user_id ON credit_cards(user_id);
-
--- =============================================================================
--- Credit Card Bills
--- =============================================================================
-CREATE TABLE credit_card_bills (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  credit_card_id UUID NOT NULL REFERENCES credit_cards(id) ON DELETE CASCADE,
-  month TEXT NOT NULL,
-  total_amount NUMERIC(12,2) NOT NULL,
-  is_paid BOOLEAN NOT NULL DEFAULT false,
-  due_date TEXT NOT NULL,
-  closing_date TEXT NOT NULL,
-  created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT
-);
-
-CREATE INDEX idx_credit_card_bills_card ON credit_card_bills(credit_card_id);
-CREATE INDEX idx_credit_card_bills_user_month ON credit_card_bills(user_id, month);
 
 -- =============================================================================
 -- Debts

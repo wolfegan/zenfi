@@ -78,7 +78,7 @@ export interface Category {
   icon: string;
   color: string;
   is_fixed: boolean;
-  order: number | null;
+  order?: number | null;
   created_at: number;
 }
 
