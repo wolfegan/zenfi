@@ -98,6 +98,20 @@ const schema = defineSchema(
       .index("creditCardId", ["creditCardId"])
       .index("userId_month", ["userId", "month"]),
 
+    // Debts / Loans
+    debts: defineTable({
+      userId: v.id("users"),
+      creditor: v.string(),
+      description: v.optional(v.string()),
+      totalAmount: v.number(),
+      remainingAmount: v.number(),
+      monthlyPayment: v.number(),
+      dueDate: v.string(),
+      startDate: v.string(),
+      isPaid: v.boolean(),
+      createdAt: v.number(),
+    }).index("userId", ["userId"]),
+
     // Investments
     investments: defineTable({
       userId: v.id("users"),

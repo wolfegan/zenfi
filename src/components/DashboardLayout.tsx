@@ -20,6 +20,7 @@ import {
   User,
   Menu,
   X,
+  HandCoins,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
@@ -31,6 +32,7 @@ const navItems = [
   { to: "/budgets", label: "Orçamentos", icon: Percent },
   { to: "/credit-cards", label: "Cartões", icon: CreditCard },
   { to: "/investments", label: "Investimentos", icon: TrendingUp },
+  { to: "/debts", label: "Dívidas", icon: HandCoins },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {

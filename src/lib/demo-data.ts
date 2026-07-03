@@ -69,6 +69,67 @@ export const demoInvestments = [
   { _id: "inv-3" as any, userId: "user-1" as any, name: "Bitcoin", type: "crypto" as const, amount: 2000, currentValue: 2680, monthlyContribution: 100, createdAt: Date.now() - 86400000 * 45 },
 ];
 
+export const demoDebts = [
+  {
+    _id: "debt-1" as any, userId: "user-1" as any,
+    creditor: "Fulano",
+    description: "Empréstimo pessoal",
+    totalAmount: 3000,
+    remainingAmount: 1200,
+    monthlyPayment: 300,
+    dueDate: `${currentMonth}-15`,
+    startDate: previousMonth(5),
+    isPaid: false,
+    createdAt: Date.now() - 86400000 * 150,
+  },
+  {
+    _id: "debt-2" as any, userId: "user-1" as any,
+    creditor: "Crediário Y",
+    description: "Compra de sofá parcelado",
+    totalAmount: 2400,
+    remainingAmount: 800,
+    monthlyPayment: 200,
+    dueDate: `${currentMonth}-10`,
+    startDate: previousMonth(3),
+    isPaid: false,
+    createdAt: Date.now() - 86400000 * 90,
+  },
+  {
+    _id: "debt-3" as any, userId: "user-1" as any,
+    creditor: "Cartão Magalu",
+    description: "Compra de notebook",
+    totalAmount: 3500,
+    remainingAmount: 0,
+    monthlyPayment: 0,
+    dueDate: `${previousMonth(1)}-20`,
+    startDate: previousMonth(6),
+    isPaid: true,
+    createdAt: Date.now() - 86400000 * 180,
+  },
+  {
+    _id: "debt-4" as any, userId: "user-1" as any,
+    creditor: "Empréstimo Bancário",
+    description: "Financiamento veicular",
+    totalAmount: 15000,
+    remainingAmount: 8800,
+    monthlyPayment: 620,
+    dueDate: `${currentMonth}-05`,
+    startDate: previousMonth(10),
+    isPaid: false,
+    createdAt: Date.now() - 86400000 * 300,
+  },
+];
+
+export const demoDebtsSummary = {
+  totalOwed: 23900,
+  totalRemaining: 10800,
+  totalPaid: 13100,
+  totalMonthly: 1120,
+  activeCount: 3,
+  paidCount: 1,
+  count: 4,
+};
+
 export const demoMonthlySummary = () => {
   const expenses = demoTransactions.filter((t) => t.type === "expense");
   const incomes = demoTransactions.filter((t) => t.type === "income");
