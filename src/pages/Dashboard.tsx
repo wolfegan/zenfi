@@ -15,6 +15,7 @@ import {
   HandCoins,
   Calendar,
   CircleDollarSign,
+  CheckCircle2,
 } from "lucide-react";
 import {
   PieChart,
@@ -169,6 +170,111 @@ export default function Dashboard() {
             <button onClick={() => window.location.reload()} className="underline hover:text-foreground">Recarregar</button> após fazer deploy.
           </div>
         )}
+
+        {/* Alerts Section */}
+        {(() => {
+          const activeDebts = debts.filter((d: any) => !d.isPaid);
+          const overdue = activeDebts.filter((d: any) => {
+            const due = new Date(d.dueDate + (d.dueDate.includes("T") ? "" : "T00:00:00"));
+            return due < now;
+          });
+          const dueSoon = activeDebts.filter((d: any) => {
+            const due = new Date(d.dueDate + (d.dueDate.includes("T") ? "" : "T00:00:00"));
+            const daysUntil = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            return daysUntil >= 0 && daysUntil <= 7 && !overdue.includes(d);
+          });
+
+          if (!activeDebts.length) return null;
+
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`rounded-sm border px-4 py-3 ${
+                overdue.length > 0
+                  ? "border-destructive/30 bg-destructive/5"
+                  : dueSoon.length > 0
+                    ? "border-warning/30 bg-warning/5"
+                    : "border-success/30 bg-success/5"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                {/* Icon */}
+                <div className={`w-8 h-8 rounded-sm flex items-center justify-center shrink-0 ${
+                  overdue.length > 0
+                    ? "bg-destructive/10"
+                    : dueSoon.length > 0
+                      ? "bg-warning/10"
+                      : "bg-success/10"
+                }`}>
+                  {overdue.length > 0 ? (
+                    <span className="text-destructive text-sm font-bold">!</span>
+                  ) : dueSoon.length > 0 ? (
+                    <Calendar className={`w-4 h-4 text-warning`} />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4 text-success" />
+                  )}
+                </div>
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  {overdue.length > 0 && (
+                    <>
+                      <p className="text-xs font-medium text-destructive">
+                        {overdue.length} dívida{overdue.length !== 1 ? "s" : ""} atrasada{overdue.length !== 1 ? "s" : ""}
+                      </p>
+                      <div className="mt-1.5 space-y-1">
+                        {overdue.slice(0, 3).map((d: any) => (
+                          <div key={d._id} className="flex items-center justify-between text-[10px]">
+                            <span className="text-muted-foreground truncate">{d.creditor}</span>
+                            <span className="tabular-nums text-destructive font-medium ml-2 shrink-0">
+                              {d.remainingAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            </span>
+                          </div>
+                        ))}
+                        {overdue.length > 3 && (
+                          <p className="text-[10px] text-muted-foreground">e mais {overdue.length - 3}...</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                  {overdue.length === 0 && dueSoon.length > 0 && (
+                    <>
+                      <p className="text-xs font-medium text-warning">
+                        {dueSoon.length} dívida{dueSoon.length !== 1 ? "s" : ""} vence{dueSoon.length === 1 ? "" : "m"} nos próximos 7 dias
+                      </p>
+                      <div className="mt-1.5 space-y-1">
+                        {dueSoon.slice(0, 3).map((d: any) => {
+                          const due = new Date(d.dueDate + (d.dueDate.includes("T") ? "" : "T00:00:00"));
+                          const daysUntil = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                          const dayLabel = daysUntil === 0 ? "hoje" : daysUntil === 1 ? "amanhã" : `em ${daysUntil} dias`;
+                          return (
+                            <div key={d._id} className="flex items-center justify-between text-[10px]">
+                              <span className="text-muted-foreground truncate">{d.creditor} · {dayLabel}</span>
+                              <span className="tabular-nums font-medium ml-2 shrink-0">
+                                {d.remainingAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {dueSoon.length > 3 && (
+                          <p className="text-[10px] text-muted-foreground">e mais {dueSoon.length - 3}...</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                  {overdue.length === 0 && dueSoon.length === 0 && (
+                    <p className="text-xs font-medium text-success">
+                      Todas as dívidas em dia! 🎉
+                    </p>
+                  )}
+                  <a href="/debts" className="text-[10px] text-muted-foreground underline hover:text-foreground transition-colors mt-1.5 inline-block">
+                    Ver todas as dívidas
+                  </a>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })()}
 
         {/* Header */}
         <div>
