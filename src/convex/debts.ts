@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
+import { vly } from "../lib/vly-integrations";
 
 export const getAll = query({
   args: {},
@@ -134,5 +135,82 @@ export const remove = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     await ctx.db.delete(args.id);
+  },
+});
+
+export const sendDueReminders = action({
+  args: {},
+  handler: async (ctx) => {
+    // Get all users with debts that are due within 7 days or overdue
+    const debts = await ctx.runQuery(api.debts.getAll);
+    const now = new Date();
+
+    for (const debt of debts) {
+      if (debt.isPaid) continue;
+
+      const dueDate = new Date(debt.dueDate + (debt.dueDate.includes("T") ? "" : "T00:00:00"));
+      const diff = dueDate.getTime() - now.getTime();
+      const daysUntil = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+      const shouldNotify = daysUntil <= 7; // includes overdue (negative) and upcoming
+
+      if (!shouldNotify) continue;
+
+      // Get user email
+      const user = await ctx.runQuery(api.users.currentUser);
+      if (!user?.email) continue;
+
+      const formattedAmount = debt.remainingAmount.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      });
+
+      let subject: string;
+      let message: string;
+
+      if (daysUntil < 0) {
+        subject = `🔴 Dívida atrasada: ${debt.creditor}`;
+        message = `Sua dívida com ${debt.creditor} no valor de ${formattedAmount} está atrasada. Regularize o quanto antes para evitar juros.`;
+      } else if (daysUntil === 0) {
+        subject = `📅 ${debt.creditor} vence hoje!`;
+        message = `Sua dívida com ${debt.creditor} no valor de ${formattedAmount} vence hoje. Não se esqueça de pagar!`;
+      } else if (daysUntil === 1) {
+        subject = `📅 ${debt.creditor} vence amanhã!`;
+        message = `Sua dívida com ${debt.creditor} no valor de ${formattedAmount} vence amanhã.`;
+      } else {
+        subject = `📅 ${debt.creditor} vence em ${daysUntil} dias`;
+        message = `Sua dívida com ${debt.creditor} no valor de ${formattedAmount} vence em ${daysUntil} dias. Programe-se para o pagamento.`;
+      }
+
+      const html = `
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="font-size: 18px; margin-bottom: 12px;">${subject}</h2>
+          <p style="font-size: 14px; color: #555; line-height: 1.6;">${message}</p>
+          <div style="background: #f5f5f5; border-radius: 4px; padding: 12px; margin: 16px 0;">
+            <table style="width: 100%; font-size: 13px;">
+              <tr><td style="color: #888; padding: 4px 0;">Credor</td><td style="text-align: right; font-weight: 500;">${debt.creditor}</td></tr>
+              <tr><td style="color: #888; padding: 4px 0;">Valor restante</td><td style="text-align: right; font-weight: 500;">${formattedAmount}</td></tr>
+              <tr><td style="color: #888; padding: 4px 0;">Vencimento</td><td style="text-align: right;">${dueDate.toLocaleDateString("pt-BR")}</td></tr>
+            </table>
+          </div>
+          <a href="${process.env.VLY_APP_URL || ""}/debts"
+             style="display: inline-block; background: #000; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 4px; font-size: 13px;">
+            Ver no app
+          </a>
+        </div>
+      `;
+
+      try {
+        const result = await vly.email.send({
+          to: user.email,
+          subject,
+          html,
+          text: `${subject}\n\n${message}\n\nAcesse o app para mais detalhes.`,
+        });
+        console.log(`Notification sent for debt ${debt._id} to ${user.email}:`, result);
+      } catch (error) {
+        console.error(`Failed to send notification for debt ${debt._id}:`, error);
+      }
+    }
   },
 });

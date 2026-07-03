@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
+import { useDebtNotifications } from "@/hooks/use-debt-notifications";
 import { useSafeQuery } from "@/hooks/use-safe-query";
 import { api } from "@/convex/_generated/api";
 import { motion } from "framer-motion";
@@ -151,6 +152,9 @@ export default function Dashboard() {
   const evolution = useDemo ? demoEvolution : (realEvolution ?? undefined);
   const categories = useDemo ? demoCategories : (realCategories ?? undefined);
   const debts = useDemo ? demoDebts : (realDebts ?? []);
+
+  // Show browser notifications for debts due within 7 days
+  useDebtNotifications(debts);
 
   if (isLoading) return null;
   if (!isAuthenticated) { navigate("/auth"); return null; }
