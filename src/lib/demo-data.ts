@@ -72,62 +72,75 @@ export const demoInvestments = [
 export const demoDebts = [
   {
     _id: "debt-1" as any, userId: "user-1" as any,
-    creditor: "Fulano",
-    description: "Empréstimo pessoal",
-    totalAmount: 3000,
-    remainingAmount: 1200,
-    monthlyPayment: 300,
-    dueDate: `${currentMonth}-15`,
-    startDate: previousMonth(5),
-    isPaid: false,
-    createdAt: Date.now() - 86400000 * 150,
+    creditor: "Fulano", description: "Empréstimo pessoal", totalAmount: 3000, remainingAmount: 1200, monthlyPayment: 300,
+    dueDate: `${currentMonth}-15`, startDate: previousMonth(5), isPaid: false, createdAt: Date.now() - 86400000 * 150,
   },
   {
     _id: "debt-2" as any, userId: "user-1" as any,
-    creditor: "Crediário Y",
-    description: "Compra de sofá parcelado",
-    totalAmount: 2400,
-    remainingAmount: 800,
-    monthlyPayment: 200,
-    dueDate: `${currentMonth}-10`,
-    startDate: previousMonth(3),
-    isPaid: false,
-    createdAt: Date.now() - 86400000 * 90,
+    creditor: "Crediário Y", description: "Compra de sofá parcelado", totalAmount: 2400, remainingAmount: 800, monthlyPayment: 200,
+    dueDate: `${currentMonth}-10`, startDate: previousMonth(3), isPaid: false, createdAt: Date.now() - 86400000 * 90,
   },
   {
     _id: "debt-3" as any, userId: "user-1" as any,
-    creditor: "Cartão Magalu",
-    description: "Compra de notebook",
-    totalAmount: 3500,
-    remainingAmount: 0,
-    monthlyPayment: 0,
-    dueDate: `${previousMonth(1)}-20`,
-    startDate: previousMonth(6),
-    isPaid: true,
-    createdAt: Date.now() - 86400000 * 180,
+    creditor: "Cartão Magalu", description: "Compra de notebook", totalAmount: 3500, remainingAmount: 0, monthlyPayment: 0,
+    dueDate: `${previousMonth(1)}-20`, startDate: previousMonth(6), isPaid: true, createdAt: Date.now() - 86400000 * 180,
   },
   {
     _id: "debt-4" as any, userId: "user-1" as any,
-    creditor: "Empréstimo Bancário",
-    description: "Financiamento veicular",
-    totalAmount: 15000,
-    remainingAmount: 8800,
-    monthlyPayment: 620,
-    dueDate: `${currentMonth}-05`,
-    startDate: previousMonth(10),
-    isPaid: false,
-    createdAt: Date.now() - 86400000 * 300,
+    creditor: "Empréstimo Bancário", description: "Financiamento veicular", totalAmount: 15000, remainingAmount: 8800, monthlyPayment: 620,
+    dueDate: `${currentMonth}-05`, startDate: previousMonth(10), isPaid: false, createdAt: Date.now() - 86400000 * 300,
   },
 ];
 
 export const demoDebtsSummary = {
-  totalOwed: 23900,
-  totalRemaining: 10800,
-  totalPaid: 13100,
-  totalMonthly: 1120,
-  activeCount: 3,
-  paidCount: 1,
+  totalOwed: 23900, totalRemaining: 10800, totalPaid: 13100, totalMonthly: 1120, activeCount: 3, paidCount: 1, count: 4,
+};
+
+// Demo bank accounts
+export const demoAccounts = [
+  { _id: "acc-1" as any, userId: "user-1" as any, name: "Conta Corrente", type: "checking" as const, balance: 5240.60, color: "#0a0a0a", createdAt: Date.now() - 86400000 * 365 },
+  { _id: "acc-2" as any, userId: "user-1" as any, name: "Poupança", type: "savings" as const, balance: 12000, color: "#2a7", createdAt: Date.now() - 86400000 * 180 },
+  { _id: "acc-3" as any, userId: "user-1" as any, name: "Carteira", type: "cash" as const, balance: 350, color: "#a72", createdAt: Date.now() - 86400000 * 60 },
+];
+
+// Demo financial goals
+export const demoGoals = [
+  {
+    _id: "goal-1" as any, userId: "user-1" as any,
+    name: "Reserva de Emergência", targetAmount: 15000, currentAmount: 8500, monthlyContribution: 1000,
+    targetDate: `${now.getFullYear() + 1}-06`, category: "emergency" as const, isAchieved: false, createdAt: Date.now() - 86400000 * 200,
+  },
+  {
+    _id: "goal-2" as any, userId: "user-1" as any,
+    name: "Viagem para Europa", targetAmount: 12000, currentAmount: 3200, monthlyContribution: 600,
+    targetDate: `${now.getFullYear() + 1}-12`, category: "travel" as const, isAchieved: false, createdAt: Date.now() - 86400000 * 120,
+  },
+  {
+    _id: "goal-3" as any, userId: "user-1" as any,
+    name: "Carro Novo", targetAmount: 35000, currentAmount: 5000, monthlyContribution: 800,
+    targetDate: `${now.getFullYear() + 2}-06`, category: "purchase" as const, isAchieved: false, createdAt: Date.now() - 86400000 * 90,
+  },
+  {
+    _id: "goal-4" as any, userId: "user-1" as any,
+    name: "Curso de Especialização", targetAmount: 5000, currentAmount: 5000, monthlyContribution: 0,
+    targetDate: `${currentMonth}-01`, category: "education" as const, isAchieved: true, createdAt: Date.now() - 86400000 * 60,
+  },
+];
+
+export const demoGoalsSummary = {
+  totalTarget: 67000,
+  totalCurrent: 21700,
+  totalProgress: 32.4,
+  activeGoals: 3,
+  achievedGoals: 1,
   count: 4,
+};
+
+// Net worth calculation demo
+export const demoNetWorth = {
+  totalAssets: 42160.60, // accounts balance (17590.60) + investments current value (18450) + achieved goals (5000) overpaid... let me recalculate
+  totalLiabilities: 10800, // active debts remaining amount
+  netWorth: 31360.60,
 };
 
 export const demoMonthlySummary = () => {

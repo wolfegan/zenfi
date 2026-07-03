@@ -1,12 +1,7 @@
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router";
 import {
   ArrowDownUp,
   BarChart3,
@@ -21,18 +16,32 @@ import {
   Menu,
   X,
   HandCoins,
+  Target,
+  FileText,
+  Settings,
+  Landmark,
+  Moon,
+  Sun,
 } from "lucide-react";
-import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/transactions", label: "Transações", icon: ArrowDownUp },
   { to: "/categories", label: "Categorias", icon: Tags },
   { to: "/budgets", label: "Orçamentos", icon: Percent },
+  { to: "/accounts", label: "Contas", icon: Landmark },
   { to: "/credit-cards", label: "Cartões", icon: CreditCard },
   { to: "/investments", label: "Investimentos", icon: TrendingUp },
   { to: "/debts", label: "Dívidas", icon: HandCoins },
+  { to: "/goals", label: "Metas", icon: Target },
+  { to: "/reports", label: "Relatórios", icon: FileText },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -40,6 +49,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      return document.documentElement.classList.contains("dark");
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkMode]);
 
   const handleSignOut = async () => {
     try {
@@ -108,6 +131,29 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
+          {/* Settings & Theme */}
+          <div className="border-t px-3 py-2 space-y-1">
+            <Link
+              to="/settings"
+              onClick={() => setSidebarOpen(false)}
+              className={`flex items-center gap-3 px-3 py-2.5 text-sm rounded-sm transition-all duration-150 ${
+                location.pathname === "/settings"
+                  ? "bg-secondary text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              }`}
+            >
+              <Settings className="w-4 h-4 shrink-0" />
+              Configurações
+            </Link>
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-sm transition-all duration-150 w-full text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+            >
+              {darkMode ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
+              {darkMode ? "Modo Claro" : "Modo Escuro"}
+            </button>
+          </div>
+
           {/* User area */}
           <div className="border-t p-3">
             <DropdownMenu>
@@ -131,6 +177,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" side="top" className="w-56">
                 <DropdownMenuItem
+                  onClick={() => navigate("/settings")}
+                  className="cursor-pointer"
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Configurações
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
                   onClick={handleSignOut}
                   className="text-destructive focus:text-destructive cursor-pointer"
                 >
@@ -146,21 +200,29 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <main className="flex-1 min-w-0">
         {/* Top bar (mobile) */}
-        <div className="sticky top-0 z-30 lg:hidden flex items-center h-14 px-4 border-b bg-background/95 backdrop-blur-sm">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <div className="ml-3 flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-foreground flex items-center justify-center">
-              <PiggyBank className="w-3.5 h-3.5 text-background" />
+        <div className="sticky top-0 z-30 lg:hidden flex items-center justify-between h-14 px-4 border-b bg-background/95 backdrop-blur-sm">
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <div className="ml-3 flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-foreground flex items-center justify-center">
+                <PiggyBank className="w-3.5 h-3.5 text-background" />
+              </div>
+              <span className="text-sm font-medium">Finanças</span>
             </div>
-            <span className="text-sm font-medium">Finanças</span>
           </div>
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="h-9 w-9 flex items-center justify-center rounded-sm hover:bg-secondary transition-colors"
+          >
+            {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
         </div>
 
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">

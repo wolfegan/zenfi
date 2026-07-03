@@ -20,6 +20,10 @@ const Budgets = lazy(() => import("./pages/Budgets.tsx"));
 const CreditCards = lazy(() => import("./pages/CreditCards.tsx"));
 const Investments = lazy(() => import("./pages/Investments.tsx"));
 const Debts = lazy(() => import("./pages/Debts.tsx"));
+const Goals = lazy(() => import("./pages/Goals.tsx"));
+const Accounts = lazy(() => import("./pages/Accounts.tsx"));
+const Reports = lazy(() => import("./pages/Reports.tsx"));
+const Settings = lazy(() => import("./pages/Settings.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -77,6 +81,10 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/credit-cards" element={<CreditCards />} />
               <Route path="/investments" element={<Investments />} />
               <Route path="/debts" element={<Debts />} />
+              <Route path="/goals" element={<Goals />} />
+              <Route path="/accounts" element={<Accounts />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

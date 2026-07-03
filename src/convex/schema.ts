@@ -128,6 +128,42 @@ const schema = defineSchema(
       monthlyContribution: v.number(),
       createdAt: v.number(),
     }).index("userId", ["userId"]),
+
+    // Bank accounts
+    accounts: defineTable({
+      userId: v.id("users"),
+      name: v.string(),
+      type: v.union(
+        v.literal("checking"),
+        v.literal("savings"),
+        v.literal("cash"),
+        v.literal("other"),
+      ),
+      balance: v.number(),
+      color: v.string(),
+      createdAt: v.number(),
+    }).index("userId", ["userId"]),
+
+    // Financial goals
+    goals: defineTable({
+      userId: v.id("users"),
+      name: v.string(),
+      targetAmount: v.number(),
+      currentAmount: v.number(),
+      monthlyContribution: v.number(),
+      targetDate: v.optional(v.string()),
+      category: v.union(
+        v.literal("emergency"),
+        v.literal("travel"),
+        v.literal("purchase"),
+        v.literal("investment"),
+        v.literal("education"),
+        v.literal("retirement"),
+        v.literal("other"),
+      ),
+      isAchieved: v.boolean(),
+      createdAt: v.number(),
+    }).index("userId", ["userId"]),
   },
   {
     schemaValidation: false,

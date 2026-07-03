@@ -141,8 +141,8 @@ export const remove = mutation({
 export const sendDueReminders = action({
   args: {},
   handler: async (ctx) => {
-    // Get all users with debts that are due within 7 days or overdue
-    const debts = await ctx.runQuery(api.debts.getAll);
+    // Use internalQuery to avoid auth issues in cron context
+    const debts = await ctx.runQuery(api.debts.internalGetAllForReminders);
     const now = new Date();
 
     for (const debt of debts) {
@@ -152,13 +152,9 @@ export const sendDueReminders = action({
       const diff = dueDate.getTime() - now.getTime();
       const daysUntil = Math.ceil(diff / (1000 * 60 * 60 * 24));
 
-      const shouldNotify = daysUntil <= 7; // includes overdue (negative) and upcoming
+      if (daysUntil > 7) continue;
 
-      if (!shouldNotify) continue;
-
-      // Get user email
-      const user = await ctx.runQuery(api.users.currentUser);
-      if (!user?.email) continue;
+      if (!debt.userEmail) continue;
 
       const formattedAmount = debt.remainingAmount.toLocaleString("pt-BR", {
         style: "currency",
@@ -202,15 +198,37 @@ export const sendDueReminders = action({
 
       try {
         const result = await vly.email.send({
-          to: user.email,
+          to: debt.userEmail,
           subject,
           html,
           text: `${subject}\n\n${message}\n\nAcesse o app para mais detalhes.`,
         });
-        console.log(`Notification sent for debt ${debt._id} to ${user.email}:`, result);
+        console.log(`Notification sent for debt ${debt._id} to ${debt.userEmail}:`, result);
       } catch (error) {
         console.error(`Failed to send notification for debt ${debt._id}:`, error);
       }
     }
+  },
+});
+
+// Internal query that bypasses auth for cron job usage
+import { internalQuery } from "./_generated/server";
+
+export const internalGetAllForReminders = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const debts = await ctx.db.query("debts").collect();
+    const now = new Date();
+    const results: Array<any> = [];
+    for (const debt of debts) {
+      if (debt.isPaid) continue;
+      const dueDate = new Date(debt.dueDate + (debt.dueDate.includes("T") ? "" : "T00:00:00"));
+      const diff = dueDate.getTime() - now.getTime();
+      const daysUntil = Math.ceil(diff / (1000 * 60 * 60 * 24));
+      if (daysUntil > 7) continue;
+      const user = await ctx.db.get(debt.userId);
+      results.push({ ...debt, userEmail: user?.email || null });
+    }
+    return results;
   },
 });
