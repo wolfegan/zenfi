@@ -8,21 +8,28 @@ export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
       if (session?.user) {
+        // Session exists → user is authenticated regardless of profile
+        setIsAuthenticated(true);
         fetchProfile(session.user.id);
       } else {
-        setIsLoading(false);
         setIsAuthenticated(false);
+        setIsLoading(false);
       }
     });
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
       if (session?.user) {
+        setIsAuthenticated(true);
         fetchProfile(session.user.id);
       } else {
         setUser(null);
@@ -31,7 +38,10 @@ export function useAuth() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   async function fetchProfile(userId: string) {
@@ -43,11 +53,12 @@ export function useAuth() {
         .single();
 
       if (error) {
-        // Profile might not exist yet for new users
+        // Profile might not exist yet for new users (PGRST116 = no rows)
         if (error.code === "PGRST116") {
-          const authUser = (await supabase.auth.getUser()).data.user;
+          const { data: authData } = await supabase.auth.getUser();
+          const authUser = authData?.user;
           if (authUser) {
-            // Create profile
+            // Try to create profile (best-effort, doesn't block auth)
             const newProfile: Omit<Profile, "id" | "created_at"> = {
               name: authUser.user_metadata?.name || null,
               email: authUser.email || null,
@@ -56,25 +67,29 @@ export function useAuth() {
               financial_goal: null,
               onboarding_completed: null,
             };
-            const { data: created } = await supabase
+            const { data: created, error: insertError } = await supabase
               .from("profiles")
               .insert({ id: authUser.id, ...newProfile })
               .select()
               .single();
+
             if (created) {
               setUser(created);
-              setIsAuthenticated(true);
+            } else if (insertError) {
+              console.warn("Could not create profile:", insertError.message);
             }
           }
+        } else {
+          console.warn("Error fetching profile:", error.message);
         }
         setIsLoading(false);
         return;
       }
 
       setUser(data);
-      setIsAuthenticated(true);
       setIsLoading(false);
-    } catch {
+    } catch (err) {
+      console.warn("Error in fetchProfile:", err);
       setIsLoading(false);
     }
   }

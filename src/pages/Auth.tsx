@@ -51,6 +51,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       setError(err instanceof Error ? err.message : "Falha ao entrar. Verifique seus dados.");
       setIsLoading(false);
     }
+    // Navigation happens via useEffect when isAuthenticated changes
   };
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
@@ -79,6 +80,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       setError(`Falha ao entrar como convidado: ${err instanceof Error ? err.message : "Erro desconhecido"}`);
       setIsLoading(false);
     }
+    // Navigation happens via useEffect when isAuthenticated changes
   };
 
   return (
