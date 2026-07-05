@@ -44,7 +44,7 @@ CREATE TABLE credit_cards (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  limit NUMERIC(12,2) NOT NULL,
+  "limit" NUMERIC(12,2) NOT NULL,
   closing_day INTEGER NOT NULL,
   due_day INTEGER NOT NULL,
   color TEXT NOT NULL DEFAULT '#666666',

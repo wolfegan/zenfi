@@ -159,10 +159,10 @@ export default function Dashboard() {
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
     if (!isLoading && !summaryLoading) {
-      const allFailed = realSummary === null && realHealth === null && realEvolution.length === 0 && realCategories.length === 0;
+      const allFailed = realCategories.length === 0;
       setUseDemo(allFailed);
     }
-  }, [isLoading, summaryLoading, realSummary, realHealth, realEvolution, realCategories]);
+  }, [isLoading, summaryLoading, realCategories]);
 
   const summary = useDemo ? demoMonthlySummary() : (realSummary ?? undefined);
   const health = useDemo ? demoHealthScore : (realHealth ?? undefined);
@@ -197,16 +197,16 @@ export default function Dashboard() {
       <div className="space-y-8">
         {showOnboarding && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-            className="rounded-sm border border-primary/20 bg-primary/5 px-4 py-4 relative">
+            className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-4 relative">
             <button onClick={dismissOnboarding} className="absolute top-3 right-3 text-muted-foreground hover:text-foreground">
               <X className="w-3.5 h-3.5" />
             </button>
             <div className="flex items-start gap-3 pr-6">
-              <div className="w-8 h-8 rounded-sm bg-primary flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0">
                 <Info className="w-4 h-4 text-primary-foreground" />
               </div>
               <div>
-                <p className="text-sm font-medium mb-1">Bem-vindo ao Finanças! 🎉</p>
+                <p className="text-sm font-semibold mb-1">Bem-vindo ao Zenfi! 🎉</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Aqui você pode controlar suas <strong>receitas e despesas</strong>, definir <strong>orçamentos</strong>,
                   acompanhar <strong>cartões de crédito</strong>, <strong>investimentos</strong>, <strong>dívidas</strong>,

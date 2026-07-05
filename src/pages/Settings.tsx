@@ -52,23 +52,23 @@ export default function Settings() {
           <p className="text-xs text-muted-foreground mt-1">Gerencie suas preferências</p>
         </div>
 
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-5 rounded-sm border bg-card">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-5 rounded-xl border bg-card">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-sm bg-secondary flex items-center justify-center"><User className="w-4 h-4" /></div>
+            <div className="w-8 h-8 rounded-xl bg-secondary flex items-center justify-center"><User className="w-4 h-4" /></div>
             <div><h2 className="text-sm font-medium">Perfil</h2><p className="text-xs text-muted-foreground">Suas informações pessoais</p></div>
           </div>
           <div className="space-y-4">
-            <div><label className="text-xs text-muted-foreground mb-1.5 block">Nome</label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" /></div>
-            <div><label className="text-xs text-muted-foreground mb-1.5 block">Email</label><Input value={user?.email || ""} disabled className="opacity-60" /></div>
-            <div><label className="text-xs text-muted-foreground mb-1.5 block">Renda Mensal (opcional)</label><Input type="number" step="0.01" min="0" value={monthlyIncome} onChange={(e) => setMonthlyIncome(e.target.value)} placeholder="Ex: 8000" /></div>
-            <div><label className="text-xs text-muted-foreground mb-1.5 block">Objetivo Financeiro</label><Input value={financialGoal} onChange={(e) => setFinancialGoal(e.target.value)} placeholder="Ex: Reserva de emergência, comprar imóvel..." /></div>
-            <Button size="sm" className="text-xs" onClick={handleSave}>Salvar Alterações</Button>
+            <div><label className="text-xs text-muted-foreground mb-1.5 block">Nome</label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" className="rounded-lg h-9" /></div>
+            <div><label className="text-xs text-muted-foreground mb-1.5 block">Email</label><Input value={user?.email || ""} disabled className="opacity-60 rounded-lg h-9" /></div>
+            <div><label className="text-xs text-muted-foreground mb-1.5 block">Renda Mensal (opcional)</label><Input type="number" step="0.01" min="0" value={monthlyIncome} onChange={(e) => setMonthlyIncome(e.target.value)} placeholder="Ex: 8000" className="rounded-lg h-9" /></div>
+            <div><label className="text-xs text-muted-foreground mb-1.5 block">Objetivo Financeiro</label><Input value={financialGoal} onChange={(e) => setFinancialGoal(e.target.value)} placeholder="Ex: Reserva de emergência, comprar imóvel..." className="rounded-lg h-9" /></div>
+            <Button size="sm" className="text-xs rounded-lg" onClick={handleSave}>Salvar Alterações</Button>
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="p-5 rounded-sm border bg-card">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="p-5 rounded-xl border bg-card">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-sm bg-secondary flex items-center justify-center"><Bell className="w-4 h-4" /></div>
+            <div className="w-8 h-8 rounded-xl bg-secondary flex items-center justify-center"><Bell className="w-4 h-4" /></div>
             <div><h2 className="text-sm font-medium">Aparência</h2><p className="text-xs text-muted-foreground">Personalize a visualização</p></div>
           </div>
           <div className="flex items-center justify-between py-2">
@@ -79,13 +79,13 @@ export default function Settings() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="p-5 rounded-sm border bg-card">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="p-5 rounded-xl border bg-card">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-sm bg-secondary flex items-center justify-center"><Info className="w-4 h-4" /></div>
+            <div className="w-8 h-8 rounded-xl bg-secondary flex items-center justify-center"><Info className="w-4 h-4" /></div>
             <div><h2 className="text-sm font-medium">Sobre</h2><p className="text-xs text-muted-foreground">Informações do app</p></div>
           </div>
           <div className="space-y-2 text-xs text-muted-foreground">
-            <p>Financas — Controle financeiro simplificado</p>
+            <p>Zenfi — Suas finanças no zen.</p>
             <p>Versão 1.0.0</p>
             <p>100% gratuito. Dados armazenados com Supabase.</p>
           </div>
