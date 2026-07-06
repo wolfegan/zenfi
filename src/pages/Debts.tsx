@@ -64,6 +64,7 @@ export default function Debts() {
   const [payPaymentMethod, setPayPaymentMethod] = useState("pix");
   const [payAccountId, setPayAccountId] = useState("");
   const [payCreditCardId, setPayCreditCardId] = useState("");
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [editingDebt, setEditingDebt] = useState<any>(null);
   const [form, setForm] = useState({
     creditor: "",
@@ -89,6 +90,7 @@ export default function Debts() {
     remove,
     payInstallment,
     markAsPaid,
+    refetch: refetchDebts,
   } = useDebts();
 
   const { data: realAccounts, refetch: refetchAccounts } = useAccounts();
@@ -365,9 +367,18 @@ export default function Debts() {
                       if (form.originalAmount.trim()) {
                         descVal = `[Original: ${form.originalAmount.trim()}] ${descVal}`;
                       }
+
+                      // Preservar o histórico de pagamentos existente se for edição
+                      if (editingDebt) {
+                        const paymentsMatch = editingDebt.description?.match(/\[Payments:\s*([^\]]+)\]/);
+                        if (paymentsMatch) {
+                          descVal = `${descVal.trim()} [Payments: ${paymentsMatch[1]}]`;
+                        }
+                      }
+
                       const data = {
                         creditor: form.creditor,
-                        description: descVal || null,
+                        description: descVal.trim() || null,
                         total_amount: totalAmt,
                         remaining_amount: remainingAmt,
                         monthly_payment: monthlyPymt,
@@ -567,12 +578,52 @@ export default function Debts() {
                   
                   if (payingDebt && amount > 0) {
                     if (!useDemo) {
-                      // 1. Registrar pagamento na tabela debts com desconto considerado
+                      // 1. Extrair e gerar o novo histórico de pagamentos serializado
+                      const prevPaymentsMatch = payingDebt.description?.match(/\[Payments:\s*([^\]]+)\]/);
+                      let prevPaymentsList = [];
+                      if (prevPaymentsMatch) {
+                        try {
+                          prevPaymentsList = JSON.parse(prevPaymentsMatch[1]);
+                        } catch (e) {}
+                      }
+
+                      const selectedAcc = accounts.find((a: any) => a.id === payAccountId);
+                      const selectedCard = creditCards.find((c: any) => c.id === payCreditCardId);
+                      const sourceName = payPaymentMethod === "credit_card"
+                        ? (selectedCard?.name || "Cartão")
+                        : (selectedAcc?.name || "Conta");
+                      const methodLabel = payPaymentMethod === "credit_card"
+                        ? "Cartão"
+                        : payPaymentMethod === "pix"
+                        ? "PIX"
+                        : payPaymentMethod === "money"
+                        ? "Dinheiro"
+                        : "Débito";
+
+                      const newPayment = {
+                        date: new Date().toISOString(),
+                        amount,
+                        discount,
+                        accountName: sourceName,
+                        method: methodLabel
+                      };
+
+                      const newPaymentsList = [...prevPaymentsList, newPayment];
+                      let cleanDescription = payingDebt.description?.replace(/\[Payments:\s*([^\]]+)\]\s*/, "") || "";
+                      const updatedDescription = `${cleanDescription.trim()} [Payments: ${JSON.stringify(newPaymentsList)}]`;
+
+                      // 2. Salvar descrição com histórico atualizado no Supabase
+                      await supabase
+                        .from("debts")
+                        .update({ description: updatedDescription })
+                        .eq("id", payingDebt.id);
+
+                      // 3. Registrar pagamento na tabela debts com desconto considerado
                       if (totalDeduction >= payingDebt.remaining_amount)
                         await markAsPaid(payingDebt.id);
                       else await payInstallment(payingDebt.id, totalDeduction);
 
-                      // 2. Criar transação e descontar da conta/cartão correspondente
+                      // 4. Criar transação e descontar da conta/cartão correspondente
                       if (payPaymentMethod === "credit_card") {
                         if (payCreditCardId) {
                           const txDesc = discount > 0
@@ -643,6 +694,9 @@ export default function Debts() {
                           }
                         }
                       }
+
+                      await refetchDebts();
+                      await getSummary().then(setSummary);
                       toast.success("Pagamento registrado com sucesso!");
                     } else {
                       toast.info("Modo demonstração não altera dados.");
@@ -729,7 +783,16 @@ export default function Debts() {
               const origMatch = debt.description?.match(/\[Original:\s*([^\]]+)\]/);
               const origVal = origMatch ? parseBRLAmount(origMatch[1]) : 0;
               const interestAmount = origVal > 0 ? Math.max(0, debt.total_amount - origVal) : 0;
-              const cleanDesc = debt.description?.replace(/\[Original:\s*([^\]]+)\]\s*/, "") || "";
+              const paymentsMatch = debt.description?.match(/\[Payments:\s*([^\]]+)\]/);
+              let paymentsList: any[] = [];
+              if (paymentsMatch) {
+                try {
+                  paymentsList = JSON.parse(paymentsMatch[1]);
+                } catch (e) {}
+              }
+              const cleanDesc = debt.description
+                ?.replace(/\[Original:\s*([^\]]+)\]\s*/, "")
+                ?.replace(/\[Payments:\s*([^\]]+)\]\s*/, "") || "";
               const dueDate = new Date(
                 debt.due_date +
                   (debt.due_date.includes("T") ? "" : "T00:00:00"),
@@ -827,6 +890,64 @@ export default function Debts() {
                             </div>
                           </div>
                         )}
+
+                        {/* Histórico de Pagamentos */}
+                        {paymentsList.length > 0 && (
+                          <div className="mt-4 pt-3 border-t">
+                            <button
+                              onClick={() =>
+                                setExpandedHistoryId(
+                                  expandedHistoryId === debt.id
+                                    ? null
+                                    : debt.id,
+                                )
+                              }
+                              className="text-[10px] font-medium text-primary hover:underline flex items-center gap-1.5 cursor-pointer"
+                            >
+                              {expandedHistoryId === debt.id
+                                ? "Ocultar Histórico"
+                                : `Ver Histórico de Pagamentos (${paymentsList.length})`}
+                            </button>
+
+                            {expandedHistoryId === debt.id && (
+                              <div className="mt-3 space-y-3 pl-3 border-l border-primary/30 relative">
+                                {paymentsList.map(
+                                  (payment: any, idx: number) => (
+                                    <div
+                                      key={idx}
+                                      className="relative pl-1 text-[10px]"
+                                    >
+                                      {/* Marcador na timeline */}
+                                      <div className="absolute -left-[16px] top-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
+                                      <p className="font-semibold text-foreground">
+                                        {formatCurrency(payment.amount)}
+                                        {payment.discount > 0 && (
+                                          <span className="text-chart-2 ml-1.5 font-normal">
+                                            (Desconto:{" "}
+                                            {formatCurrency(payment.discount)})
+                                          </span>
+                                        )}
+                                      </p>
+                                      <p className="text-[9px] text-muted-foreground mt-0.5">
+                                        {new Date(
+                                          payment.date,
+                                        ).toLocaleString("pt-BR", {
+                                          day: "2-digit",
+                                          month: "short",
+                                          year: "2-digit",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })}{" "}
+                                        · {payment.accountName} (
+                                        {payment.method})
+                                      </p>
+                                    </div>
+                                  ),
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="text-right shrink-0">
                         <p
@@ -862,7 +983,9 @@ export default function Debts() {
                                   const sd = new Date(debt.start_date);
                                   const origMatch = debt.description?.match(/\[Original:\s*([^\]]+)\]/);
                                   const origVal = origMatch ? origMatch[1] : "";
-                                  const cleanDesc = debt.description?.replace(/\[Original:\s*([^\]]+)\]\s*/, "") || "";
+                                  const cleanDesc = debt.description
+                                    ?.replace(/\[Original:\s*([^\]]+)\]\s*/, "")
+                                    ?.replace(/\[Payments:\s*([^\]]+)\]\s*/, "") || "";
 
                                   setEditingDebt(debt);
                                   setForm({
