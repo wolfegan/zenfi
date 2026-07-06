@@ -212,6 +212,7 @@
 }
 
 @keyframes pulse-subtle {
+
   0%,
   100% {
     opacity: 1;
@@ -257,6 +258,7 @@
 }
 
 @keyframes floatUp {
+
   0%,
   100% {
     transform: translateY(0);
@@ -452,23 +454,19 @@ input[type="number"] {
    ==================================================== */
 
 .shimmer {
-  background: linear-gradient(
-    90deg,
-    oklch(0.94 0.006 248) 25%,
-    oklch(0.96 0.003 248) 50%,
-    oklch(0.94 0.006 248) 75%
-  );
+  background: linear-gradient(90deg,
+      oklch(0.94 0.006 248) 25%,
+      oklch(0.96 0.003 248) 50%,
+      oklch(0.94 0.006 248) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
 .dark .shimmer {
-  background: linear-gradient(
-    90deg,
-    oklch(0.2 0.008 258) 25%,
-    oklch(0.24 0.008 258) 50%,
-    oklch(0.2 0.008 258) 75%
-  );
+  background: linear-gradient(90deg,
+      oklch(0.2 0.008 258) 25%,
+      oklch(0.24 0.008 258) 50%,
+      oklch(0.2 0.008 258) 75%);
   background-size: 200% 100%;
 }
 

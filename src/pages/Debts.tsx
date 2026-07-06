@@ -60,6 +60,7 @@ export default function Debts() {
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [payingDebt, setPayingDebt] = useState<any>(null);
   const [payAmount, setPayAmount] = useState("");
+  const [payDiscount, setPayDiscount] = useState("");
   const [payPaymentMethod, setPayPaymentMethod] = useState("pix");
   const [payAccountId, setPayAccountId] = useState("");
   const [payCreditCardId, setPayCreditCardId] = useState("");
@@ -397,6 +398,7 @@ export default function Debts() {
             if (!open) {
               setPayingDebt(null);
               setPayAmount("");
+              setPayDiscount("");
             }
           }}
         >
@@ -443,32 +445,45 @@ export default function Debts() {
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 block">
-                      Método
+                      Desconto (opcional)
                     </label>
-                    <Select
-                      value={payPaymentMethod}
-                      onValueChange={(v) => {
-                        setPayPaymentMethod(v);
-                        if (v === "credit_card") {
-                          setPayAccountId("");
-                          if (creditCards.length > 0) setPayCreditCardId(creditCards[0].id);
-                        } else {
-                          setPayCreditCardId("");
-                          if (accounts.length > 0) setPayAccountId(accounts[0].id);
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="text-xs h-9">
-                        <SelectValue placeholder="Selecione o método" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pix">PIX</SelectItem>
-                        <SelectItem value="money">Dinheiro</SelectItem>
-                        <SelectItem value="debit">Débito</SelectItem>
-                        <SelectItem value="credit_card">Cartão</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={payDiscount}
+                      onChange={(e) => setPayDiscount(e.target.value)}
+                      placeholder="Ex: 50,00"
+                    />
                   </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1.5 block">
+                    Método
+                  </label>
+                  <Select
+                    value={payPaymentMethod}
+                    onValueChange={(v) => {
+                      setPayPaymentMethod(v);
+                      if (v === "credit_card") {
+                        setPayAccountId("");
+                        if (creditCards.length > 0) setPayCreditCardId(creditCards[0].id);
+                      } else {
+                        setPayCreditCardId("");
+                        if (accounts.length > 0) setPayAccountId(accounts[0].id);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="text-xs h-9">
+                      <SelectValue placeholder="Selecione o método" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pix">PIX</SelectItem>
+                      <SelectItem value="money">Dinheiro</SelectItem>
+                      <SelectItem value="debit">Débito</SelectItem>
+                      <SelectItem value="credit_card">Cartão</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {payPaymentMethod !== "credit_card" ? (
@@ -537,6 +552,7 @@ export default function Debts() {
                   setPayDialogOpen(false);
                   setPayingDebt(null);
                   setPayAmount("");
+                  setPayDiscount("");
                 }}
               >
                 Cancelar
@@ -546,23 +562,30 @@ export default function Debts() {
                 className="text-xs"
                 onClick={async () => {
                   const amount = parseBRLAmount(payAmount);
+                  const discount = parseBRLAmount(payDiscount) || 0;
+                  const totalDeduction = amount + discount;
+                  
                   if (payingDebt && amount > 0) {
                     if (!useDemo) {
-                      // 1. Registrar pagamento na tabela debts
-                      if (amount >= payingDebt.remaining_amount)
+                      // 1. Registrar pagamento na tabela debts com desconto considerado
+                      if (totalDeduction >= payingDebt.remaining_amount)
                         await markAsPaid(payingDebt.id);
-                      else await payInstallment(payingDebt.id, amount);
+                      else await payInstallment(payingDebt.id, totalDeduction);
 
                       // 2. Criar transação e descontar da conta/cartão correspondente
                       if (payPaymentMethod === "credit_card") {
                         if (payCreditCardId) {
+                          const txDesc = discount > 0
+                            ? `[Pagamento Dívida] ${payingDebt.creditor} (Desconto: ${formatCurrency(discount)})`
+                            : `[Pagamento Dívida] ${payingDebt.creditor}`;
+
                           const { data: newTx } = await supabase
                             .from("transactions")
                             .insert({
                               user_id: user?.id,
                               type: "expense",
                               amount: amount,
-                              description: `[Pagamento Dívida] ${payingDebt.creditor}`,
+                              description: txDesc,
                               date: new Date().toISOString().split("T")[0],
                               category_id: null,
                               is_fixed: false,
@@ -599,12 +622,16 @@ export default function Debts() {
                                 : payPaymentMethod === "money"
                                 ? "Dinheiro"
                                 : "Débito";
-                            
+
+                            const txDesc = discount > 0
+                              ? `[Conta: ${selectedAcc.name}] [Pagamento Dívida] ${payingDebt.creditor} (Desconto: ${formatCurrency(discount)})`
+                              : `[Conta: ${selectedAcc.name}] [Pagamento Dívida] ${payingDebt.creditor}`;
+
                             await supabase.from("transactions").insert({
                               user_id: user?.id,
                               type: "expense",
                               amount: amount,
-                              description: `[Conta: ${selectedAcc.name}] [Pagamento Dívida] ${payingDebt.creditor}`,
+                              description: txDesc,
                               date: new Date().toISOString().split("T")[0],
                               category_id: null,
                               is_fixed: false,
@@ -623,6 +650,7 @@ export default function Debts() {
                     setPayDialogOpen(false);
                     setPayingDebt(null);
                     setPayAmount("");
+                    setPayDiscount("");
                   }
                 }}
               >
