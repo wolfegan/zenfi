@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
-import { useDebts, useAccounts, useCreditCards, syncCreditCardBill } from "@/hooks/use-supabase";
+import { useDebts, useAccounts, useCreditCards, useCategories, syncCreditCardBill } from "@/hooks/use-supabase";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import {
@@ -95,6 +95,7 @@ export default function Debts() {
 
   const { data: realAccounts, refetch: refetchAccounts } = useAccounts();
   const { data: realCreditCards } = useCreditCards();
+  const { data: realCategories } = useCategories();
 
   useEffect(() => {
     if (!debtsLoading && realDebts.length > 0) {
@@ -575,6 +576,19 @@ export default function Debts() {
                   const amount = parseBRLAmount(payAmount);
                   const discount = parseBRLAmount(payDiscount) || 0;
                   const totalDeduction = amount + discount;
+
+                  // Buscar categoria de Dívida / Outros para associar à transação de despesa
+                  const debtCat = realCategories.find(
+                    (c: any) =>
+                      c.name.toLowerCase().includes("dívida") ||
+                      c.name.toLowerCase().includes("dividas")
+                  ) || realCategories.find(
+                    (c: any) =>
+                      c.name.toLowerCase().includes("outros")
+                  ) || realCategories.find(
+                    (c: any) => c.type === "expense"
+                  );
+                  const resolvedCategoryId = debtCat ? debtCat.id : null;
                   
                   if (payingDebt && amount > 0) {
                     if (!useDemo) {
@@ -638,7 +652,7 @@ export default function Debts() {
                               amount: amount,
                               description: txDesc,
                               date: new Date().toISOString().split("T")[0],
-                              category_id: null,
+                              category_id: resolvedCategoryId,
                               is_fixed: false,
                               is_credit_card: true,
                               credit_card_id: payCreditCardId,
@@ -684,7 +698,7 @@ export default function Debts() {
                               amount: amount,
                               description: txDesc,
                               date: new Date().toISOString().split("T")[0],
-                              category_id: null,
+                              category_id: resolvedCategoryId,
                               is_fixed: false,
                               is_credit_card: false,
                               payment_method: methodLabel,
