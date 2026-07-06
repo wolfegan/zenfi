@@ -289,6 +289,7 @@ export default function Dashboard() {
 
   // Onboarding modal
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   useEffect(() => {
     // Only show when user has loaded and has NOT completed onboarding
@@ -300,6 +301,111 @@ export default function Dashboard() {
   const handleOnboardingComplete = () => {
     setOnboardingOpen(false);
   };
+
+  // Seeding para conta teste anônima
+  const { data: testCategories, loading: testCatsLoading } = useCategories();
+  
+  useEffect(() => {
+    async function runSeed() {
+      if (user?.is_anonymous && !testCatsLoading && testCategories.length === 0 && !seeding) {
+        setSeeding(true);
+        const toastId = toast.loading("Configurando sua conta teste com dados de demonstração...");
+        try {
+          const uId = user.id;
+
+          // 1. Criar categorias
+          const categoriesRows = [
+            { user_id: uId, name: "Alimentação", type: "expense", icon: "ShoppingCart", color: "#f97316", is_fixed: false, order: 0 },
+            { user_id: uId, name: "Transporte", type: "expense", icon: "Car", color: "#3b82f6", is_fixed: false, order: 1 },
+            { user_id: uId, name: "Moradia", type: "expense", icon: "Home", color: "#8b5cf6", is_fixed: true, order: 2 },
+            { user_id: uId, name: "Saúde", type: "expense", icon: "Stethoscope", color: "#ec4899", is_fixed: false, order: 3 },
+            { user_id: uId, name: "Lazer", type: "expense", icon: "Gamepad2", color: "#eab308", is_fixed: false, order: 4 },
+            { user_id: uId, name: "Salário", type: "income", icon: "Briefcase", color: "#22c55e", is_fixed: false, order: 5 },
+            { user_id: uId, name: "Outros", type: "expense", icon: "CircleDollarSign", color: "#64748b", is_fixed: false, order: 6 },
+          ];
+          const { data: createdCats, error: catErr } = await supabase
+            .from("categories")
+            .insert(categoriesRows)
+            .select();
+          if (catErr) throw catErr;
+
+          // 2. Criar contas bancárias de demonstração
+          const accountsRows = [
+            { user_id: uId, name: "Banco Inter (Corrente)", type: "checking", balance: 3500.00, color: "#f97316" },
+            { user_id: uId, name: "Nubank (Reserva)", type: "savings", balance: 12000.00, color: "#8b5cf6" },
+            { user_id: uId, name: "Dinheiro em Espécie", type: "cash", balance: 350.00, color: "#22c55e" }
+          ];
+          const { error: accErr } = await supabase.from("accounts").insert(accountsRows);
+          if (accErr) throw accErr;
+
+          // 3. Criar cartões de crédito
+          const cardRows = [
+            { user_id: uId, name: "Nubank Platinum", limit: 4000.00, closing_day: 5, due_day: 10, color: "#8b5cf6" },
+            { user_id: uId, name: "Inter Black", limit: 12000.00, closing_day: 15, due_day: 22, color: "#f97316" }
+          ];
+          const { error: cardErr } = await supabase.from("credit_cards").insert(cardRows);
+          if (cardErr) throw cardErr;
+
+          // 4. Criar dívidas com juros e valor original
+          const currentMonthStr = String(now.getMonth() + 1).padStart(2, "0");
+          const debtRows = [
+            { user_id: uId, creditor: "Casas Bahia", total_amount: 1200.00, remaining_amount: 800.00, monthly_payment: 100.00, due_date: `${now.getFullYear()}-${currentMonthStr}-15`, start_date: `${now.getFullYear()}-01-15`, description: "[Original: 800,00] Compra de celular parcelado em 12x", is_paid: false },
+            { user_id: uId, creditor: "Banco Itaú (Empréstimo)", total_amount: 15000.00, remaining_amount: 10000.00, monthly_payment: 500.00, due_date: `${now.getFullYear()}-${currentMonthStr}-25`, start_date: `${now.getFullYear() - 1}-06-25`, description: "[Original: 10.000,00] Empréstimo pessoal com juros", is_paid: false },
+            { user_id: uId, creditor: "Financiamento Veículo", total_amount: 48000.00, remaining_amount: 32000.00, monthly_payment: 800.00, due_date: `${now.getFullYear()}-${currentMonthStr}-10`, start_date: `${now.getFullYear() - 2}-10-10`, description: "[Original: 36.000,00] Financiamento do carro em 60x", is_paid: false }
+          ];
+          const { error: debtErr } = await supabase.from("debts").insert(debtRows);
+          if (debtErr) throw debtErr;
+
+          // 5. Criar transações iniciais
+          const salaryCat = createdCats?.find(c => c.name === "Salário");
+          const foodCat = createdCats?.find(c => c.name === "Alimentação");
+          
+          const transactionsRows = [];
+          if (salaryCat) {
+            transactionsRows.push({
+              user_id: uId,
+              type: "income",
+              amount: 5000.00,
+              description: "[PIX] Salário Mensal",
+              date: `${now.getFullYear()}-${currentMonthStr}-05`,
+              category_id: salaryCat.id,
+              is_fixed: false,
+              is_credit_card: false,
+            });
+          }
+          if (foodCat) {
+            transactionsRows.push({
+              user_id: uId,
+              type: "expense",
+              amount: 450.00,
+              description: "[Débito] Compra Supermercado",
+              date: `${now.getFullYear()}-${currentMonthStr}-02`,
+              category_id: foodCat.id,
+              is_fixed: false,
+              is_credit_card: false,
+            });
+          }
+          if (transactionsRows.length > 0) {
+            await supabase.from("transactions").insert(transactionsRows);
+          }
+
+          // 6. Concluir onboarding do perfil do usuário de teste
+          await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", uId);
+
+          toast.success("Conta de teste configurada com sucesso!", { id: toastId });
+          
+          // Forçar recarga para renderizar o estado real
+          window.location.reload();
+        } catch (err: any) {
+          console.error("Erro no seeding:", err);
+          toast.error("Erro ao gerar dados de demonstração: " + (err?.message || err), { id: toastId });
+        } finally {
+          setSeeding(false);
+        }
+      }
+    }
+    runSeed();
+  }, [user, testCatsLoading, testCategories, seeding]);
 
   // Supabase hooks
   const {
