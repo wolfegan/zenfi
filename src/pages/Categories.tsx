@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { useCategories } from "@/hooks/use-supabase";
+import { getCategoryIcon } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, Plus, Trash2, Tags } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -45,18 +46,38 @@ const colorOptions = [
 ];
 
 const iconOptions = [
-  "ShoppingCart",
-  "Home",
-  "Car",
+  "Utensils",
   "Coffee",
-  "Wifi",
+  "Pizza",
+  "Apple",
+  "Car",
+  "Bus",
+  "Plane",
+  "Fuel",
+  "Home",
+  "Tv",
+  "Zap",
+  "Droplet",
+  "Gamepad2",
+  "Music",
+  "Film",
+  "Camera",
+  "ShoppingCart",
+  "Gift",
+  "ShoppingBag",
+  "Tag",
   "Heart",
+  "Activity",
+  "Dumbbell",
+  "Pill",
   "Briefcase",
   "PiggyBank",
-  "Book",
-  "Music",
-  "Dumbbell",
-  "Plane",
+  "TrendingUp",
+  "Wallet",
+  "BookOpen",
+  "GraduationCap",
+  "Sparkles",
+  "Tags",
 ];
 
 export default function Categories() {
@@ -152,22 +173,26 @@ export default function Categories() {
         transition={{ delay: index * 0.04, duration: 0.2 }}
         className="flex items-center gap-3 p-4 rounded-xl border bg-card hover:bg-card/80 transition-all duration-200 group card-hover"
       >
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-white text-xs font-bold"
-          style={{ backgroundColor: cat.color }}
-        >
-          {cat.name.charAt(0).toUpperCase()}
-        </div>
+        {(() => {
+          const IconComponent = getCategoryIcon(cat.icon);
+          return (
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-white"
+              style={{ backgroundColor: cat.color }}
+            >
+              <IconComponent className="w-4 h-4" />
+            </div>
+          );
+        })()}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{cat.name}</p>
-          <div className="flex items-center gap-2 mt-0.5">
-            {cat.is_fixed && (
-              <span className="tag bg-secondary text-muted-foreground">
+          {cat.is_fixed && (
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="tag bg-secondary text-[10px] px-1.5 py-0.5 text-muted-foreground font-medium rounded">
                 Fixo
               </span>
-            )}
-            <span className="text-xs text-muted-foreground">{cat.icon}</span>
-          </div>
+            </div>
+          )}
         </div>
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
@@ -290,22 +315,26 @@ export default function Categories() {
                   </div>
                 </div>
 
-                {/* Icon name */}
+                {/* Icon selector grid */}
                 <div>
                   <label className="text-xs text-muted-foreground mb-2 block font-medium">
                     Ícone
                   </label>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {iconOptions.map((icon) => (
-                      <button
-                        key={icon}
-                        type="button"
-                        className={`px-2.5 py-1 rounded-lg text-[10px] border transition-all duration-150 ${form.icon === icon ? "bg-foreground text-background border-foreground" : "bg-card text-muted-foreground border-border hover:border-foreground/30"}`}
-                        onClick={() => setForm({ ...form, icon })}
-                      >
-                        {icon}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-6 gap-2 max-h-[140px] overflow-y-auto pr-1">
+                    {iconOptions.map((iconName) => {
+                      const Icon = getCategoryIcon(iconName);
+                      return (
+                        <button
+                          key={iconName}
+                          type="button"
+                          className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all duration-150 ${form.icon === iconName ? "bg-foreground text-background border-foreground scale-110 shadow-sm" : "bg-card text-muted-foreground border-border hover:border-foreground/30"}`}
+                          onClick={() => setForm({ ...form, icon: iconName })}
+                          title={iconName}
+                        >
+                          <Icon className="w-4 h-4" />
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

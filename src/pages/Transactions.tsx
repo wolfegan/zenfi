@@ -35,7 +35,7 @@ import {
   useCreditCards,
   useAccounts,
 } from "@/hooks/use-supabase";
-import { parseBRLAmount } from "@/lib/utils";
+import { parseBRLAmount, getCategoryIcon } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -784,17 +784,17 @@ export default function Transactions() {
                           : "oklch(0.93 0.006 248)",
                       }}
                     >
-                      {tx.type === "income" ? (
-                        <ArrowUp
-                          className="w-4 h-4"
-                          style={{ color: "oklch(0.52 0.15 178)" }}
-                        />
-                      ) : (
-                        <ArrowDown
-                          className="w-4 h-4"
-                          style={{ color: "oklch(0.58 0.19 27.33)" }}
-                        />
-                      )}
+                      {(() => {
+                        const Icon = getCategoryIcon(cat?.icon);
+                        return (
+                          <Icon
+                            className="w-4 h-4"
+                            style={{
+                              color: cat?.color || "var(--muted-foreground)",
+                            }}
+                          />
+                        );
+                      })()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">

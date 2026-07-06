@@ -25,3 +25,11 @@ export function formatCurrency(value: number): string {
     currency: "BRL",
   });
 }
+
+import * as LucideIcons from "lucide-react";
+
+export function getCategoryIcon(iconName: string | undefined | null): any {
+  if (!iconName) return LucideIcons.Tags;
+  const IconComponent = (LucideIcons as any)[iconName];
+  return IconComponent || LucideIcons.Tags;
+}

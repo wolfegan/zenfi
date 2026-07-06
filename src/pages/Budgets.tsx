@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { useBudgets, useCategories } from "@/hooks/use-supabase";
+import { getCategoryIcon } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Percent, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -199,18 +200,26 @@ export default function Budgets() {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-8 h-8 rounded-sm flex items-center justify-center"
-                        style={{
-                          backgroundColor: cat?.color
-                            ? `${cat.color}15`
-                            : "oklch(0.92 0 0)",
-                        }}
-                      >
-                        <span className="text-xs text-muted-foreground">
-                          {cat?.icon?.[0] || "•"}
-                        </span>
-                      </div>
+                      {(() => {
+                        const Icon = getCategoryIcon(cat?.icon);
+                        return (
+                          <div
+                            className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0"
+                            style={{
+                              backgroundColor: cat?.color
+                                ? `${cat.color}15`
+                                : "oklch(0.92 0 0)",
+                            }}
+                          >
+                            <Icon
+                              className="w-4 h-4"
+                              style={{
+                                color: cat?.color || "var(--muted-foreground)",
+                              }}
+                            />
+                          </div>
+                        );
+                      })()}
                       <div>
                         <p className="text-sm font-medium">
                           {cat?.name || "Sem categoria"}
