@@ -219,100 +219,101 @@ export function useMonthlySummary(month: string) {
   const [loading, setLoading] = useState(true);
   const userId = useUserId();
 
-  useEffect(() => {
+  const calc = useCallback(async () => {
     if (!userId) {
       setData(null);
       setLoading(false);
       return;
     }
 
-    async function calc() {
-      // Fetch everything in parallel
-      const [txRes, catRes, budgetRes] = await Promise.all([
-        supabase.from("transactions").select("*").eq("user_id", userId),
-        supabase.from("categories").select("*").eq("user_id", userId),
-        supabase
-          .from("monthly_budgets")
-          .select("*")
-          .eq("user_id", userId)
-          .eq("month", month),
-      ]);
+    // Fetch everything in parallel
+    const [txRes, catRes, budgetRes] = await Promise.all([
+      supabase.from("transactions").select("*").eq("user_id", userId),
+      supabase.from("categories").select("*").eq("user_id", userId),
+      supabase
+        .from("monthly_budgets")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("month", month),
+    ]);
 
-      const txs = txRes.data ?? [];
-      const categories = catRes.data ?? [];
-      const budgets = budgetRes.data ?? [];
-      const monthTx = txs.filter((t) => t.date.startsWith(month));
+    const txs = txRes.data ?? [];
+    const categories = catRes.data ?? [];
+    const budgets = budgetRes.data ?? [];
+    const monthTx = txs.filter((t) => t.date.startsWith(month));
 
-      const totalIncome = monthTx
-        .filter((t) => t.type === "income")
+    const totalIncome = monthTx
+      .filter((t) => t.type === "income")
+      .reduce((s, t) => s + t.amount, 0);
+    const totalExpenses = monthTx
+      .filter((t) => t.type === "expense")
+      .reduce((s, t) => s + t.amount, 0);
+    const fixedExpenses = monthTx
+      .filter((t) => t.type === "expense" && t.is_fixed)
+      .reduce((s, t) => s + t.amount, 0);
+    const variableExpenses = monthTx
+      .filter((t) => t.type === "expense" && !t.is_fixed)
+      .reduce((s, t) => s + t.amount, 0);
+    const creditCardExpenses = monthTx
+      .filter((t) => t.is_credit_card)
+      .reduce((s, t) => s + t.amount, 0);
+
+    const expensesByCategory = categories
+      .map((cat) => ({
+        category: cat,
+        total: monthTx
+          .filter((t) => t.category_id === cat.id && t.type === "expense")
+          .reduce((s, t) => s + t.amount, 0),
+      }))
+      .filter((c) => c.total > 0);
+
+    const incomeByCategory = categories
+      .map((cat) => ({
+        category: cat,
+        total: monthTx
+          .filter((t) => t.category_id === cat.id && t.type === "income")
+          .reduce((s, t) => s + t.amount, 0),
+      }))
+      .filter((c) => c.total > 0);
+
+    const budgetComparisons = budgets.map((budget) => {
+      const spent = monthTx
+        .filter(
+          (t) => t.category_id === budget.category_id && t.type === "expense",
+        )
         .reduce((s, t) => s + t.amount, 0);
-      const totalExpenses = monthTx
-        .filter((t) => t.type === "expense")
-        .reduce((s, t) => s + t.amount, 0);
-      const fixedExpenses = monthTx
-        .filter((t) => t.type === "expense" && t.is_fixed)
-        .reduce((s, t) => s + t.amount, 0);
-      const variableExpenses = monthTx
-        .filter((t) => t.type === "expense" && !t.is_fixed)
-        .reduce((s, t) => s + t.amount, 0);
-      const creditCardExpenses = monthTx
-        .filter((t) => t.is_credit_card)
-        .reduce((s, t) => s + t.amount, 0);
+      return {
+        budget,
+        spent,
+        remaining: budget.amount - spent,
+        percentage: budget.amount > 0 ? (spent / budget.amount) * 100 : 0,
+      };
+    });
 
-      const expensesByCategory = categories
-        .map((cat) => ({
-          category: cat,
-          total: monthTx
-            .filter((t) => t.category_id === cat.id && t.type === "expense")
-            .reduce((s, t) => s + t.amount, 0),
-        }))
-        .filter((c) => c.total > 0);
-
-      const incomeByCategory = categories
-        .map((cat) => ({
-          category: cat,
-          total: monthTx
-            .filter((t) => t.category_id === cat.id && t.type === "income")
-            .reduce((s, t) => s + t.amount, 0),
-        }))
-        .filter((c) => c.total > 0);
-
-      const budgetComparisons = budgets.map((budget) => {
-        const spent = monthTx
-          .filter(
-            (t) => t.category_id === budget.category_id && t.type === "expense",
-          )
-          .reduce((s, t) => s + t.amount, 0);
-        return {
-          budget,
-          spent,
-          remaining: budget.amount - spent,
-          percentage: budget.amount > 0 ? (spent / budget.amount) * 100 : 0,
-        };
-      });
-
-      setData({
-        totalIncome,
-        totalExpenses,
-        fixedExpenses,
-        variableExpenses,
-        creditCardExpenses,
-        balance: totalIncome - totalExpenses,
-        savingsRate:
-          totalIncome > 0
-            ? ((totalIncome - totalExpenses) / totalIncome) * 100
-            : 0,
-        expensesByCategory,
-        incomeByCategory,
-        budgetComparisons,
-        transactionCount: monthTx.length,
-      });
-      setLoading(false);
-    }
-    calc();
+    setData({
+      totalIncome,
+      totalExpenses,
+      fixedExpenses,
+      variableExpenses,
+      creditCardExpenses,
+      balance: totalIncome - totalExpenses,
+      savingsRate:
+        totalIncome > 0
+          ? ((totalIncome - totalExpenses) / totalIncome) * 100
+          : 0,
+      expensesByCategory,
+      incomeByCategory,
+      budgetComparisons,
+      transactionCount: monthTx.length,
+    });
+    setLoading(false);
   }, [userId, month]);
 
-  return { data, loading };
+  useEffect(() => {
+    calc();
+  }, [calc]);
+
+  return { data, loading, refetch: calc };
 }
 
 // =============================================================================
@@ -324,55 +325,56 @@ export function useMonthlyEvolution(months: number) {
   const [loading, setLoading] = useState(true);
   const userId = useUserId();
 
-  useEffect(() => {
+  const calc = useCallback(async () => {
     if (!userId) {
       setData([]);
       setLoading(false);
       return;
     }
 
-    async function calc() {
-      const { data: txs } = await supabase
-        .from("transactions")
-        .select("*")
-        .eq("user_id", userId);
+    const { data: txs } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId);
 
-      const now = new Date();
-      const monthLabels: string[] = [];
-      for (let i = months - 1; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        monthLabels.push(
-          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
-        );
-      }
-
-      const result = monthLabels.map((month) => {
-        const monthTx = (txs ?? []).filter((t) => t.date.startsWith(month));
-        const income = monthTx
-          .filter((t) => t.type === "income")
-          .reduce((s, t) => s + t.amount, 0);
-        const expenses = monthTx
-          .filter((t) => t.type === "expense")
-          .reduce((s, t) => s + t.amount, 0);
-        return {
-          month,
-          label: new Date(month + "-01").toLocaleDateString("pt-BR", {
-            month: "short",
-            year: "2-digit",
-          }),
-          income,
-          expenses,
-          balance: income - expenses,
-        };
-      });
-
-      setData(result);
-      setLoading(false);
+    const now = new Date();
+    const monthLabels: string[] = [];
+    for (let i = months - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthLabels.push(
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      );
     }
-    calc();
+
+    const result = monthLabels.map((month) => {
+      const monthTx = (txs ?? []).filter((t) => t.date.startsWith(month));
+      const income = monthTx
+        .filter((t) => t.type === "income")
+        .reduce((s, t) => s + t.amount, 0);
+      const expenses = monthTx
+        .filter((t) => t.type === "expense")
+        .reduce((s, t) => s + t.amount, 0);
+      return {
+        month,
+        label: new Date(month + "-01").toLocaleDateString("pt-BR", {
+          month: "short",
+          year: "2-digit",
+        }),
+        income,
+        expenses,
+        balance: income - expenses,
+      };
+    });
+
+    setData(result);
+    setLoading(false);
   }, [userId, months]);
 
-  return { data, loading };
+  useEffect(() => {
+    calc();
+  }, [calc]);
+
+  return { data, loading, refetch: calc };
 }
 
 // =============================================================================
@@ -384,138 +386,135 @@ export function useFinancialHealthScore() {
   const [loading, setLoading] = useState(true);
   const userId = useUserId();
 
-  useEffect(() => {
+  const calc = useCallback(async () => {
     if (!userId) {
       setData(null);
       setLoading(false);
       return;
     }
 
-    async function calc() {
-      const now = new Date();
-      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-      const [txRes, budgetRes, ccRes, invRes] = await Promise.all([
-        supabase.from("transactions").select("*").eq("user_id", userId),
-        supabase
-          .from("monthly_budgets")
-          .select("*")
-          .eq("user_id", userId)
-          .eq("month", currentMonth),
-        supabase.from("credit_cards").select("*").eq("user_id", userId),
-        supabase.from("investments").select("*").eq("user_id", userId),
-      ]);
+    const [txRes, budgetRes, ccRes, invRes] = await Promise.all([
+      supabase.from("transactions").select("*").eq("user_id", userId),
+      supabase
+        .from("monthly_budgets")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("month", currentMonth),
+      supabase.from("credit_cards").select("*").eq("user_id", userId),
+      supabase.from("investments").select("*").eq("user_id", userId),
+    ]);
 
-      const txs = txRes.data ?? [];
-      const budgets = budgetRes.data ?? [];
-      const creditCards = ccRes.data ?? [];
-      const investments = invRes.data ?? [];
+    const txs = txRes.data ?? [];
+    const budgets = budgetRes.data ?? [];
+    const creditCards = ccRes.data ?? [];
+    const investments = invRes.data ?? [];
 
-      const monthTx = txs.filter((t) => t.date.startsWith(currentMonth));
-      const totalIncome = monthTx
-        .filter((t) => t.type === "income")
-        .reduce((s, t) => s + t.amount, 0);
-      const totalExpenses = monthTx
-        .filter((t) => t.type === "expense")
-        .reduce((s, t) => s + t.amount, 0);
+    const monthTx = txs.filter((t) => t.date.startsWith(currentMonth));
+    const totalIncome = monthTx
+      .filter((t) => t.type === "income")
+      .reduce((s, t) => s + t.amount, 0);
+    const totalExpenses = monthTx
+      .filter((t) => t.type === "expense")
+      .reduce((s, t) => s + t.amount, 0);
 
-      // Savings score
-      const savingsRate =
-        totalIncome > 0
-          ? Math.min((totalIncome - totalExpenses) / totalIncome, 1)
-          : 0;
-      const savingsScore = savingsRate * 100;
+    // Savings score
+    const savingsRate =
+      totalIncome > 0
+        ? Math.min((totalIncome - totalExpenses) / totalIncome, 1)
+        : 0;
+    const savingsScore = savingsRate * 100;
 
-      // Expense score
-      const expenseRatio = totalIncome > 0 ? totalExpenses / totalIncome : 1;
-      const expenseScore = Math.max(0, (1 - expenseRatio) * 100);
+    // Expense score
+    const expenseRatio = totalIncome > 0 ? totalExpenses / totalIncome : 1;
+    const expenseScore = Math.max(0, (1 - expenseRatio) * 100);
 
-      // Budget score
-      let budgetScore = 100;
-      if (budgets.length > 0) {
-        let totalAdherence = 0;
-        for (const budget of budgets) {
-          const spent = monthTx
-            .filter(
-              (t) =>
-                t.category_id === budget.category_id && t.type === "expense",
-            )
-            .reduce((s, t) => s + t.amount, 0);
-          totalAdherence += Math.min(
-            budget.amount > 0
-              ? Math.max(0, 1 - (spent - budget.amount) / budget.amount)
-              : 1,
-            1,
-          );
-        }
-        budgetScore = (totalAdherence / budgets.length) * 100;
+    // Budget score
+    let budgetScore = 100;
+    if (budgets.length > 0) {
+      let totalAdherence = 0;
+      for (const budget of budgets) {
+        const spent = monthTx
+          .filter(
+            (t) => t.category_id === budget.category_id && t.type === "expense",
+          )
+          .reduce((s, t) => s + t.amount, 0);
+        totalAdherence += Math.min(
+          budget.amount > 0
+            ? Math.max(0, 1 - (spent - budget.amount) / budget.amount)
+            : 1,
+          1,
+        );
       }
-
-      // Credit score
-      let creditScore = 100;
-      if (creditCards.length > 0) {
-        let totalUtil = 0;
-        for (const card of creditCards) {
-          const cardTotal = monthTx
-            .filter((t) => t.credit_card_id === card.id)
-            .reduce((s, t) => s + t.amount, 0);
-          const util = card.limit > 0 ? cardTotal / card.limit : 0;
-          if (util > 0.5) totalUtil += Math.max(0, 1 - (util - 0.3) / 0.7);
-          else if (util < 0.1) totalUtil += util / 0.1;
-          else totalUtil += 1;
-        }
-        creditScore = (totalUtil / creditCards.length) * 100;
-      }
-
-      // Investment score
-      const totalInvested = investments.reduce(
-        (s, i) => s + i.current_value,
-        0,
-      );
-      const invScore = Math.min(
-        totalIncome > 0 ? (totalInvested / (totalIncome * 12)) * 100 : 0,
-        100,
-      );
-
-      const finalScore = Math.round(
-        savingsScore * 0.25 +
-          expenseScore * 0.25 +
-          budgetScore * 0.25 +
-          creditScore * 0.125 +
-          invScore * 0.125,
-      );
-
-      let status: HealthScore["status"];
-      if (finalScore >= 80) status = "excellent";
-      else if (finalScore >= 60) status = "good";
-      else if (finalScore >= 40) status = "fair";
-      else status = "poor";
-
-      const messages: Record<string, string> = {
-        excellent: "Sua saúde financeira está excelente! Continue assim!",
-        good: "Você está no caminho certo. Alguns ajustes podem melhorar ainda mais.",
-        fair: "Atenção! Reveja seus gastos e crie um orçamento.",
-        poor: "É hora de agir! Vamos reorganizar suas finanças juntos.",
-      };
-
-      setData({
-        score: Math.min(Math.max(finalScore, 0), 100),
-        status,
-        message: messages[status],
-        components: {
-          savings: { score: Math.round(savingsScore), weight: 25 },
-          expenses: { score: Math.round(expenseScore), weight: 25 },
-          budget: { score: Math.round(budgetScore), weight: 25 },
-          credit: { score: Math.round(creditScore), weight: 12.5 },
-          investment: { score: Math.round(invScore), weight: 12.5 },
-        },
-      });
-      setLoading(false);
+      budgetScore = (totalAdherence / budgets.length) * 100;
     }
-    calc();
+
+    // Credit score
+    let creditScore = 100;
+    if (creditCards.length > 0) {
+      let totalUtil = 0;
+      for (const card of creditCards) {
+        const cardTotal = monthTx
+          .filter((t) => t.credit_card_id === card.id)
+          .reduce((s, t) => s + t.amount, 0);
+        const util = card.limit > 0 ? cardTotal / card.limit : 0;
+        if (util > 0.5) totalUtil += Math.max(0, 1 - (util - 0.3) / 0.7);
+        else if (util < 0.1) totalUtil += util / 0.1;
+        else totalUtil += 1;
+      }
+      creditScore = (totalUtil / creditCards.length) * 100;
+    }
+
+    // Investment score
+    const totalInvested = investments.reduce((s, i) => s + i.current_value, 0);
+    const invScore = Math.min(
+      totalIncome > 0 ? (totalInvested / (totalIncome * 12)) * 100 : 0,
+      100,
+    );
+
+    const finalScore = Math.round(
+      savingsScore * 0.25 +
+        expenseScore * 0.25 +
+        budgetScore * 0.25 +
+        creditScore * 0.125 +
+        invScore * 0.125,
+    );
+
+    let status: HealthScore["status"];
+    if (finalScore >= 80) status = "excellent";
+    else if (finalScore >= 60) status = "good";
+    else if (finalScore >= 40) status = "fair";
+    else status = "poor";
+
+    const messages: Record<string, string> = {
+      excellent: "Sua saúde financeira está excelente! Continue assim!",
+      good: "Você está no caminho certo. Alguns ajustes podem melhorar ainda mais.",
+      fair: "Atenção! Reveja seus gastos e crie um orçamento.",
+      poor: "É hora de agir! Vamos reorganizar suas finanças juntos.",
+    };
+
+    setData({
+      score: Math.min(Math.max(finalScore, 0), 100),
+      status,
+      message: messages[status],
+      components: {
+        savings: { score: Math.round(savingsScore), weight: 25 },
+        expenses: { score: Math.round(expenseScore), weight: 25 },
+        budget: { score: Math.round(budgetScore), weight: 25 },
+        credit: { score: Math.round(creditScore), weight: 12.5 },
+        investment: { score: Math.round(invScore), weight: 12.5 },
+      },
+    });
+    setLoading(false);
   }, [userId]);
 
-  return { data, loading };
+  useEffect(() => {
+    calc();
+  }, [calc]);
+
+  return { data, loading, refetch: calc };
 }
 
 // =============================================================================

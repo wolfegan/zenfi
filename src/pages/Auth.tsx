@@ -88,7 +88,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         </div>
         <Link to="/" className="flex items-center gap-2.5 relative z-10">
           <img
-            src="/zenfi-icon.png"
+            src="/favicon-2.png"
             alt="Zenfi"
             className="w-9 h-9 rounded-xl object-cover"
           />
@@ -134,7 +134,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           <div className="lg:hidden mb-8 text-center">
             <Link to="/" className="inline-flex items-center gap-2 group">
               <img
-                src="/zenfi-icon.png"
+                src="/favicon-2.png"
                 alt="Zenfi"
                 className="w-9 h-9 rounded-xl object-cover group-hover:scale-105 transition-transform"
               />

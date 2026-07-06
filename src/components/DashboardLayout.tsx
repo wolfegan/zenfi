@@ -125,7 +125,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <div className="flex items-center justify-between px-5 h-16 border-b border-border/60">
         <Link to="/dashboard" className="flex items-center gap-2.5 group">
           <img
-            src="/zenfi-icon.png"
+            src="/favicon-2.png"
             alt="Zenfi"
             className="w-8 h-8 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform duration-200"
           />
@@ -286,7 +286,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </Button>
           <Link to="/dashboard" className="flex items-center gap-2">
             <img
-              src="/zenfi-icon.png"
+              src="/favicon-2.png"
               alt="Zenfi"
               className="w-7 h-7 rounded-lg object-cover"
             />

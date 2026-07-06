@@ -178,7 +178,7 @@ export default function Landing() {
           <div className="flex items-center justify-between h-16">
             <Link to="/" className="flex items-center gap-2.5 group">
               <img
-                src="/zenfi-icon.png"
+                src="/favicon-2.png"
                 alt="Zenfi"
                 className="w-9 h-9 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform duration-200"
               />
@@ -668,7 +668,7 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <img
-              src="/zenfi-icon.png"
+              src="/favicon-2.png"
               alt="Zenfi"
               className="w-6 h-6 rounded-md object-cover"
             />
