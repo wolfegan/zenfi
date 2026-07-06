@@ -1,7 +1,7 @@
 {
-  "name": "freebuff.com application",
-  "short_name": "freebuff.com",
-  "description": "freebuff.com application",
+  "name": "Zenfi - Suas finanças no zen.",
+  "short_name": "Zenfi",
+  "description": "Aplicativo para controle e organização de finanças pessoais.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

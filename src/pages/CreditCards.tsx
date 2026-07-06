@@ -11,7 +11,19 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { demoCreditCards } from "@/lib/demo-data";
 
-const colorOptions = ["#0a0a0a", "#444444", "#666666", "#888888", "#aaaaaa", "#c44", "#2a7"];
+const colorOptions = [
+  "#0a0a0a",
+  "#6366f1",
+  "#8b5cf6",
+  "#ec4899",
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#10b981",
+  "#3b82f6",
+  "#0ea5e9",
+];
 
 export default function CreditCardsPage() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -52,7 +64,35 @@ export default function CreditCardsPage() {
                   <div><label className="text-xs text-muted-foreground mb-1.5 block">Fechamento</label><Select value={form.closingDay} onValueChange={(v) => setForm({ ...form, closingDay: v })}><SelectTrigger className="text-xs h-9"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <SelectItem key={d} value={String(d)} className="text-xs">{d}</SelectItem>)}</SelectContent></Select></div>
                   <div><label className="text-xs text-muted-foreground mb-1.5 block">Vencimento</label><Select value={form.dueDay} onValueChange={(v) => setForm({ ...form, dueDay: v })}><SelectTrigger className="text-xs h-9"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <SelectItem key={d} value={String(d)} className="text-xs">{d}</SelectItem>)}</SelectContent></Select></div>
                 </div>
-                <div><label className="text-xs text-muted-foreground mb-1.5 block">Cor</label><div className="flex gap-2">{colorOptions.map((color) => <button key={color} type="button" className={`w-7 h-7 rounded-sm border-2 transition-all ${form.color === color ? "border-foreground scale-110" : "border-transparent"}`} style={{ backgroundColor: color }} onClick={() => setForm({ ...form, color })} />)}</div></div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1.5 block">Cor</label>
+                  <div className="flex gap-2 flex-wrap items-center">
+                    {colorOptions.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        className={`w-7 h-7 rounded-full border-2 transition-all ${form.color === color ? "border-foreground scale-110" : "border-transparent"}`}
+                        style={{ backgroundColor: color }}
+                        onClick={() => setForm({ ...form, color })}
+                      />
+                    ))}
+                    <label
+                      className={`w-7 h-7 rounded-full border-2 border-dashed border-muted-foreground/60 flex items-center justify-center cursor-pointer hover:border-foreground transition-all relative overflow-hidden ${
+                        !colorOptions.includes(form.color) ? "border-foreground scale-110 ring-2 ring-primary/20" : ""
+                      }`}
+                      style={{ backgroundColor: !colorOptions.includes(form.color) ? form.color : undefined }}
+                      title="Cor personalizada"
+                    >
+                      <span className={`text-[10px] font-bold leading-none ${!colorOptions.includes(form.color) ? "mix-blend-difference text-white" : "text-muted-foreground"}`}>🎨</span>
+                      <input
+                        type="color"
+                        value={form.color}
+                        onChange={(e) => setForm({ ...form, color: e.target.value })}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
               <DialogFooter><Button variant="outline" size="sm" className="text-xs" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancelar</Button><Button size="sm" className="text-xs" onClick={async () => { if (form.name && form.limit) { if (!useDemo) await create({ name: form.name, limit: parseFloat(form.limit), closing_day: parseInt(form.closingDay), due_day: parseInt(form.dueDay), color: form.color }); setDialogOpen(false); resetForm(); }}}>Adicionar</Button></DialogFooter>
             </DialogContent>

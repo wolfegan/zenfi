@@ -20,6 +20,7 @@ import {
   Landmark,
   Moon,
   Sun,
+  Bug,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -29,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
+import { BugReportModal } from "@/components/BugReportModal";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -69,6 +71,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [bugModalOpen, setBugModalOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
       return document.documentElement.classList.contains("dark");
@@ -166,6 +169,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         >
           {darkMode ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
           {darkMode ? "Modo claro" : "Modo escuro"}
+        </button>
+        <button
+          onClick={() => {
+            setSidebarOpen(false);
+            setBugModalOpen(true);
+          }}
+          className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-200 w-full text-muted-foreground hover:text-foreground hover:bg-secondary/60 text-destructive/90 hover:text-destructive hover:bg-destructive/10"
+        >
+          <Bug className="w-4 h-4 shrink-0" />
+          Reportar Bug
         </button>
       </div>
 
@@ -275,6 +288,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </motion.div>
         </main>
       </div>
+
+      <BugReportModal open={bugModalOpen} onOpenChange={setBugModalOpen} />
     </div>
   );
 }
