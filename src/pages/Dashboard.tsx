@@ -704,10 +704,316 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-6 rounded-sm border bg-card"
+        <div className="grid lg:grid-cols-3 gap-6 items-start">
+          {/* Transação Rápida (Primeira no Mobile, Lado Direito no Desktop) */}
+          <div className="order-first lg:order-2">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="p-5 rounded-sm border bg-card flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-medium">Transação Rápida</h3>
+                  <span className="text-[10px] text-muted-foreground">
+                    Registre instantaneamente
+                  </span>
+                </div>
+
+                <form onSubmit={handleQuickSubmit} className="space-y-4">
+                  {/* Seleção de Tipo */}
+                  <div className="flex gap-2 p-1 bg-secondary/50 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuickType("expense");
+                        setQuickCategoryId("");
+                        setQuickPaymentMethod("pix");
+                      }}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-medium transition-all duration-200 ${
+                        quickType === "expense"
+                          ? "bg-card shadow-sm text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" /> Saída
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuickType("income");
+                        setQuickCategoryId("");
+                        setQuickPaymentMethod("pix");
+                      }}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-medium transition-all duration-200 ${
+                        quickType === "income"
+                          ? "bg-card shadow-sm text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <ArrowUp className="w-3.5 h-3.5" /> Entrada
+                    </button>
+                  </div>
+
+                  {/* Inputs de Valor, Categoria e Descrição */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] text-muted-foreground mb-1 block font-medium">
+                        Valor (R$)
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0,00"
+                        value={quickAmount}
+                        onChange={(e) => setQuickAmount(e.target.value)}
+                        required
+                        className="w-full text-xs h-8 px-2.5 rounded-lg border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground mb-1 block font-medium">
+                        Categoria
+                      </label>
+                      <select
+                        value={quickCategoryId}
+                        onChange={(e) => setQuickCategoryId(e.target.value)}
+                        required
+                        className="w-full text-xs h-8 px-2 rounded-lg border bg-background focus:outline-none focus:ring-1 focus:ring-primary text-muted-foreground text-[10px] py-0"
+                      >
+                        <option value="">Selecione...</option>
+                        {categories
+                          .filter((c: any) => c.type === quickType)
+                          .map((cat: any) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-muted-foreground mb-1 block font-medium">
+                      Descrição (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Almoço, combustível..."
+                      value={quickDescription}
+                      onChange={(e) => setQuickDescription(e.target.value)}
+                      className="w-full text-xs h-8 px-2.5 rounded-lg border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+
+                  {/* Seleção de Forma de Pagamento */}
+                  <div>
+                    <label className="text-[10px] text-muted-foreground mb-1 block font-medium">
+                      Forma de Pagamento
+                    </label>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {(quickType === "expense"
+                        ? [
+                            {
+                              value: "credit_card",
+                              label: "Cartão",
+                              icon: CreditCard,
+                              color: "#8b5cf6",
+                            },
+                            {
+                              value: "pix",
+                              label: "PIX",
+                              icon: Smartphone,
+                              color: "#22c55e",
+                            },
+                            {
+                              value: "cash",
+                              label: "Dinheiro",
+                              icon: Banknote,
+                              color: "#f97316",
+                            },
+                            {
+                              value: "debit",
+                              label: "Débito",
+                              icon: Building2,
+                              color: "#3b82f6",
+                            },
+                          ]
+                        : [
+                            {
+                              value: "pix",
+                              label: "PIX",
+                              icon: Smartphone,
+                              color: "#22c55e",
+                            },
+                            {
+                              value: "cash",
+                              label: "Dinheiro",
+                              icon: Banknote,
+                              color: "#f97316",
+                            },
+                          ]
+                      ).map((opt) => {
+                        const Icon = opt.icon;
+                        const selected = quickPaymentMethod === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setQuickPaymentMethod(opt.value)}
+                            className={`flex flex-col items-center gap-1 py-1 px-0.5 rounded-lg border text-center transition-all duration-200 ${
+                              selected
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border bg-background hover:border-primary/40 hover:bg-secondary/60"
+                            }`}
+                          >
+                            <Icon
+                              className="w-3.5 h-3.5"
+                              style={{ color: selected ? opt.color : undefined }}
+                            />
+                            <span className="text-[9px] font-medium leading-none mt-0.5">
+                              {opt.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Seleção de Cartão de Crédito */}
+                  <AnimatePresence>
+                    {quickType === "expense" &&
+                      quickPaymentMethod === "credit_card" && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <label className="text-[10px] text-muted-foreground mb-1 block font-medium">
+                            Selecionar Cartão
+                          </label>
+                          {realCreditCards && realCreditCards.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {realCreditCards.map((card: any) => (
+                                <button
+                                  key={card.id}
+                                  type="button"
+                                  onClick={() => setQuickCreditCardId(card.id)}
+                                  className={`flex items-center gap-1.5 p-1.5 rounded-lg border text-left transition-all duration-200 ${
+                                    quickCreditCardId === card.id
+                                      ? "border-primary bg-primary/10"
+                                      : "border-border bg-background hover:border-primary/40"
+                                  }`}
+                                >
+                                  <div
+                                    className="w-4 h-4 rounded-sm shrink-0"
+                                    style={{
+                                      backgroundColor: card.color || "#8b5cf6",
+                                    }}
+                                  />
+                                  <span className="text-[10px] font-medium truncate">
+                                    {card.name}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[9px] text-muted-foreground p-2 bg-secondary/50 rounded-lg">
+                              Nenhum cartão cadastrado.{" "}
+                              <a
+                                href="/credit-cards"
+                                className="text-primary underline"
+                              >
+                                Cadastrar
+                              </a>
+                            </p>
+                          )}
+                        </motion.div>
+                      )}
+                  </AnimatePresence>
+
+                  {/* Seleção de Conta Bancária */}
+                  <AnimatePresence>
+                    {quickPaymentMethod !== "credit_card" && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <label className="text-[10px] text-muted-foreground mb-1 block font-medium">
+                          Selecionar Conta
+                        </label>
+                        {realAccounts && realAccounts.length > 0 ? (
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {realAccounts.map((acc: any) => (
+                              <button
+                                key={acc.id}
+                                type="button"
+                                onClick={() => setQuickAccountId(acc.id)}
+                                className={`flex items-center gap-1.5 p-1.5 rounded-lg border text-left transition-all duration-200 ${
+                                  quickAccountId === acc.id
+                                    ? "border-primary bg-primary/10"
+                                    : "border-border bg-background hover:border-primary/40"
+                                }`}
+                              >
+                                <div
+                                  className="w-4 h-4 rounded-sm shrink-0"
+                                  style={{
+                                    backgroundColor: acc.color || "#6366f1",
+                                  }}
+                                />
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-[10px] font-semibold truncate leading-none mb-0.5">
+                                    {acc.name}
+                                  </span>
+                                  <span className="text-[9px] text-muted-foreground leading-none">
+                                    {acc.balance.toLocaleString("pt-BR", {
+                                      style: "currency",
+                                      currency: "BRL",
+                                    })}
+                                  </span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[9px] text-muted-foreground p-2 bg-secondary/50 rounded-lg">
+                            Nenhuma conta cadastrada.{" "}
+                            <a
+                              href="/accounts"
+                              className="text-primary underline"
+                            >
+                              Cadastrar
+                            </a>
+                          </p>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Botão de Envio */}
+                  <button
+                    type="submit"
+                    disabled={quickSubmitting || !quickCategoryId || !quickAmount}
+                    className="w-full text-[10px] font-semibold h-8 rounded-lg bg-primary text-primary-foreground hover:bg-primary/95 transition-all duration-200 flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {quickSubmitting ? "Registrando..." : "Registrar Transação"}
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Patrimônio Líquido (Lado Esquerdo no Desktop) */}
+          <div className="lg:col-span-2 order-last lg:order-1 space-y-6">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-6 rounded-sm border bg-card"
         >
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-muted-foreground">
@@ -730,6 +1036,8 @@ export default function Dashboard() {
             {formatCurrency(netWorth)}
           </p>
         </motion.div>
+          </div>
+        </div>
 
         <div className="flex items-center justify-between">
           <div>
@@ -1097,329 +1405,6 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="p-5 rounded-sm border bg-card flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs font-medium">Transação Rápida</h3>
-                <span className="text-[10px] text-muted-foreground">
-                  Registre instantaneamente
-                </span>
-              </div>
-
-              <form onSubmit={handleQuickSubmit} className="space-y-4">
-                {/* Seleção de Tipo */}
-                <div className="flex gap-2 p-1 bg-secondary/50 rounded-xl">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setQuickType("expense");
-                      setQuickCategoryId("");
-                      setQuickPaymentMethod("pix");
-                    }}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-medium transition-all duration-200 ${
-                      quickType === "expense"
-                        ? "bg-card shadow-sm text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <ArrowDown className="w-3.5 h-3.5" /> Saída
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setQuickType("income");
-                      setQuickCategoryId("");
-                      setQuickPaymentMethod("pix");
-                    }}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-medium transition-all duration-200 ${
-                      quickType === "income"
-                        ? "bg-card shadow-sm text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <ArrowUp className="w-3.5 h-3.5" /> Entrada
-                  </button>
-                </div>
-
-                {/* Inputs de Valor, Categoria e Descrição */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] text-muted-foreground mb-1 block font-medium">
-                      Valor (R$)
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      placeholder="0,00"
-                      value={quickAmount}
-                      onChange={(e) => setQuickAmount(e.target.value)}
-                      required
-                      className="w-full text-xs h-8 px-2.5 rounded-lg border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-muted-foreground mb-1 block font-medium">
-                      Categoria
-                    </label>
-                    <select
-                      value={quickCategoryId}
-                      onChange={(e) => setQuickCategoryId(e.target.value)}
-                      required
-                      className="w-full text-xs h-8 px-2 rounded-lg border bg-background focus:outline-none focus:ring-1 focus:ring-primary text-muted-foreground"
-                    >
-                      <option value="">Selecione...</option>
-                      {categories
-                        .filter((c: any) => c.type === quickType)
-                        .map((cat: any) => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Descrição e Data */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] text-muted-foreground mb-1 block font-medium">
-                      Descrição (opcional)
-                    </label>
-                    <input
-                      placeholder="Ex: Padaria, Salário..."
-                      value={quickDescription}
-                      onChange={(e) => setQuickDescription(e.target.value)}
-                      className="w-full text-xs h-8 px-2.5 rounded-lg border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-muted-foreground mb-1 block font-medium">
-                      Data
-                    </label>
-                    <input
-                      type="date"
-                      value={quickDate}
-                      onChange={(e) => setQuickDate(e.target.value)}
-                      required
-                      className="w-full text-xs h-8 px-2.5 rounded-lg border bg-background focus:outline-none focus:ring-1 focus:ring-primary text-muted-foreground"
-                    />
-                  </div>
-                </div>
-
-                {/* Forma de pagamento */}
-                <div>
-                  <label className="text-[10px] text-muted-foreground mb-1.5 block font-medium">
-                    {quickType === "expense"
-                      ? "Forma de pagamento"
-                      : "Forma de recebimento"}
-                  </label>
-                  <div
-                    className={`grid gap-1.5 ${quickType === "expense" ? "grid-cols-4" : "grid-cols-2"}`}
-                  >
-                    {(quickType === "expense"
-                      ? [
-                          {
-                            value: "credit_card",
-                            label: "Cartão",
-                            icon: CreditCard,
-                            color: "#8b5cf6",
-                          },
-                          {
-                            value: "pix",
-                            label: "PIX",
-                            icon: Smartphone,
-                            color: "#22c55e",
-                          },
-                          {
-                            value: "cash",
-                            label: "Dinheiro",
-                            icon: Banknote,
-                            color: "#f97316",
-                          },
-                          {
-                            value: "debit",
-                            label: "Débito",
-                            icon: Building2,
-                            color: "#3b82f6",
-                          },
-                        ]
-                      : [
-                          {
-                            value: "pix",
-                            label: "PIX",
-                            icon: Smartphone,
-                            color: "#22c55e",
-                          },
-                          {
-                            value: "cash",
-                            label: "Dinheiro",
-                            icon: Banknote,
-                            color: "#f97316",
-                          },
-                        ]
-                    ).map((opt) => {
-                      const Icon = opt.icon;
-                      const selected = quickPaymentMethod === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setQuickPaymentMethod(opt.value)}
-                          className={`flex flex-col items-center gap-1 py-1.5 px-1 rounded-lg border text-center transition-all duration-200 ${
-                            selected
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-background hover:border-primary/40 hover:bg-secondary/60"
-                          }`}
-                        >
-                          <Icon
-                            className="w-3 h-3"
-                            style={{ color: selected ? opt.color : undefined }}
-                          />
-                          <span className="text-[9px] font-medium leading-none mt-0.5">
-                            {opt.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Seleção de Cartão de Crédito */}
-                <AnimatePresence>
-                  {quickType === "expense" &&
-                    quickPaymentMethod === "credit_card" && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <label className="text-[10px] text-muted-foreground mb-1 block font-medium">
-                          Selecionar Cartão
-                        </label>
-                        {realCreditCards && realCreditCards.length > 0 ? (
-                          <div className="grid grid-cols-2 gap-1.5">
-                            {realCreditCards.map((card: any) => (
-                              <button
-                                key={card.id}
-                                type="button"
-                                onClick={() => setQuickCreditCardId(card.id)}
-                                className={`flex items-center gap-1.5 p-1.5 rounded-lg border text-left transition-all duration-200 ${
-                                  quickCreditCardId === card.id
-                                    ? "border-primary bg-primary/10"
-                                    : "border-border bg-background hover:border-primary/40"
-                                }`}
-                              >
-                                <div
-                                  className="w-4 h-4 rounded-sm shrink-0"
-                                  style={{
-                                    backgroundColor: card.color || "#8b5cf6",
-                                  }}
-                                />
-                                <span className="text-[10px] font-medium truncate">
-                                  {card.name}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-[9px] text-muted-foreground p-2 bg-secondary/50 rounded-lg">
-                            Nenhum cartão cadastrado.{" "}
-                            <a
-                              href="/credit-cards"
-                              className="text-primary underline"
-                            >
-                              Cadastrar
-                            </a>
-                          </p>
-                        )}
-                      </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Seleção de Conta Bancária */}
-                <AnimatePresence>
-                  {quickType && quickPaymentMethod !== "credit_card" && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden space-y-1"
-                    >
-                      <label className="text-[10px] text-muted-foreground block font-medium">
-                        {quickType === "expense"
-                          ? "Pagar com a Conta"
-                          : "Receber na Conta"}{" "}
-                        <span className="text-destructive">*</span>
-                      </label>
-                      {accounts && accounts.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-1.5">
-                          {accounts.map((acc: any) => (
-                            <button
-                              key={acc.id}
-                              type="button"
-                              onClick={() => setQuickAccountId(acc.id)}
-                              className={`flex items-center gap-1.5 p-1.5 rounded-lg border text-left transition-all duration-200 ${
-                                quickAccountId === acc.id
-                                  ? "border-primary bg-primary/10"
-                                  : "border-border bg-background hover:border-primary/40"
-                              }`}
-                            >
-                              <div
-                                className="w-4 h-4 rounded-sm shrink-0"
-                                style={{
-                                  backgroundColor: acc.color || "#6366f1",
-                                }}
-                              />
-                              <div className="flex flex-col min-w-0">
-                                <span className="text-[10px] font-semibold truncate leading-none mb-0.5">
-                                  {acc.name}
-                                </span>
-                                <span className="text-[9px] text-muted-foreground leading-none">
-                                  {acc.balance.toLocaleString("pt-BR", {
-                                    style: "currency",
-                                    currency: "BRL",
-                                  })}
-                                </span>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-[9px] text-muted-foreground p-2 bg-secondary/50 rounded-lg">
-                          Nenhuma conta cadastrada.{" "}
-                          <a
-                            href="/accounts"
-                            className="text-primary underline"
-                          >
-                            Cadastrar
-                          </a>
-                        </p>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Botão de Envio */}
-                <button
-                  type="submit"
-                  disabled={quickSubmitting || !quickCategoryId || !quickAmount}
-                  className="w-full text-[10px] font-semibold h-8 rounded-lg bg-primary text-primary-foreground hover:bg-primary/95 transition-all duration-200 flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  {quickSubmitting ? "Registrando..." : "Registrar Transação"}
-                </button>
-              </form>
-            </div>
-          </motion.div>
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-6">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
             className="p-5 rounded-sm border bg-card"
           >
             <div className="flex items-center justify-between mb-4">
@@ -1533,8 +1518,9 @@ export default function Dashboard() {
               </div>
             )}
           </motion.div>
+        </div>
 
-          <motion.div
+        <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
@@ -1602,7 +1588,6 @@ export default function Dashboard() {
               </div>
             )}
           </motion.div>
-        </div>
       </div>
 
       {user && (
