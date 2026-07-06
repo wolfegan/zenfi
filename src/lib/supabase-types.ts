@@ -171,7 +171,14 @@ export interface Goal {
   current_amount: number;
   monthly_contribution: number;
   target_date: string | null;
-  category: "emergency" | "travel" | "purchase" | "investment" | "education" | "retirement" | "other";
+  category:
+    | "emergency"
+    | "travel"
+    | "purchase"
+    | "investment"
+    | "education"
+    | "retirement"
+    | "other";
   is_achieved: boolean;
   created_at: number;
 }

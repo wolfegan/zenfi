@@ -14,7 +14,13 @@ interface AuthProps {
 type AuthStep = "login" | "signup" | "loading";
 
 function Auth({ redirectAfterAuth }: AuthProps = {}) {
-  const { isLoading: authLoading, isAuthenticated, signInWithEmail, signUpWithEmail, signInAnonymously } = useAuth();
+  const {
+    isLoading: authLoading,
+    isAuthenticated,
+    signInWithEmail,
+    signUpWithEmail,
+    signInAnonymously,
+  } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<AuthStep>("login");
   const [email, setEmail] = useState("");
@@ -35,7 +41,11 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     try {
       await signInWithEmail(email, password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao entrar. Verifique seus dados.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Falha ao entrar. Verifique seus dados.",
+      );
       setIsLoading(false);
     }
   };
@@ -61,7 +71,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     try {
       await signInAnonymously();
     } catch (err) {
-      setError(`Falha ao entrar como convidado: ${err instanceof Error ? err.message : "Erro desconhecido"}`);
+      setError(
+        `Falha ao entrar como convidado: ${err instanceof Error ? err.message : "Erro desconhecido"}`,
+      );
       setIsLoading(false);
     }
   };
@@ -75,7 +87,11 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           <div className="absolute bottom-1/4 left-1/4 w-64 h-64 rounded-full bg-white/5 blur-3xl" />
         </div>
         <Link to="/" className="flex items-center gap-2.5 relative z-10">
-          <img src="/zenfi-icon.png" alt="Zenfi" className="w-9 h-9 rounded-xl object-cover" />
+          <img
+            src="/zenfi-icon.png"
+            alt="Zenfi"
+            className="w-9 h-9 rounded-xl object-cover"
+          />
           <span className="text-base font-semibold text-white">Zenfi</span>
         </Link>
         <div className="relative z-10">
@@ -83,10 +99,15 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
             Suas finanças no <span className="font-semibold">zen.</span>
           </h2>
           <p className="text-sm text-white/60 leading-relaxed max-w-sm">
-            Registre gastos, acompanhe orçamentos e veja sua saúde financeira crescer — tudo de forma simples e gratuita.
+            Registre gastos, acompanhe orçamentos e veja sua saúde financeira
+            crescer — tudo de forma simples e gratuita.
           </p>
           <div className="mt-8 space-y-3">
-            {["Dashboard com score de saúde financeira", "Controle de cartões e dívidas", "Metas e investimentos"].map((item) => (
+            {[
+              "Dashboard com score de saúde financeira",
+              "Controle de cartões e dívidas",
+              "Metas e investimentos",
+            ].map((item) => (
               <div key={item} className="flex items-center gap-2.5">
                 <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center shrink-0">
                   <Shield className="w-3 h-3 text-white/70" />
@@ -96,7 +117,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
             ))}
           </div>
         </div>
-        <p className="text-xs text-white/30 relative z-10">100% gratuito · Sem anúncios</p>
+        <p className="text-xs text-white/30 relative z-10">
+          100% gratuito · Sem anúncios
+        </p>
       </div>
 
       {/* Right panel — form */}
@@ -110,7 +133,11 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           {/* Mobile logo */}
           <div className="lg:hidden mb-8 text-center">
             <Link to="/" className="inline-flex items-center gap-2 group">
-              <img src="/zenfi-icon.png" alt="Zenfi" className="w-9 h-9 rounded-xl object-cover group-hover:scale-105 transition-transform" />
+              <img
+                src="/zenfi-icon.png"
+                alt="Zenfi"
+                className="w-9 h-9 rounded-xl object-cover group-hover:scale-105 transition-transform"
+              />
               <span className="text-base font-semibold">Zenfi</span>
             </Link>
           </div>
@@ -120,13 +147,20 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
               {step === "signup" ? "Criar conta" : "Bem-vindo de volta"}
             </h1>
             <p className="text-sm text-muted-foreground mt-1.5">
-              {step === "signup" ? "Crie sua conta com email e senha" : "Entre com seu email e senha"}
+              {step === "signup"
+                ? "Crie sua conta com email e senha"
+                : "Entre com seu email e senha"}
             </p>
           </div>
 
-          <form onSubmit={step === "signup" ? handleEmailSignUp : handleEmailLogin} className="space-y-4">
+          <form
+            onSubmit={step === "signup" ? handleEmailSignUp : handleEmailLogin}
+            className="space-y-4"
+          >
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-xs font-medium">Email</Label>
+              <Label htmlFor="email" className="text-xs font-medium">
+                Email
+              </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -143,7 +177,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-xs font-medium">Senha</Label>
+              <Label htmlFor="password" className="text-xs font-medium">
+                Senha
+              </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -179,9 +215,15 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
               disabled={isLoading || !email || !password}
             >
               {isLoading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{step === "signup" ? "Criando..." : "Entrando..."}</>
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {step === "signup" ? "Criando..." : "Entrando..."}
+                </>
               ) : (
-                <>{step === "signup" ? "Criar Conta" : "Entrar"}<ArrowRight className="ml-2 h-4 w-4" /></>
+                <>
+                  {step === "signup" ? "Criar Conta" : "Entrar"}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
               )}
             </Button>
           </form>
@@ -191,7 +233,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-[11px] uppercase tracking-wider">
-              <span className="bg-background px-3 text-muted-foreground">ou</span>
+              <span className="bg-background px-3 text-muted-foreground">
+                ou
+              </span>
             </div>
           </div>
 
@@ -210,7 +254,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
             {step === "signup" ? "Já tem conta?" : "Não tem conta?"}{" "}
             <button
               type="button"
-              onClick={() => { setStep(step === "signup" ? "login" : "signup"); setError(null); }}
+              onClick={() => {
+                setStep(step === "signup" ? "login" : "signup");
+                setError(null);
+              }}
               disabled={isLoading}
               className="text-foreground font-medium hover:underline transition-colors"
             >

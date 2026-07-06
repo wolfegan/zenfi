@@ -23,7 +23,10 @@ function getShownNotifications(): string[] {
 function markShown(ids: string[]) {
   try {
     const existing = getShownNotifications();
-    sessionStorage.setItem(NOTIFICATION_KEY, JSON.stringify([...new Set([...existing, ...ids])]));
+    sessionStorage.setItem(
+      NOTIFICATION_KEY,
+      JSON.stringify([...new Set([...existing, ...ids])]),
+    );
   } catch {
     // ignore
   }
@@ -38,7 +41,8 @@ function requestBrowserPermission() {
 }
 
 function sendBrowserNotification(title: string, body: string) {
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  if (!("Notification" in window) || Notification.permission !== "granted")
+    return;
   try {
     new Notification(title, { body, icon: "/logo.png" });
   } catch {
@@ -48,7 +52,9 @@ function sendBrowserNotification(title: string, body: string) {
 
 function getDaysUntil(dueDateStr: string): { days: number; overdue: boolean } {
   const now = new Date();
-  const dueDate = new Date(dueDateStr + (dueDateStr.includes("T") ? "" : "T00:00:00"));
+  const dueDate = new Date(
+    dueDateStr + (dueDateStr.includes("T") ? "" : "T00:00:00"),
+  );
   const diff = dueDate.getTime() - now.getTime();
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
   return { days, overdue: days < 0 };
@@ -107,7 +113,11 @@ export function useDebtNotifications(debts: DebtNotification[] | undefined) {
         });
       } else {
         const dayLabel =
-          days === 0 ? "vence hoje!" : days === 1 ? "vence amanhã!" : `vence em ${days} dias`;
+          days === 0
+            ? "vence hoje!"
+            : days === 1
+              ? "vence amanhã!"
+              : `vence em ${days} dias`;
         const title = `📅 ${debt.creditor} ${dayLabel}`;
         const body = `${formatCurrency(debt.remaining_amount)} restantes`;
         sendBrowserNotification(title, body);

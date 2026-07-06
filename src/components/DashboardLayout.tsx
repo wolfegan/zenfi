@@ -45,7 +45,15 @@ const navItems = [
   { to: "/reports", label: "Relatórios", icon: FileText },
 ];
 
-function NavItem({ item, isActive, onClick }: { item: typeof navItems[0]; isActive: boolean; onClick?: () => void }) {
+function NavItem({
+  item,
+  isActive,
+  onClick,
+}: {
+  item: (typeof navItems)[0];
+  isActive: boolean;
+  onClick?: () => void;
+}) {
   const Icon = item.icon;
   return (
     <Link
@@ -60,7 +68,9 @@ function NavItem({ item, isActive, onClick }: { item: typeof navItems[0]; isActi
       {isActive && (
         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full" />
       )}
-      <Icon className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isActive ? "" : "group-hover:scale-110"}`} />
+      <Icon
+        className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isActive ? "" : "group-hover:scale-110"}`}
+      />
       <span className="truncate">{item.label}</span>
     </Link>
   );
@@ -167,7 +177,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           onClick={() => setDarkMode(!darkMode)}
           className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-200 w-full text-muted-foreground hover:text-foreground hover:bg-secondary/60"
         >
-          {darkMode ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
+          {darkMode ? (
+            <Sun className="w-4 h-4 shrink-0" />
+          ) : (
+            <Moon className="w-4 h-4 shrink-0" />
+          )}
           {darkMode ? "Modo claro" : "Modo escuro"}
         </button>
         <button
@@ -188,7 +202,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg hover:bg-secondary/60 transition-all duration-200 group">
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border border-border flex items-center justify-center shrink-0 text-[11px] font-semibold">
-                {initials || <User className="w-3.5 h-3.5 text-muted-foreground" />}
+                {initials || (
+                  <User className="w-3.5 h-3.5 text-muted-foreground" />
+                )}
               </div>
               <div className="flex-1 min-w-0 text-left">
                 <p className="text-xs font-medium truncate">{displayName}</p>
@@ -199,12 +215,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={() => navigate("/settings")} className="text-xs">
+            <DropdownMenuItem
+              onClick={() => navigate("/settings")}
+              className="text-xs"
+            >
               <Settings className="w-3.5 h-3.5 mr-2" />
               Configurações
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut} className="text-xs text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onClick={handleSignOut}
+              className="text-xs text-destructive focus:text-destructive"
+            >
               <LogOut className="w-3.5 h-3.5 mr-2" />
               Sair
             </DropdownMenuItem>
@@ -263,7 +285,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <Menu className="h-4 w-4" />
           </Button>
           <Link to="/dashboard" className="flex items-center gap-2">
-            <img src="/zenfi-icon.png" alt="Zenfi" className="w-7 h-7 rounded-lg object-cover" />
+            <img
+              src="/zenfi-icon.png"
+              alt="Zenfi"
+              className="w-7 h-7 rounded-lg object-cover"
+            />
             <span className="text-sm font-semibold">Zenfi</span>
           </Link>
           <div className="ml-auto">
@@ -271,7 +297,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               onClick={() => setDarkMode(!darkMode)}
               className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary transition-colors"
             >
-              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {darkMode ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
             </button>
           </div>
         </header>

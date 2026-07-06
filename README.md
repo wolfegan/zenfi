@@ -56,6 +56,7 @@ O projeto utiliza uma stack extremamente moderna e de alta performance:
 Siga o passo a passo abaixo para rodar o projeto localmente:
 
 ### 1. Clonar o Repositório e Instalar Dependências
+
 ```bash
 git clone https://github.com/wolfegan/zenfi.git
 cd zenfi
@@ -63,7 +64,9 @@ npm install
 ```
 
 ### 2. Configurar Variáveis de Ambiente
+
 Crie um arquivo `.env` na raiz do projeto e adicione as suas chaves do Supabase:
+
 ```env
 VITE_SUPABASE_URL=https://seu-projeto.supabase.co
 VITE_SUPABASE_ANON_KEY=sua-chave-public-publishable-anon-key
@@ -73,7 +76,9 @@ VITE_SUPABASE_ANON_KEY=sua-chave-public-publishable-anon-key
 > Certifique-se de usar a **Publishable key** (`sb_publishable_...`) do Supabase e nunca a Secret Key para manter seu banco seguro.
 
 ### 3. Criar a Estrutura do Banco de Dados
+
 Para o aplicativo funcionar corretamente, você precisa executar o arquivo de migração SQL no seu painel do Supabase:
+
 1. Abra o arquivo `src/lib/supabase-schema.sql`.
 2. Copie todo o conteúdo.
 3. No painel do seu projeto no Supabase, acesse **SQL Editor** -> **New Query**.
@@ -84,17 +89,23 @@ Para o aplicativo funcionar corretamente, você precisa executar o arquivo de mi
 ## 🏃 Como Executar
 
 ### Desenvolvimento Local (Vite Dev Server)
+
 Para rodar a aplicação em ambiente de desenvolvimento com Hot Module Replacement (HMR):
+
 ```bash
 npm run dev
 ```
+
 Acesse no navegador através de: **http://localhost:5173**
 
 ### Compilação de Produção (Build)
+
 Para compilar e otimizar os assets para produção:
+
 ```bash
 npm run build
 ```
+
 O build otimizado será gerado na pasta `/dist`.
 
 ---
@@ -102,5 +113,6 @@ O build otimizado será gerado na pasta `/dist`.
 ## 🛡️ Segurança & RLS (Row Level Security)
 
 Todas as tabelas do banco de dados no Supabase contam com políticas de **Row Level Security (RLS)** ativas. Isso garante que:
+
 - Usuários autenticados só podem ler, inserir, atualizar ou excluir dados que pertençam ao seu próprio `user_id`.
 - Um usuário nunca conseguirá acessar as transações, cartões ou metas de outro usuário do sistema.

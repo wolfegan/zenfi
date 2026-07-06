@@ -1,12 +1,46 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  User, Wallet, Tags, CheckCircle2, ChevronRight, ChevronLeft,
-  Briefcase, Building2, GraduationCap, TrendingDown, PiggyBank,
-  TrendingUp, LayoutGrid, Pencil, Trash2, Plus, X, Check,
-  ShoppingCart, Car, Home, Coffee, Wifi, Heart, Dumbbell, Plane,
-  Book, Music, Utensils, Bus, Smartphone, Zap, Stethoscope,
-  Baby, Dog, Gift, Gamepad2, CreditCard, CircleDollarSign, Banknote,
+  User,
+  Wallet,
+  Tags,
+  CheckCircle2,
+  ChevronRight,
+  ChevronLeft,
+  Briefcase,
+  Building2,
+  GraduationCap,
+  TrendingDown,
+  PiggyBank,
+  TrendingUp,
+  LayoutGrid,
+  Pencil,
+  Trash2,
+  Plus,
+  X,
+  Check,
+  ShoppingCart,
+  Car,
+  Home,
+  Coffee,
+  Wifi,
+  Heart,
+  Dumbbell,
+  Plane,
+  Book,
+  Music,
+  Utensils,
+  Bus,
+  Smartphone,
+  Zap,
+  Stethoscope,
+  Baby,
+  Dog,
+  Gift,
+  Gamepad2,
+  CreditCard,
+  CircleDollarSign,
+  Banknote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,18 +52,51 @@ import type { Profile } from "@/lib/supabase-types";
 
 // ─── Icon Registry ──────────────────────────────────────────────────────────
 const ICONS: Record<string, React.ElementType> = {
-  ShoppingCart, Car, Home, Coffee, Wifi, Heart, Dumbbell, Plane,
-  Book, Music, Utensils, Bus, Smartphone, Zap, Stethoscope,
-  Baby, Dog, Gift, Gamepad2, CreditCard, CircleDollarSign, Banknote,
-  Briefcase, Wallet: Wallet, TrendingUp,
+  ShoppingCart,
+  Car,
+  Home,
+  Coffee,
+  Wifi,
+  Heart,
+  Dumbbell,
+  Plane,
+  Book,
+  Music,
+  Utensils,
+  Bus,
+  Smartphone,
+  Zap,
+  Stethoscope,
+  Baby,
+  Dog,
+  Gift,
+  Gamepad2,
+  CreditCard,
+  CircleDollarSign,
+  Banknote,
+  Briefcase,
+  Wallet: Wallet,
+  TrendingUp,
 };
 
 const ICON_LIST = Object.keys(ICONS);
 
 const COLOR_PALETTE = [
-  "#6366f1", "#8b5cf6", "#ec4899", "#ef4444", "#f97316",
-  "#eab308", "#22c55e", "#10b981", "#14b8a6", "#3b82f6",
-  "#0ea5e9", "#64748b", "#a16207", "#be185d", "#7c3aed",
+  "#6366f1",
+  "#8b5cf6",
+  "#ec4899",
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#10b981",
+  "#14b8a6",
+  "#3b82f6",
+  "#0ea5e9",
+  "#64748b",
+  "#a16207",
+  "#be185d",
+  "#7c3aed",
 ];
 
 // ─── Default Categories ──────────────────────────────────────────────────────
@@ -43,43 +110,160 @@ interface CategoryDraft {
 }
 
 const DEFAULT_EXPENSE_CATEGORIES: Omit<CategoryDraft, "id">[] = [
-  { name: "Alimentação", type: "expense", icon: "ShoppingCart", color: "#f97316", is_fixed: false },
-  { name: "Transporte", type: "expense", icon: "Car", color: "#3b82f6", is_fixed: false },
-  { name: "Moradia", type: "expense", icon: "Home", color: "#8b5cf6", is_fixed: true },
-  { name: "Saúde", type: "expense", icon: "Stethoscope", color: "#ec4899", is_fixed: false },
-  { name: "Lazer", type: "expense", icon: "Gamepad2", color: "#eab308", is_fixed: false },
-  { name: "Educação", type: "expense", icon: "Book", color: "#14b8a6", is_fixed: false },
-  { name: "Contas", type: "expense", icon: "Zap", color: "#6366f1", is_fixed: true },
-  { name: "Vestuário", type: "expense", icon: "Gift", color: "#a16207", is_fixed: false },
+  {
+    name: "Alimentação",
+    type: "expense",
+    icon: "ShoppingCart",
+    color: "#f97316",
+    is_fixed: false,
+  },
+  {
+    name: "Transporte",
+    type: "expense",
+    icon: "Car",
+    color: "#3b82f6",
+    is_fixed: false,
+  },
+  {
+    name: "Moradia",
+    type: "expense",
+    icon: "Home",
+    color: "#8b5cf6",
+    is_fixed: true,
+  },
+  {
+    name: "Saúde",
+    type: "expense",
+    icon: "Stethoscope",
+    color: "#ec4899",
+    is_fixed: false,
+  },
+  {
+    name: "Lazer",
+    type: "expense",
+    icon: "Gamepad2",
+    color: "#eab308",
+    is_fixed: false,
+  },
+  {
+    name: "Educação",
+    type: "expense",
+    icon: "Book",
+    color: "#14b8a6",
+    is_fixed: false,
+  },
+  {
+    name: "Contas",
+    type: "expense",
+    icon: "Zap",
+    color: "#6366f1",
+    is_fixed: true,
+  },
+  {
+    name: "Vestuário",
+    type: "expense",
+    icon: "Gift",
+    color: "#a16207",
+    is_fixed: false,
+  },
 ];
 
 const DEFAULT_INCOME_CATEGORIES: Omit<CategoryDraft, "id">[] = [
-  { name: "Salário", type: "income", icon: "Briefcase", color: "#22c55e", is_fixed: true },
-  { name: "Freelance", type: "income", icon: "CircleDollarSign", color: "#10b981", is_fixed: false },
-  { name: "Investimentos", type: "income", icon: "TrendingUp", color: "#0ea5e9", is_fixed: false },
+  {
+    name: "Salário",
+    type: "income",
+    icon: "Briefcase",
+    color: "#22c55e",
+    is_fixed: true,
+  },
+  {
+    name: "Freelance",
+    type: "income",
+    icon: "CircleDollarSign",
+    color: "#10b981",
+    is_fixed: false,
+  },
+  {
+    name: "Investimentos",
+    type: "income",
+    icon: "TrendingUp",
+    color: "#0ea5e9",
+    is_fixed: false,
+  },
 ];
 
-const makeDrafts = (): CategoryDraft[] => [
-  ...DEFAULT_EXPENSE_CATEGORIES,
-  ...DEFAULT_INCOME_CATEGORIES,
-].map((c, i) => ({ ...c, id: `draft-${i}` }));
+const makeDrafts = (): CategoryDraft[] =>
+  [...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES].map((c, i) => ({
+    ...c,
+    id: `draft-${i}`,
+  }));
 
 // ─── Profile Types ───────────────────────────────────────────────────────────
 const PROFILE_TYPES = [
-  { value: "clt", label: "CLT", icon: Briefcase, desc: "Empregado com carteira assinada" },
-  { value: "autonomo", label: "Autônomo", icon: CircleDollarSign, desc: "Trabalho por conta própria" },
-  { value: "empresario", label: "Empresário", icon: Building2, desc: "Tenho meu próprio negócio" },
-  { value: "estudante", label: "Estudante", icon: GraduationCap, desc: "Estudante ou estagiário" },
+  {
+    value: "clt",
+    label: "CLT",
+    icon: Briefcase,
+    desc: "Empregado com carteira assinada",
+  },
+  {
+    value: "autonomo",
+    label: "Autônomo",
+    icon: CircleDollarSign,
+    desc: "Trabalho por conta própria",
+  },
+  {
+    value: "empresario",
+    label: "Empresário",
+    icon: Building2,
+    desc: "Tenho meu próprio negócio",
+  },
+  {
+    value: "estudante",
+    label: "Estudante",
+    icon: GraduationCap,
+    desc: "Estudante ou estagiário",
+  },
 ];
 
 // ─── Financial Goals ─────────────────────────────────────────────────────────
 const FINANCIAL_GOALS = [
-  { value: "economizar", label: "Economizar mais", icon: PiggyBank, color: "#22c55e" },
-  { value: "dividas", label: "Sair das dívidas", icon: TrendingDown, color: "#ef4444" },
-  { value: "investir", label: "Começar a investir", icon: TrendingUp, color: "#3b82f6" },
-  { value: "controlar", label: "Controlar gastos", icon: LayoutGrid, color: "#8b5cf6" },
-  { value: "aposentadoria", label: "Planejar aposentadoria", icon: Heart, color: "#ec4899" },
-  { value: "viagem", label: "Realizar uma viagem", icon: Plane, color: "#f97316" },
+  {
+    value: "economizar",
+    label: "Economizar mais",
+    icon: PiggyBank,
+    color: "#22c55e",
+  },
+  {
+    value: "dividas",
+    label: "Sair das dívidas",
+    icon: TrendingDown,
+    color: "#ef4444",
+  },
+  {
+    value: "investir",
+    label: "Começar a investir",
+    icon: TrendingUp,
+    color: "#3b82f6",
+  },
+  {
+    value: "controlar",
+    label: "Controlar gastos",
+    icon: LayoutGrid,
+    color: "#8b5cf6",
+  },
+  {
+    value: "aposentadoria",
+    label: "Planejar aposentadoria",
+    icon: Heart,
+    color: "#ec4899",
+  },
+  {
+    value: "viagem",
+    label: "Realizar uma viagem",
+    icon: Plane,
+    color: "#f97316",
+  },
 ];
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -90,14 +274,18 @@ interface OnboardingModalProps {
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
-export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps) {
+export function OnboardingModal({
+  user,
+  open,
+  onComplete,
+}: OnboardingModalProps) {
   const totalSteps = 4;
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
 
   // Step 1 — Profile
   const [name, setName] = useState(
-    user.name && !user.name.includes("@") ? user.name : ""
+    user.name && !user.name.includes("@") ? user.name : "",
   );
   const [age, setAge] = useState("");
   const [profileType, setProfileType] = useState("");
@@ -110,7 +298,9 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
   // Step 3 — Categories
   const [categories, setCategories] = useState<CategoryDraft[]>(makeDrafts);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [addingType, setAddingType] = useState<"income" | "expense" | null>(null);
+  const [addingType, setAddingType] = useState<"income" | "expense" | null>(
+    null,
+  );
   const [newCatName, setNewCatName] = useState("");
   const [newCatIcon, setNewCatIcon] = useState("ShoppingCart");
   const [newCatColor, setNewCatColor] = useState("#6366f1");
@@ -126,11 +316,16 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
   // ── Category helpers ─────────────────────────────────────────────────────────
   const startEdit = (cat: CategoryDraft) => {
     setEditingId(cat.id);
-    setEditForm({ name: cat.name, icon: cat.icon, color: cat.color, is_fixed: cat.is_fixed });
+    setEditForm({
+      name: cat.name,
+      icon: cat.icon,
+      color: cat.color,
+      is_fixed: cat.is_fixed,
+    });
   };
   const saveEdit = () => {
     setCategories((prev) =>
-      prev.map((c) => (c.id === editingId ? { ...c, ...editForm } : c))
+      prev.map((c) => (c.id === editingId ? { ...c, ...editForm } : c)),
     );
     setEditingId(null);
     setEditForm({});
@@ -159,16 +354,21 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
   const handleFinish = async () => {
     setSubmitting(true);
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
       if (!authUser) throw new Error("Not authenticated");
 
       // 1. Update profile
-      await supabase.from("profiles").update({
-        name: name.trim(),
-        monthly_income: monthlyIncome ? parseFloat(monthlyIncome) : null,
-        financial_goal: selectedGoal || null,
-        onboarding_completed: true,
-      }).eq("id", authUser.id);
+      await supabase
+        .from("profiles")
+        .update({
+          name: name.trim(),
+          monthly_income: monthlyIncome ? parseFloat(monthlyIncome) : null,
+          financial_goal: selectedGoal || null,
+          onboarding_completed: true,
+        })
+        .eq("id", authUser.id);
 
       // 2. Insert categories in bulk
       if (categories.length > 0) {
@@ -181,14 +381,18 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
           is_fixed: c.is_fixed,
           order: i,
         }));
-        const { error: catError } = await supabase.from("categories").insert(rows);
+        const { error: catError } = await supabase
+          .from("categories")
+          .insert(rows);
         if (catError) console.warn("Category insert error:", catError.message);
       }
 
       onComplete();
       toast.success(`Bem-vindo ao Zenfi, ${name}! Tudo configurado. 🎉`);
     } catch (err: any) {
-      toast.error("Erro ao salvar configurações: " + (err?.message || "Tente novamente."));
+      toast.error(
+        "Erro ao salvar configurações: " + (err?.message || "Tente novamente."),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -225,17 +429,31 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
             return (
               <div key={n} className="flex items-center gap-1.5">
                 <div className="flex flex-col items-center gap-1">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    isDone ? "bg-primary text-primary-foreground" :
-                    isActive ? "bg-primary text-primary-foreground ring-4 ring-primary/20" :
-                    "bg-secondary text-muted-foreground"
-                  }`}>
-                    {isDone ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      isDone
+                        ? "bg-primary text-primary-foreground"
+                        : isActive
+                          ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                          : "bg-secondary text-muted-foreground"
+                    }`}
+                  >
+                    {isDone ? (
+                      <Check className="w-3.5 h-3.5" />
+                    ) : (
+                      <Icon className="w-3.5 h-3.5" />
+                    )}
                   </div>
-                  <span className={`text-[9px] font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
+                  <span
+                    className={`text-[9px] font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`}
+                  >
+                    {label}
+                  </span>
                 </div>
                 {i < 3 && (
-                  <div className={`h-0.5 w-8 rounded-full mb-4 transition-all duration-300 ${isDone ? "bg-primary" : "bg-secondary"}`} />
+                  <div
+                    className={`h-0.5 w-8 rounded-full mb-4 transition-all duration-300 ${isDone ? "bg-primary" : "bg-secondary"}`}
+                  />
                 )}
               </div>
             );
@@ -247,14 +465,26 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
           <AnimatePresence mode="wait">
             {/* ── Step 1: Profile ─────────────────────────────────────────── */}
             {step === 1 && (
-              <motion.div key="step1" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }} className="space-y-4">
+              <motion.div
+                key="step1"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-4"
+              >
                 <div>
                   <h2 className="font-bold text-base">Seu Perfil</h2>
-                  <p className="text-xs text-muted-foreground">Vamos nos conhecer para personalizar sua experiência.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Vamos nos conhecer para personalizar sua experiência.
+                  </p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Como você se chama? <span className="text-destructive">*</span></Label>
+                  <Label className="text-xs font-semibold">
+                    Como você se chama?{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     placeholder="Seu nome"
                     value={name}
@@ -265,7 +495,12 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Sua idade <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                  <Label className="text-xs font-semibold">
+                    Sua idade{" "}
+                    <span className="text-muted-foreground font-normal">
+                      (opcional)
+                    </span>
+                  </Label>
                   <Input
                     type="number"
                     placeholder="Ex: 28"
@@ -278,7 +513,12 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Como você se identifica? <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                  <Label className="text-xs font-semibold">
+                    Como você se identifica?{" "}
+                    <span className="text-muted-foreground font-normal">
+                      (opcional)
+                    </span>
+                  </Label>
                   <div className="grid grid-cols-2 gap-2">
                     {PROFILE_TYPES.map((pt) => {
                       const Icon = pt.icon;
@@ -286,15 +526,21 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
                       return (
                         <button
                           key={pt.value}
-                          onClick={() => setProfileType(selected ? "" : pt.value)}
+                          onClick={() =>
+                            setProfileType(selected ? "" : pt.value)
+                          }
                           className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all duration-200 ${
-                            selected ? "border-primary bg-primary/10 text-primary" : "border-border bg-background hover:border-primary/40 hover:bg-secondary/60"
+                            selected
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-background hover:border-primary/40 hover:bg-secondary/60"
                           }`}
                         >
                           <Icon className="w-4 h-4 shrink-0" />
                           <div>
                             <p className="text-xs font-semibold">{pt.label}</p>
-                            <p className="text-[10px] text-muted-foreground leading-tight">{pt.desc}</p>
+                            <p className="text-[10px] text-muted-foreground leading-tight">
+                              {pt.desc}
+                            </p>
                           </div>
                         </button>
                       );
@@ -306,33 +552,52 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
 
             {/* ── Step 2: Financial ───────────────────────────────────────── */}
             {step === 2 && (
-              <motion.div key="step2" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }} className="space-y-4">
+              <motion.div
+                key="step2"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-4"
+              >
                 <div>
                   <h2 className="font-bold text-base">Situação Financeira</h2>
-                  <p className="text-xs text-muted-foreground">Essas informações calculam sua saúde financeira.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Essas informações calculam sua saúde financeira.
+                  </p>
                 </div>
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Tipo de renda</Label>
                   <div className="flex gap-2 flex-wrap">
-                    {["Salário", "Pró-labore", "Freelance", "Outra"].map((opt) => (
-                      <button
-                        key={opt}
-                        onClick={() => setIncomeLabel(opt === incomeLabel ? "" : opt)}
-                        className={`text-[11px] px-3 py-1.5 rounded-full border font-medium transition-all ${
-                          incomeLabel === opt ? "border-primary bg-primary/10 text-primary" : "border-border bg-background hover:border-primary/40"
-                        }`}
-                      >
-                        {opt}
-                      </button>
-                    ))}
+                    {["Salário", "Pró-labore", "Freelance", "Outra"].map(
+                      (opt) => (
+                        <button
+                          key={opt}
+                          onClick={() =>
+                            setIncomeLabel(opt === incomeLabel ? "" : opt)
+                          }
+                          className={`text-[11px] px-3 py-1.5 rounded-full border font-medium transition-all ${
+                            incomeLabel === opt
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-background hover:border-primary/40"
+                          }`}
+                        >
+                          {opt}
+                        </button>
+                      ),
+                    )}
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Valor mensal <span className="text-destructive">*</span></Label>
+                  <Label className="text-xs font-semibold">
+                    Valor mensal <span className="text-destructive">*</span>
+                  </Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-semibold">R$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-semibold">
+                      R$
+                    </span>
                     <Input
                       type="number"
                       placeholder="0,00"
@@ -344,7 +609,10 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Principal objetivo financeiro <span className="text-destructive">*</span></Label>
+                  <Label className="text-xs font-semibold">
+                    Principal objetivo financeiro{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
                   <div className="grid grid-cols-2 gap-2">
                     {FINANCIAL_GOALS.map((g) => {
                       const Icon = g.icon;
@@ -352,15 +620,29 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
                       return (
                         <button
                           key={g.value}
-                          onClick={() => setSelectedGoal(selected ? "" : g.value)}
+                          onClick={() =>
+                            setSelectedGoal(selected ? "" : g.value)
+                          }
                           className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all duration-200 ${
-                            selected ? "border-primary bg-primary/10" : "border-border bg-background hover:border-primary/40 hover:bg-secondary/60"
+                            selected
+                              ? "border-primary bg-primary/10"
+                              : "border-border bg-background hover:border-primary/40 hover:bg-secondary/60"
                           }`}
                         >
-                          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: g.color + "22" }}>
-                            <Icon className="w-3.5 h-3.5" style={{ color: g.color }} />
+                          <div
+                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: g.color + "22" }}
+                          >
+                            <Icon
+                              className="w-3.5 h-3.5"
+                              style={{ color: g.color }}
+                            />
                           </div>
-                          <span className={`text-xs font-medium leading-tight ${selected ? "text-primary" : ""}`}>{g.label}</span>
+                          <span
+                            className={`text-xs font-medium leading-tight ${selected ? "text-primary" : ""}`}
+                          >
+                            {g.label}
+                          </span>
                         </button>
                       );
                     })}
@@ -371,10 +653,19 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
 
             {/* ── Step 3: Categories ──────────────────────────────────────── */}
             {step === 3 && (
-              <motion.div key="step3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }} className="space-y-3">
+              <motion.div
+                key="step3"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-3"
+              >
                 <div>
                   <h2 className="font-bold text-base">Suas Categorias</h2>
-                  <p className="text-xs text-muted-foreground">Padrões prontos para usar. Edite, remova ou adicione novas!</p>
+                  <p className="text-xs text-muted-foreground">
+                    Padrões prontos para usar. Edite, remova ou adicione novas!
+                  </p>
                 </div>
 
                 <div className="max-h-[340px] overflow-y-auto space-y-3 pr-1">
@@ -384,77 +675,136 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
                         {type === "expense" ? "💸 Despesas" : "💰 Receitas"}
                       </p>
                       <div className="space-y-1">
-                        {categories.filter((c) => c.type === type).map((cat) => {
-                          const Icon = ICONS[cat.icon] || ShoppingCart;
-                          const isEditing = editingId === cat.id;
-                          return (
-                            <div key={cat.id} className="rounded-xl border bg-background p-2.5">
-                              {isEditing ? (
-                                <div className="space-y-2">
-                                  <Input
-                                    value={editForm.name || ""}
-                                    onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                                    className="h-8 text-xs rounded-lg"
-                                    placeholder="Nome da categoria"
-                                    autoFocus
-                                  />
-                                  <div>
-                                    <p className="text-[10px] text-muted-foreground font-semibold mb-1">Ícone:</p>
-                                    <div className="flex gap-1 flex-wrap">
-                                      {ICON_LIST.map((iconKey) => {
-                                        const IcoComp = ICONS[iconKey];
-                                        return (
+                        {categories
+                          .filter((c) => c.type === type)
+                          .map((cat) => {
+                            const Icon = ICONS[cat.icon] || ShoppingCart;
+                            const isEditing = editingId === cat.id;
+                            return (
+                              <div
+                                key={cat.id}
+                                className="rounded-xl border bg-background p-2.5"
+                              >
+                                {isEditing ? (
+                                  <div className="space-y-2">
+                                    <Input
+                                      value={editForm.name || ""}
+                                      onChange={(e) =>
+                                        setEditForm((f) => ({
+                                          ...f,
+                                          name: e.target.value,
+                                        }))
+                                      }
+                                      className="h-8 text-xs rounded-lg"
+                                      placeholder="Nome da categoria"
+                                      autoFocus
+                                    />
+                                    <div>
+                                      <p className="text-[10px] text-muted-foreground font-semibold mb-1">
+                                        Ícone:
+                                      </p>
+                                      <div className="flex gap-1 flex-wrap">
+                                        {ICON_LIST.map((iconKey) => {
+                                          const IcoComp = ICONS[iconKey];
+                                          return (
+                                            <button
+                                              key={iconKey}
+                                              onClick={() =>
+                                                setEditForm((f) => ({
+                                                  ...f,
+                                                  icon: iconKey,
+                                                }))
+                                              }
+                                              className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-all ${editForm.icon === iconKey ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"}`}
+                                            >
+                                              <IcoComp className="w-3.5 h-3.5" />
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] text-muted-foreground font-semibold mb-1">
+                                        Cor:
+                                      </p>
+                                      <div className="flex gap-1.5 flex-wrap">
+                                        {COLOR_PALETTE.map((c) => (
                                           <button
-                                            key={iconKey}
-                                            onClick={() => setEditForm((f) => ({ ...f, icon: iconKey }))}
-                                            className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-all ${editForm.icon === iconKey ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"}`}
-                                          >
-                                            <IcoComp className="w-3.5 h-3.5" />
-                                          </button>
-                                        );
-                                      })}
+                                            key={c}
+                                            onClick={() =>
+                                              setEditForm((f) => ({
+                                                ...f,
+                                                color: c,
+                                              }))
+                                            }
+                                            className={`w-5 h-5 rounded-full border-2 transition-all ${editForm.color === c ? "border-foreground scale-110" : "border-transparent"}`}
+                                            style={{ backgroundColor: c }}
+                                          />
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        className="h-7 text-xs rounded-lg flex-1"
+                                        onClick={saveEdit}
+                                      >
+                                        <Check className="w-3 h-3 mr-1" />{" "}
+                                        Salvar
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs rounded-lg"
+                                        onClick={() => {
+                                          setEditingId(null);
+                                          setEditForm({});
+                                        }}
+                                      >
+                                        Cancelar
+                                      </Button>
                                     </div>
                                   </div>
-                                  <div>
-                                    <p className="text-[10px] text-muted-foreground font-semibold mb-1">Cor:</p>
-                                    <div className="flex gap-1.5 flex-wrap">
-                                      {COLOR_PALETTE.map((c) => (
-                                        <button
-                                          key={c}
-                                          onClick={() => setEditForm((f) => ({ ...f, color: c }))}
-                                          className={`w-5 h-5 rounded-full border-2 transition-all ${editForm.color === c ? "border-foreground scale-110" : "border-transparent"}`}
-                                          style={{ backgroundColor: c }}
-                                        />
-                                      ))}
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                                      style={{
+                                        backgroundColor: cat.color + "22",
+                                      }}
+                                    >
+                                      <Icon
+                                        className="w-3.5 h-3.5"
+                                        style={{ color: cat.color }}
+                                      />
                                     </div>
+                                    <span className="text-xs font-medium flex-1">
+                                      {cat.name}
+                                    </span>
+                                    {cat.is_fixed && (
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-medium">
+                                        Fixo
+                                      </span>
+                                    )}
+                                    <button
+                                      onClick={() => startEdit(cat)}
+                                      className="p-1 hover:text-primary transition-colors"
+                                      title="Editar"
+                                    >
+                                      <Pencil className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => removeCategory(cat.id)}
+                                      className="p-1 hover:text-destructive transition-colors"
+                                      title="Remover"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
                                   </div>
-                                  <div className="flex gap-2">
-                                    <Button size="sm" className="h-7 text-xs rounded-lg flex-1" onClick={saveEdit}>
-                                      <Check className="w-3 h-3 mr-1" /> Salvar
-                                    </Button>
-                                    <Button size="sm" variant="outline" className="h-7 text-xs rounded-lg" onClick={() => { setEditingId(null); setEditForm({}); }}>
-                                      Cancelar
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: cat.color + "22" }}>
-                                    <Icon className="w-3.5 h-3.5" style={{ color: cat.color }} />
-                                  </div>
-                                  <span className="text-xs font-medium flex-1">{cat.name}</span>
-                                  {cat.is_fixed && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-medium">Fixo</span>}
-                                  <button onClick={() => startEdit(cat)} className="p-1 hover:text-primary transition-colors" title="Editar">
-                                    <Pencil className="w-3 h-3" />
-                                  </button>
-                                  <button onClick={() => removeCategory(cat.id)} className="p-1 hover:text-destructive transition-colors" title="Remover">
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                                )}
+                              </div>
+                            );
+                          })}
                       </div>
 
                       {/* Add new category */}
@@ -466,10 +816,14 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
                             onChange={(e) => setNewCatName(e.target.value)}
                             className="h-8 text-xs rounded-lg"
                             autoFocus
-                            onKeyDown={(e) => e.key === "Enter" && addCategory()}
+                            onKeyDown={(e) =>
+                              e.key === "Enter" && addCategory()
+                            }
                           />
                           <div>
-                            <p className="text-[10px] text-muted-foreground font-semibold mb-1">Ícone:</p>
+                            <p className="text-[10px] text-muted-foreground font-semibold mb-1">
+                              Ícone:
+                            </p>
                             <div className="flex gap-1 flex-wrap">
                               {ICON_LIST.map((iconKey) => {
                                 const IcoComp = ICONS[iconKey];
@@ -486,7 +840,9 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
                             </div>
                           </div>
                           <div>
-                            <p className="text-[10px] text-muted-foreground font-semibold mb-1">Cor:</p>
+                            <p className="text-[10px] text-muted-foreground font-semibold mb-1">
+                              Cor:
+                            </p>
                             <div className="flex gap-1.5 flex-wrap">
                               {COLOR_PALETTE.map((c) => (
                                 <button
@@ -499,10 +855,20 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <Button size="sm" className="h-7 text-xs rounded-lg flex-1" onClick={addCategory} disabled={!newCatName.trim()}>
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs rounded-lg flex-1"
+                              onClick={addCategory}
+                              disabled={!newCatName.trim()}
+                            >
                               <Plus className="w-3 h-3 mr-1" /> Adicionar
                             </Button>
-                            <Button size="sm" variant="outline" className="h-7 text-xs rounded-lg" onClick={() => setAddingType(null)}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs rounded-lg"
+                              onClick={() => setAddingType(null)}
+                            >
                               <X className="w-3 h-3" />
                             </Button>
                           </div>
@@ -512,7 +878,8 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
                           onClick={() => setAddingType(type)}
                           className="mt-1.5 w-full text-[11px] text-muted-foreground border border-dashed rounded-xl py-2 hover:border-primary/40 hover:text-primary transition-all"
                         >
-                          + Adicionar {type === "expense" ? "despesa" : "receita"}
+                          + Adicionar{" "}
+                          {type === "expense" ? "despesa" : "receita"}
                         </button>
                       )}
                     </div>
@@ -523,7 +890,14 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
 
             {/* ── Step 4: Done ────────────────────────────────────────────── */}
             {step === 4 && (
-              <motion.div key="step4" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="flex flex-col items-center justify-center text-center space-y-5 py-6">
+              <motion.div
+                key="step4"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="flex flex-col items-center justify-center text-center space-y-5 py-6"
+              >
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
@@ -533,26 +907,51 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
                   <CheckCircle2 className="w-10 h-10 text-primary" />
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-                  <h2 className="text-2xl font-bold tracking-tight">Tudo pronto, {name}! 🎉</h2>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                >
+                  <h2 className="text-2xl font-bold tracking-tight">
+                    Tudo pronto, {name}! 🎉
+                  </h2>
                   <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto leading-relaxed">
-                    Seu espaço no Zenfi está configurado. Comece adicionando sua primeira transação!
+                    Seu espaço no Zenfi está configurado. Comece adicionando sua
+                    primeira transação!
                   </p>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="w-full space-y-2">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35 }}
+                  className="w-full space-y-2"
+                >
                   <div className="flex items-center gap-2.5 text-xs text-muted-foreground p-3 bg-secondary/50 rounded-xl text-left">
                     <User className="w-3.5 h-3.5 text-primary shrink-0" />
                     <span>
-                      Perfil: <strong className="text-foreground">{name}{age ? `, ${age} anos` : ""}</strong>
-                      {profileType ? ` · ${PROFILE_TYPES.find(p => p.value === profileType)?.label}` : ""}
+                      Perfil:{" "}
+                      <strong className="text-foreground">
+                        {name}
+                        {age ? `, ${age} anos` : ""}
+                      </strong>
+                      {profileType
+                        ? ` · ${PROFILE_TYPES.find((p) => p.value === profileType)?.label}`
+                        : ""}
                     </span>
                   </div>
                   {monthlyIncome && (
                     <div className="flex items-center gap-2.5 text-xs text-muted-foreground p-3 bg-secondary/50 rounded-xl text-left">
                       <Wallet className="w-3.5 h-3.5 text-primary shrink-0" />
                       <span>
-                        Renda: <strong className="text-foreground">R$ {parseFloat(monthlyIncome).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>/mês
+                        Renda:{" "}
+                        <strong className="text-foreground">
+                          R${" "}
+                          {parseFloat(monthlyIncome).toLocaleString("pt-BR", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </strong>
+                        /mês
                         {incomeLabel ? ` (${incomeLabel})` : ""}
                       </span>
                     </div>
@@ -560,12 +959,26 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
                   {selectedGoal && (
                     <div className="flex items-center gap-2.5 text-xs text-muted-foreground p-3 bg-secondary/50 rounded-xl text-left">
                       <TrendingUp className="w-3.5 h-3.5 text-primary shrink-0" />
-                      <span>Objetivo: <strong className="text-foreground">{FINANCIAL_GOALS.find(g => g.value === selectedGoal)?.label}</strong></span>
+                      <span>
+                        Objetivo:{" "}
+                        <strong className="text-foreground">
+                          {
+                            FINANCIAL_GOALS.find(
+                              (g) => g.value === selectedGoal,
+                            )?.label
+                          }
+                        </strong>
+                      </span>
                     </div>
                   )}
                   <div className="flex items-center gap-2.5 text-xs text-muted-foreground p-3 bg-secondary/50 rounded-xl text-left">
                     <Tags className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span><strong className="text-foreground">{categories.length} categorias</strong> configuradas</span>
+                    <span>
+                      <strong className="text-foreground">
+                        {categories.length} categorias
+                      </strong>{" "}
+                      configuradas
+                    </span>
                   </div>
                 </motion.div>
               </motion.div>
@@ -576,7 +989,11 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
         {/* Footer */}
         <div className="px-6 pb-6 flex gap-3 border-t pt-4">
           {step > 1 && step < totalSteps && (
-            <Button variant="outline" onClick={prev} className="rounded-xl h-10 flex items-center gap-1 text-sm">
+            <Button
+              variant="outline"
+              onClick={prev}
+              className="rounded-xl h-10 flex items-center gap-1 text-sm"
+            >
               <ChevronLeft className="w-4 h-4" /> Voltar
             </Button>
           )}
@@ -590,12 +1007,19 @@ export function OnboardingModal({ user, open, onComplete }: OnboardingModalProps
             </Button>
           )}
           {step === 3 && (
-            <Button onClick={next} className="flex-1 rounded-xl h-10 text-sm font-semibold flex items-center justify-center gap-1">
+            <Button
+              onClick={next}
+              className="flex-1 rounded-xl h-10 text-sm font-semibold flex items-center justify-center gap-1"
+            >
               Revisar e Finalizar <ChevronRight className="w-4 h-4" />
             </Button>
           )}
           {step === totalSteps && (
-            <Button onClick={handleFinish} disabled={submitting} className="flex-1 rounded-xl h-10 text-sm font-semibold">
+            <Button
+              onClick={handleFinish}
+              disabled={submitting}
+              className="flex-1 rounded-xl h-10 text-sm font-semibold"
+            >
               {submitting ? "Configurando..." : "Entrar no Zenfi 🚀"}
             </Button>
           )}

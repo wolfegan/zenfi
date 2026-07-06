@@ -1,10 +1,24 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bug, X, Paperclip, Send, Loader2, Image as ImageIcon } from "lucide-react";
+import {
+  Bug,
+  X,
+  Paperclip,
+  Send,
+  Loader2,
+  Image as ImageIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
@@ -70,11 +84,14 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
           .upload(filePath, file, { cacheControl: "3600", upsert: true });
 
         if (uploadError) {
-          console.warn("Storage upload failed, trying to save report anyway:", uploadError.message);
+          console.warn(
+            "Storage upload failed, trying to save report anyway:",
+            uploadError.message,
+          );
         } else if (uploadData) {
-          const { data: { publicUrl } } = supabase.storage
-            .from("attachments")
-            .getPublicUrl(filePath);
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("attachments").getPublicUrl(filePath);
           attachmentUrl = publicUrl;
         }
       }
@@ -94,8 +111,10 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
 
       // 3. Open mail client to send the email directly to developer
       const emailRecipient = "victorwolfegan@gmail.com";
-      const emailSubject = encodeURIComponent(`[Zenfi Bug Report] ${title.trim()}`);
-      
+      const emailSubject = encodeURIComponent(
+        `[Zenfi Bug Report] ${title.trim()}`,
+      );
+
       let emailBody = `Olá Victor,\n\n`;
       emailBody += `Foi reportado um problema no Zenfi por: ${user?.email || "Usuário não identificado"}\n\n`;
       emailBody += `--- DETALHES DO REPORTE ---\n`;
@@ -110,12 +129,14 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
       emailBody += `Enviado do aplicativo Zenfi.`;
 
       const mailtoUrl = `mailto:${emailRecipient}?subject=${emailSubject}&body=${encodeURIComponent(emailBody)}`;
-      
+
       // Open default mail client
       window.open(mailtoUrl, "_blank");
 
-      toast.success("Reporte registrado! O seu cliente de e-mail foi aberto para envio final.");
-      
+      toast.success(
+        "Reporte registrado! O seu cliente de e-mail foi aberto para envio final.",
+      );
+
       // Reset form
       setTitle("");
       setDescription("");
@@ -123,7 +144,10 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
       setFilePreview(null);
       onOpenChange(false);
     } catch (err: any) {
-      toast.error("Ocorreu um erro ao processar o reporte: " + (err.message || "Tente novamente."));
+      toast.error(
+        "Ocorreu um erro ao processar o reporte: " +
+          (err.message || "Tente novamente."),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -137,16 +161,21 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
             <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
               <Bug className="w-4 h-4 text-destructive" />
             </div>
-            <DialogTitle className="text-base font-semibold">Reportar Bug / Sugestão</DialogTitle>
+            <DialogTitle className="text-base font-semibold">
+              Reportar Bug / Sugestão
+            </DialogTitle>
           </div>
           <DialogDescription className="text-xs text-muted-foreground">
-            Encontrou algum problema ou tem sugestões de melhoria? Descreva abaixo para que possamos corrigir.
+            Encontrou algum problema ou tem sugestões de melhoria? Descreva
+            abaixo para que possamos corrigir.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-3">
           <div className="space-y-1.5">
-            <Label htmlFor="bug-title" className="text-xs font-semibold">Título do problema <span className="text-destructive">*</span></Label>
+            <Label htmlFor="bug-title" className="text-xs font-semibold">
+              Título do problema <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="bug-title"
               placeholder="Ex: Erro ao cadastrar transação no débito"
@@ -158,7 +187,9 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="bug-desc" className="text-xs font-semibold">Descrição detalhada <span className="text-destructive">*</span></Label>
+            <Label htmlFor="bug-desc" className="text-xs font-semibold">
+              Descrição detalhada <span className="text-destructive">*</span>
+            </Label>
             <textarea
               id="bug-desc"
               rows={4}
@@ -171,12 +202,19 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Anexo <span className="text-muted-foreground font-normal">(Imagem ou arquivo, máx 5MB)</span></Label>
-            
+            <Label className="text-xs font-semibold">
+              Anexo{" "}
+              <span className="text-muted-foreground font-normal">
+                (Imagem ou arquivo, máx 5MB)
+              </span>
+            </Label>
+
             {!file ? (
               <label className="flex flex-col items-center justify-center border-2 border-dashed border-border hover:border-primary/40 rounded-xl p-4 cursor-pointer hover:bg-secondary/40 transition-all duration-200">
                 <Paperclip className="w-5 h-5 text-muted-foreground mb-1" />
-                <span className="text-xs text-muted-foreground font-medium">Clique para selecionar arquivo</span>
+                <span className="text-xs text-muted-foreground font-medium">
+                  Clique para selecionar arquivo
+                </span>
                 <input
                   type="file"
                   accept="image/*,application/pdf,text/plain"
@@ -187,7 +225,11 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
             ) : (
               <div className="flex items-center gap-3 p-3 rounded-xl border bg-secondary/30">
                 {filePreview ? (
-                  <img src={filePreview} alt="Preview" className="w-12 h-12 rounded-lg object-cover border shrink-0" />
+                  <img
+                    src={filePreview}
+                    alt="Preview"
+                    className="w-12 h-12 rounded-lg object-cover border shrink-0"
+                  />
                 ) : (
                   <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center shrink-0 border">
                     <ImageIcon className="w-5 h-5 text-muted-foreground" />
@@ -195,7 +237,9 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium truncate">{file.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
                 </div>
                 <button
                   type="button"

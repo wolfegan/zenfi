@@ -1,4 +1,4 @@
-import '@vly-ai/integrations';
+import "@vly-ai/integrations";
 import { Toaster } from "@/components/ui/sonner";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { InstrumentationProvider } from "@/instrumentation.tsx";
@@ -28,7 +28,9 @@ const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 function RouteLoading() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="animate-pulse text-muted-foreground text-sm font-medium">Carregando...</div>
+      <div className="animate-pulse text-muted-foreground text-sm font-medium">
+        Carregando...
+      </div>
     </div>
   );
 }
@@ -56,7 +58,6 @@ function RouteSyncer() {
   return null;
 }
 
-
 import { ProtectedRoute } from "@/components/ProtectedRoute.tsx";
 
 createRoot(document.getElementById("root")!).render(
@@ -68,21 +69,101 @@ createRoot(document.getElementById("root")!).render(
         <Suspense fallback={<RouteLoading />}>
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
-            
+            <Route
+              path="/auth"
+              element={<AuthPage redirectAfterAuth="/dashboard" />}
+            />
+
             {/* Protected Routes */}
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
-            <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
-            <Route path="/budgets" element={<ProtectedRoute><Budgets /></ProtectedRoute>} />
-            <Route path="/credit-cards" element={<ProtectedRoute><CreditCards /></ProtectedRoute>} />
-            <Route path="/investments" element={<ProtectedRoute><Investments /></ProtectedRoute>} />
-            <Route path="/debts" element={<ProtectedRoute><Debts /></ProtectedRoute>} />
-            <Route path="/goals" element={<ProtectedRoute><Goals /></ProtectedRoute>} />
-            <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
-            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-            
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/transactions"
+              element={
+                <ProtectedRoute>
+                  <Transactions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/categories"
+              element={
+                <ProtectedRoute>
+                  <Categories />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/budgets"
+              element={
+                <ProtectedRoute>
+                  <Budgets />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/credit-cards"
+              element={
+                <ProtectedRoute>
+                  <CreditCards />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/investments"
+              element={
+                <ProtectedRoute>
+                  <Investments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/debts"
+              element={
+                <ProtectedRoute>
+                  <Debts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/goals"
+              element={
+                <ProtectedRoute>
+                  <Goals />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/accounts"
+              element={
+                <ProtectedRoute>
+                  <Accounts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute>
+                  <Reports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

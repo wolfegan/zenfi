@@ -100,7 +100,10 @@ export function useAuth() {
   }
 
   async function signInWithEmail(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     if (error) throw error;
   }
 

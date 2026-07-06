@@ -27,7 +27,10 @@ function HealthScoreGauge({ score = 78 }: { score?: number }) {
     const timer = setTimeout(() => {
       const interval = setInterval(() => {
         setAnimatedScore((prev) => {
-          if (prev >= score) { clearInterval(interval); return score; }
+          if (prev >= score) {
+            clearInterval(interval);
+            return score;
+          }
           return prev + 1;
         });
       }, 18);
@@ -53,42 +56,107 @@ function HealthScoreGauge({ score = 78 }: { score?: number }) {
   return (
     <div className="relative w-52 h-52 sm:w-64 sm:h-64 mx-auto">
       <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
-        <circle cx="100" cy="100" r="90" fill="none" stroke="oklch(0.92 0 0)" strokeWidth="8" className="dark:stroke-[oklch(0.22 0 0)]" />
+        <circle
+          cx="100"
+          cy="100"
+          r="90"
+          fill="none"
+          stroke="oklch(0.92 0 0)"
+          strokeWidth="8"
+          className="dark:stroke-[oklch(0.22 0 0)]"
+        />
         <circle
           ref={gaugeRef}
-          cx="100" cy="100" r="90" fill="none"
+          cx="100"
+          cy="100"
+          r="90"
+          fill="none"
           stroke={getScoreColor(animatedScore)}
-          strokeWidth="8" strokeLinecap="round"
+          strokeWidth="8"
+          strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           className="transition-all duration-200 ease-out"
-          style={{ filter: `drop-shadow(0 0 8px ${getScoreColor(animatedScore)}66)` }}
+          style={{
+            filter: `drop-shadow(0 0 8px ${getScoreColor(animatedScore)}66)`,
+          }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-5xl sm:text-6xl font-light tabular-nums transition-colors duration-500" style={{ color: getScoreColor(animatedScore) }}>
+        <span
+          className="text-5xl sm:text-6xl font-light tabular-nums transition-colors duration-500"
+          style={{ color: getScoreColor(animatedScore) }}
+        >
           {animatedScore}
         </span>
-        <span className="text-xs text-muted-foreground mt-1 tracking-widest uppercase font-medium">{getScoreLabel(animatedScore)}</span>
+        <span className="text-xs text-muted-foreground mt-1 tracking-widest uppercase font-medium">
+          {getScoreLabel(animatedScore)}
+        </span>
       </div>
     </div>
   );
 }
 
 const features = [
-  { icon: ArrowDownUp, title: "Controle de Gastos", desc: "Registre entradas e saídas com categorias personalizadas. Diferencie gastos fixos de variáveis.", color: "oklch(0.42 0.18 264)" },
-  { icon: Target, title: "Orçamentos Mensais", desc: "Defina limites de gastos por categoria e acompanhe seu progresso em tempo real.", color: "oklch(0.52 0.15 178)" },
-  { icon: CreditCard, title: "Faturas de Cartão", desc: "Acompanhe suas faturas, visualize gastos por cartão e nunca perca uma data de vencimento.", color: "oklch(0.68 0.16 55)" },
-  { icon: TrendingUp, title: "Investimentos", desc: "Monitore seus investimentos em um só lugar: ações, cripto, renda fixa e mais.", color: "oklch(0.48 0.14 145)" },
-  { icon: BarChart3, title: "Saúde Financeira", desc: "Score animado estilo Serasa com análise completa da sua saúde financeira.", color: "oklch(0.6 0.18 320)" },
-  { icon: Shield, title: "100% Gratuito", desc: "Sem custos, sem anúncios. Seus dados financeiros protegidos e só seus.", color: "oklch(0.52 0.12 250)" },
+  {
+    icon: ArrowDownUp,
+    title: "Controle de Gastos",
+    desc: "Registre entradas e saídas com categorias personalizadas. Diferencie gastos fixos de variáveis.",
+    color: "oklch(0.42 0.18 264)",
+  },
+  {
+    icon: Target,
+    title: "Orçamentos Mensais",
+    desc: "Defina limites de gastos por categoria e acompanhe seu progresso em tempo real.",
+    color: "oklch(0.52 0.15 178)",
+  },
+  {
+    icon: CreditCard,
+    title: "Faturas de Cartão",
+    desc: "Acompanhe suas faturas, visualize gastos por cartão e nunca perca uma data de vencimento.",
+    color: "oklch(0.68 0.16 55)",
+  },
+  {
+    icon: TrendingUp,
+    title: "Investimentos",
+    desc: "Monitore seus investimentos em um só lugar: ações, cripto, renda fixa e mais.",
+    color: "oklch(0.48 0.14 145)",
+  },
+  {
+    icon: BarChart3,
+    title: "Saúde Financeira",
+    desc: "Score animado estilo Serasa com análise completa da sua saúde financeira.",
+    color: "oklch(0.6 0.18 320)",
+  },
+  {
+    icon: Shield,
+    title: "100% Gratuito",
+    desc: "Sem custos, sem anúncios. Seus dados financeiros protegidos e só seus.",
+    color: "oklch(0.52 0.12 250)",
+  },
 ];
 
 const steps = [
-  { num: "01", title: "Crie sua conta", desc: "Email ou acesso rápido como convidado em segundos." },
-  { num: "02", title: "Adicione transações", desc: "Registre seus gastos fixos e variáveis com categorias." },
-  { num: "03", title: "Defina orçamentos", desc: "Estabeleça quanto pode gastar em cada categoria por mês." },
-  { num: "04", title: "Veja sua evolução", desc: "Acompanhe seu score de saúde financeira crescer." },
+  {
+    num: "01",
+    title: "Crie sua conta",
+    desc: "Email ou acesso rápido como convidado em segundos.",
+  },
+  {
+    num: "02",
+    title: "Adicione transações",
+    desc: "Registre seus gastos fixos e variáveis com categorias.",
+  },
+  {
+    num: "03",
+    title: "Defina orçamentos",
+    desc: "Estabeleça quanto pode gastar em cada categoria por mês.",
+  },
+  {
+    num: "04",
+    title: "Veja sua evolução",
+    desc: "Acompanhe seu score de saúde financeira crescer.",
+  },
 ];
 
 const stats = [
@@ -114,33 +182,78 @@ export default function Landing() {
                 alt="Zenfi"
                 className="w-9 h-9 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform duration-200"
               />
-              <span className="text-base font-semibold tracking-tight">Zenfi</span>
+              <span className="text-base font-semibold tracking-tight">
+                Zenfi
+              </span>
             </Link>
 
             <nav className="hidden sm:flex items-center gap-8">
-              <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Recursos</a>
-              <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Como funciona</a>
+              <a
+                href="#features"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Recursos
+              </a>
+              <a
+                href="#how-it-works"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Como funciona
+              </a>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate(isAuthenticated ? "/dashboard" : "/auth")}
+                onClick={() =>
+                  navigate(isAuthenticated ? "/dashboard" : "/auth")
+                }
                 className="text-sm h-9 rounded-lg"
               >
                 {isLoading ? "..." : isAuthenticated ? "Dashboard" : "Entrar"}
               </Button>
             </nav>
 
-            <Button variant="ghost" size="icon" className="sm:hidden h-9 w-9" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="sm:hidden h-9 w-9"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
             </Button>
           </div>
         </div>
 
         {mobileMenuOpen && (
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="sm:hidden border-t px-4 py-4 space-y-3 bg-background">
-            <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-muted-foreground hover:text-foreground py-1">Recursos</a>
-            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-muted-foreground hover:text-foreground py-1">Como funciona</a>
-            <Button className="w-full text-sm mt-2 rounded-lg h-10" onClick={() => { setMobileMenuOpen(false); navigate(isAuthenticated ? "/dashboard" : "/auth"); }}>
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="sm:hidden border-t px-4 py-4 space-y-3 bg-background"
+          >
+            <a
+              href="#features"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-sm text-muted-foreground hover:text-foreground py-1"
+            >
+              Recursos
+            </a>
+            <a
+              href="#how-it-works"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-sm text-muted-foreground hover:text-foreground py-1"
+            >
+              Como funciona
+            </a>
+            <Button
+              className="w-full text-sm mt-2 rounded-lg h-10"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                navigate(isAuthenticated ? "/dashboard" : "/auth");
+              }}
+            >
               {isAuthenticated ? "Dashboard" : "Começar agora"}
             </Button>
           </motion.div>
@@ -177,17 +290,22 @@ export default function Landing() {
 
               <h1 className="text-4xl sm:text-5xl lg:text-[3.25rem] font-light tracking-tight leading-[1.1]">
                 Suas finanças no{" "}
-                <span className="font-semibold" style={{ color: "#3d8c6e" }}>zen.</span>
+                <span className="font-semibold" style={{ color: "#3d8c6e" }}>
+                  zen.
+                </span>
               </h1>
               <p className="mt-5 text-sm sm:text-base text-muted-foreground leading-relaxed max-w-md mx-auto lg:mx-0">
-                Registre gastos, acompanhe faturas, defina orçamentos e veja sua saúde financeira
-                evoluir com um score animado. Simples, direto e gratuito.
+                Registre gastos, acompanhe faturas, defina orçamentos e veja sua
+                saúde financeira evoluir com um score animado. Simples, direto e
+                gratuito.
               </p>
 
               <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
                 <Button
                   size="lg"
-                  onClick={() => navigate(isAuthenticated ? "/dashboard" : "/auth")}
+                  onClick={() =>
+                    navigate(isAuthenticated ? "/dashboard" : "/auth")
+                  }
                   className="text-sm h-11 px-7 rounded-xl shadow-sm hover:shadow-md transition-shadow"
                 >
                   {isAuthenticated ? "Ir para o Dashboard" : "Começar agora"}
@@ -213,8 +331,12 @@ export default function Landing() {
                     transition={{ delay: 0.4 + i * 0.1 }}
                     className="text-center lg:text-left"
                   >
-                    <p className="text-xl font-semibold tracking-tight">{stat.value}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+                    <p className="text-xl font-semibold tracking-tight">
+                      {stat.value}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {stat.label}
+                    </p>
                   </motion.div>
                 ))}
               </div>
@@ -239,7 +361,9 @@ export default function Landing() {
                     { label: "Orçamento", pct: 78 },
                   ].map((item) => (
                     <div key={item.label} className="text-center">
-                      <div className="font-medium text-foreground">{item.pct}%</div>
+                      <div className="font-medium text-foreground">
+                        {item.pct}%
+                      </div>
                       <div>{item.label}</div>
                     </div>
                   ))}
@@ -259,8 +383,12 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-2xl sm:text-3xl font-light tracking-tight">Tudo que você precisa</h2>
-            <p className="mt-3 text-sm text-muted-foreground">Ferramentas completas para organizar sua vida financeira</p>
+            <h2 className="text-2xl sm:text-3xl font-light tracking-tight">
+              Tudo que você precisa
+            </h2>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Ferramentas completas para organizar sua vida financeira
+            </p>
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
@@ -275,11 +403,21 @@ export default function Landing() {
                   transition={{ delay: i * 0.07, duration: 0.4 }}
                 >
                   <div className="p-6 rounded-2xl border bg-card hover:shadow-sm transition-all duration-300 card-interactive h-full">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: `${feature.color}18` }}>
-                      <Icon className="w-5 h-5" style={{ color: feature.color }} />
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+                      style={{ backgroundColor: `${feature.color}18` }}
+                    >
+                      <Icon
+                        className="w-5 h-5"
+                        style={{ color: feature.color }}
+                      />
                     </div>
-                    <h3 className="text-sm font-semibold mb-2">{feature.title}</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{feature.desc}</p>
+                    <h3 className="text-sm font-semibold mb-2">
+                      {feature.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {feature.desc}
+                    </p>
                   </div>
                 </motion.div>
               );
@@ -297,8 +435,12 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-8"
           >
-            <h2 className="text-2xl sm:text-3xl font-light tracking-tight">O Zenfi em ação</h2>
-            <p className="mt-3 text-sm text-muted-foreground">Veja como é simples e intuitivo organizar seu fluxo de caixa</p>
+            <h2 className="text-2xl sm:text-3xl font-light tracking-tight">
+              O Zenfi em ação
+            </h2>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Veja como é simples e intuitivo organizar seu fluxo de caixa
+            </p>
           </motion.div>
 
           {/* Row 1: Dashboard */}
@@ -313,9 +455,13 @@ export default function Landing() {
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
                 Painel Consolidado
               </div>
-              <h3 className="text-xl sm:text-2xl font-semibold tracking-tight">Visão geral inteligente de todo o seu patrimônio</h3>
+              <h3 className="text-xl sm:text-2xl font-semibold tracking-tight">
+                Visão geral inteligente de todo o seu patrimônio
+              </h3>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Acompanhe o saldo consolidado de suas contas correntes e poupanças, deduza as faturas de cartão de crédito e dívidas ativas para ver seu patrimônio líquido real instantaneamente.
+                Acompanhe o saldo consolidado de suas contas correntes e
+                poupanças, deduza as faturas de cartão de crédito e dívidas
+                ativas para ver seu patrimônio líquido real instantaneamente.
               </p>
               <ul className="space-y-2.5 text-xs text-muted-foreground">
                 <li className="flex items-center gap-2">
@@ -335,7 +481,11 @@ export default function Landing() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="relative rounded-2xl overflow-hidden border shadow-lg hover:shadow-xl transition-shadow"
             >
-              <img src="/dashboard-screenshot.png" alt="Painel consolidado do Zenfi" className="w-full object-cover" />
+              <img
+                src="/dashboard-screenshot.png"
+                alt="Painel consolidado do Zenfi"
+                className="w-full object-cover"
+              />
             </motion.div>
           </div>
 
@@ -351,9 +501,13 @@ export default function Landing() {
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
                 Busca & Filtros
               </div>
-              <h3 className="text-xl sm:text-2xl font-semibold tracking-tight">Registre e encontre qualquer transação num piscar de olhos</h3>
+              <h3 className="text-xl sm:text-2xl font-semibold tracking-tight">
+                Registre e encontre qualquer transação num piscar de olhos
+              </h3>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Mantenha um histórico completo e organizado de suas entradas e saídas. Filtre e busque por descrição ou categoria para saber exatamente para onde seu dinheiro está indo.
+                Mantenha um histórico completo e organizado de suas entradas e
+                saídas. Filtre e busque por descrição ou categoria para saber
+                exatamente para onde seu dinheiro está indo.
               </p>
               <ul className="space-y-2.5 text-xs text-muted-foreground">
                 <li className="flex items-center gap-2">
@@ -373,7 +527,11 @@ export default function Landing() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="lg:order-1 relative rounded-2xl overflow-hidden border shadow-lg hover:shadow-xl transition-shadow"
             >
-              <img src="/transactions-screenshot.png" alt="Listagem de transações no Zenfi" className="w-full object-cover" />
+              <img
+                src="/transactions-screenshot.png"
+                alt="Listagem de transações no Zenfi"
+                className="w-full object-cover"
+              />
             </motion.div>
           </div>
 
@@ -389,9 +547,13 @@ export default function Landing() {
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
                 Personalização total
               </div>
-              <h3 className="text-xl sm:text-2xl font-semibold tracking-tight">Crie categorias sob medida para a sua rotina</h3>
+              <h3 className="text-xl sm:text-2xl font-semibold tracking-tight">
+                Crie categorias sob medida para a sua rotina
+              </h3>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Organize seu orçamento separando suas despesas por categorias totalmente customizáveis. Escolha a cor e o ícone que melhor representam cada hábito financeiro.
+                Organize seu orçamento separando suas despesas por categorias
+                totalmente customizáveis. Escolha a cor e o ícone que melhor
+                representam cada hábito financeiro.
               </p>
               <ul className="space-y-2.5 text-xs text-muted-foreground">
                 <li className="flex items-center gap-2">
@@ -411,14 +573,21 @@ export default function Landing() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="relative rounded-2xl overflow-hidden border shadow-lg hover:shadow-xl transition-shadow"
             >
-              <img src="/categories-screenshot.png" alt="Categorização personalizada no Zenfi" className="w-full object-cover" />
+              <img
+                src="/categories-screenshot.png"
+                alt="Categorização personalizada no Zenfi"
+                className="w-full object-cover"
+              />
             </motion.div>
           </div>
         </div>
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="border-t py-16 sm:py-24 bg-secondary/30">
+      <section
+        id="how-it-works"
+        className="border-t py-16 sm:py-24 bg-secondary/30"
+      >
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -426,8 +595,12 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-2xl sm:text-3xl font-light tracking-tight">Comece em minutos</h2>
-            <p className="mt-3 text-sm text-muted-foreground">Quatro passos simples para assumir o controle</p>
+            <h2 className="text-2xl sm:text-3xl font-light tracking-tight">
+              Comece em minutos
+            </h2>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Quatro passos simples para assumir o controle
+            </p>
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
@@ -444,10 +617,14 @@ export default function Landing() {
                   <div className="hidden lg:block absolute top-5 left-[calc(50%+2rem)] right-[-50%] h-px bg-border" />
                 )}
                 <div className="w-10 h-10 rounded-full border-2 border-border bg-card flex items-center justify-center mx-auto mb-4 relative z-10">
-                  <span className="text-xs font-semibold text-muted-foreground">{step.num}</span>
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    {step.num}
+                  </span>
                 </div>
                 <h3 className="text-sm font-semibold mb-2">{step.title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{step.desc}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {step.desc}
+                </p>
               </motion.div>
             ))}
           </div>
@@ -467,9 +644,12 @@ export default function Landing() {
               <CheckCircle2 className="w-4 h-4 text-chart-2" />
               Sem necessidade de cartão de crédito
             </div>
-            <h2 className="text-2xl sm:text-3xl font-light tracking-tight mb-4">Pronto para organizar suas finanças?</h2>
+            <h2 className="text-2xl sm:text-3xl font-light tracking-tight mb-4">
+              Pronto para organizar suas finanças?
+            </h2>
             <p className="text-sm text-muted-foreground mb-8 max-w-sm mx-auto">
-              Crie sua conta gratuitamente e comece a cuidar do seu dinheiro de forma simples e eficaz.
+              Crie sua conta gratuitamente e comece a cuidar do seu dinheiro de
+              forma simples e eficaz.
             </p>
             <Button
               size="lg"
@@ -487,10 +667,18 @@ export default function Landing() {
       <footer className="border-t py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <img src="/zenfi-icon.png" alt="Zenfi" className="w-6 h-6 rounded-md object-cover" />
-            <span className="text-xs text-muted-foreground">Zenfi — Suas finanças no zen.</span>
+            <img
+              src="/zenfi-icon.png"
+              alt="Zenfi"
+              className="w-6 h-6 rounded-md object-cover"
+            />
+            <span className="text-xs text-muted-foreground">
+              Zenfi — Suas finanças no zen.
+            </span>
           </div>
-          <p className="text-xs text-muted-foreground">Zen + Finanças. 100% gratuito.</p>
+          <p className="text-xs text-muted-foreground">
+            Zen + Finanças. 100% gratuito.
+          </p>
         </div>
       </footer>
     </div>

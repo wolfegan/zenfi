@@ -152,7 +152,8 @@ class ErrorBoundary extends React.Component<
             <div>
               <h2 className="text-base font-medium mb-1">Algo deu errado</h2>
               <p className="text-xs text-muted-foreground">
-                Ocorreu um erro inesperado. Você pode tentar novamente ou recarregar a página.
+                Ocorreu um erro inesperado. Você pode tentar novamente ou
+                recarregar a página.
               </p>
             </div>
             <div className="flex gap-3 justify-center">
@@ -164,11 +165,7 @@ class ErrorBoundary extends React.Component<
               >
                 Recarregar página
               </Button>
-              <Button
-                size="sm"
-                className="text-xs"
-                onClick={this.handleRetry}
-              >
+              <Button size="sm" className="text-xs" onClick={this.handleRetry}>
                 Tentar novamente
               </Button>
             </div>
