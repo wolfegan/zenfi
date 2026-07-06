@@ -19,8 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
-import { useCreditCards } from "@/hooks/use-supabase";
+import { useCreditCards, useAccounts, useCategories } from "@/hooks/use-supabase";
 import { parseBRLAmount } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import {
   CreditCard,
@@ -56,6 +57,9 @@ export default function CreditCardsPage() {
   const [deleteCardId, setDeleteCardId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [billDialogOpen, setBillDialogOpen] = useState(false);
+  const [payBillOpen, setPayBillOpen] = useState(false);
+  const [payingBill, setPayingBill] = useState<any>(null);
+  const [payBillAccountId, setPayBillAccountId] = useState("");
   const [billForm, setBillForm] = useState({
     cardId: "",
     month: new Date().toISOString().split("T")[0].substring(0, 7),
@@ -77,7 +81,12 @@ export default function CreditCardsPage() {
     remove,
     toggleBillPaid,
     createBill,
+    deleteBill,
+    refetch: refetchCards,
   } = useCreditCards();
+
+  const { data: realAccounts, refetch: refetchAccounts } = useAccounts();
+  const { data: realCategories } = useCategories();
 
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
@@ -86,6 +95,8 @@ export default function CreditCardsPage() {
     }
   }, [isLoading, cardsLoading, realCards, user]);
   const cards = useDemo ? demoCreditCards : realCards;
+  const accounts = useDemo ? [] : realAccounts;
+  const categories = useDemo ? [] : realCategories;
 
   if (isLoading) return null;
   if (!isAuthenticated) {
@@ -432,64 +443,94 @@ export default function CreditCardsPage() {
                   </div>
                   {(card as any).bills?.length > 0 && (
                     <div className="border-t divide-y">
-                      {(card as any).bills.map((bill: any) => (
-                        <div
-                          key={bill.id}
-                          className="flex items-center justify-between px-5 py-2.5"
-                        >
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={async () => {
-                                if (!useDemo) {
-                                  await toggleBillPaid(bill.id, !bill.is_paid);
-                                  toast.success(
-                                    bill.is_paid
-                                      ? "Fatura reaberta!"
-                                      : "Fatura marcada como paga!",
-                                  );
-                                } else {
-                                  toast.info(
-                                    "Modo demonstração não altera dados.",
-                                  );
+                      {(card as any).bills.map((bill: any) => {
+                        const monthLabel = new Date(
+                          bill.month + "-01",
+                        ).toLocaleDateString("pt-BR", {
+                          month: "long",
+                          year: "numeric",
+                        });
+
+                        return (
+                          <div
+                            key={bill.id}
+                            className="flex items-center justify-between px-5 py-2.5 group/bill"
+                          >
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={async () => {
+                                  if (bill.is_paid) {
+                                    if (!useDemo) {
+                                      await toggleBillPaid(bill.id, false);
+                                      await refetchCards();
+                                      toast.success("Fatura reaberta!");
+                                    } else {
+                                      toast.info("Modo demonstração não altera dados.");
+                                    }
+                                  } else {
+                                    setPayingBill(bill);
+                                    if (accounts.length > 0) {
+                                      setPayBillAccountId(accounts[0].id);
+                                    } else {
+                                      setPayBillAccountId("");
+                                    }
+                                    setPayBillOpen(true);
+                                  }
+                                }}
+                                className="mt-0.5 shrink-0 hover:scale-105 transition-transform"
+                                title={
+                                  bill.is_paid
+                                    ? "Marcar como pendente"
+                                    : "Marcar como paga"
                                 }
-                              }}
-                              className="mt-0.5 shrink-0 hover:scale-105 transition-transform"
-                              title={
-                                bill.is_paid
-                                  ? "Marcar como pendente"
-                                  : "Marcar como paga"
-                              }
-                            >
-                              {bill.is_paid ? (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-                              ) : (
-                                <Circle className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground transition-colors" />
-                              )}
-                            </button>
-                            <div>
-                              <span className="text-xs">
-                                {new Date(
-                                  bill.month + "-01",
-                                ).toLocaleDateString("pt-BR", {
-                                  month: "long",
-                                  year: "numeric",
+                              >
+                                {bill.is_paid ? (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                                ) : (
+                                  <Circle className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                                )}
+                              </button>
+                              <div>
+                                <span className="text-xs font-medium">
+                                  {monthLabel}
+                                </span>
+                                {bill.is_paid && (
+                                  <span className="text-[10px] text-success ml-2 font-medium">
+                                    Pago
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs font-medium tabular-nums">
+                                {bill.total_amount.toLocaleString("pt-BR", {
+                                  style: "currency",
+                                  currency: "BRL",
                                 })}
                               </span>
-                              {bill.is_paid && (
-                                <span className="text-[10px] text-success ml-2">
-                                  Pago
-                                </span>
-                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10 opacity-100 sm:opacity-0 sm:group-hover/bill:opacity-100 transition-opacity"
+                                title="Excluir Fatura"
+                                onClick={async () => {
+                                  if (confirm(`Tem certeza que deseja excluir a fatura de ${monthLabel}?`)) {
+                                    if (!useDemo) {
+                                      await deleteBill(bill.id);
+                                      await refetchCards();
+                                      toast.success("Fatura excluída com sucesso!");
+                                    } else {
+                                      toast.info("Modo demonstração não altera dados.");
+                                    }
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
                             </div>
                           </div>
-                          <span className="text-xs tabular-nums">
-                            {bill.total_amount.toLocaleString("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            })}
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </motion.div>
@@ -651,6 +692,158 @@ export default function CreditCardsPage() {
               }}
             >
               Criar Fatura
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={payBillOpen} onOpenChange={setPayBillOpen}>
+        <DialogContent className="sm:max-w-[340px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">
+              Pagar Fatura de Cartão
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Selecione de qual conta o dinheiro deve ser debitado.
+            </DialogDescription>
+          </DialogHeader>
+
+          {payingBill && (
+            <div className="space-y-4 py-2">
+              <div className="bg-secondary/30 rounded-xl px-3 py-2 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span>Cartão</span>
+                  <span className="font-semibold text-foreground">
+                    {cards.find(c => c.id === payingBill.credit_card_id)?.name || "Cartão"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Mês da Fatura</span>
+                  <span className="text-muted-foreground">
+                    {new Date(payingBill.month + "-01").toLocaleDateString("pt-BR", {
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between font-semibold border-t pt-1.5 mt-1.5">
+                  <span>Valor Total</span>
+                  <span className="text-destructive">
+                    {payingBill.total_amount.toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    })}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1.5 block">
+                  Conta Bancária *
+                </label>
+                {accounts.length > 0 ? (
+                  <Select
+                    value={payBillAccountId}
+                    onValueChange={setPayBillAccountId}
+                  >
+                    <SelectTrigger className="text-xs h-9 rounded-lg">
+                      <SelectValue placeholder="Selecione a conta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accounts.map((acc: any) => (
+                        <SelectItem key={acc.id} value={acc.id}>
+                          {acc.name} (Saldo: {acc.balance.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-[10px] text-destructive font-medium">
+                    Nenhuma conta bancária cadastrada para débito. Cadastre uma conta primeiro.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs rounded-lg"
+              onClick={() => {
+                setPayBillOpen(false);
+                setPayingBill(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              className="text-xs rounded-lg"
+              disabled={!payBillAccountId}
+              onClick={async () => {
+                if (!payingBill || !payBillAccountId) return;
+                
+                try {
+                  if (!useDemo) {
+                    const selectedAcc = accounts.find(a => a.id === payBillAccountId);
+                    if (selectedAcc) {
+                      // 1. Atualizar saldo da conta no Supabase
+                      const newBalance = selectedAcc.balance - payingBill.total_amount;
+                      await supabase
+                        .from("accounts")
+                        .update({ balance: newBalance })
+                        .eq("id", selectedAcc.id);
+
+                      // 2. Resolver categoria da transação
+                      const expenseCat = categories.find(
+                        (c: any) =>
+                          c.name.toLowerCase().includes("outros") ||
+                          c.name.toLowerCase().includes("fatura")
+                      ) || categories.find((c: any) => c.type === "expense");
+                      const categoryId = expenseCat ? expenseCat.id : null;
+
+                      const card = cards.find(c => c.id === payingBill.credit_card_id);
+                      const cardName = card ? card.name : "Cartão";
+                      const monthLabel = new Date(payingBill.month + "-01").toLocaleDateString("pt-BR", {
+                        month: "long",
+                        year: "numeric",
+                      });
+
+                      // 3. Registrar a transação de despesa no extrato
+                      await supabase.from("transactions").insert({
+                        user_id: user?.id,
+                        type: "expense",
+                        amount: payingBill.total_amount,
+                        description: `[Conta: ${selectedAcc.name}] [Fatura] ${cardName} - ${monthLabel}`,
+                        date: new Date().toISOString().split("T")[0],
+                        category_id: categoryId,
+                        is_fixed: false,
+                        is_credit_card: false,
+                      });
+
+                      // 4. Marcar fatura como paga
+                      await toggleBillPaid(payingBill.id, true);
+                      
+                      toast.success("Fatura paga com sucesso!");
+                    }
+                  } else {
+                    toast.info("Modo demonstração não altera dados.");
+                  }
+                  
+                  // Atualizar dados locais na tela
+                  await refetchCards();
+                  await refetchAccounts();
+                  setPayBillOpen(false);
+                  setPayingBill(null);
+                } catch (e: any) {
+                  console.error("Erro ao pagar fatura", e);
+                  toast.error("Erro ao processar pagamento: " + (e?.message || e));
+                }
+              }}
+            >
+              Confirmar Pagamento
             </Button>
           </DialogFooter>
         </DialogContent>
