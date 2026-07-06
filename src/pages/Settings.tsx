@@ -2,6 +2,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
+import { parseBRLAmount } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   Settings as SettingsIcon,
@@ -11,18 +12,26 @@ import {
   Sun,
   Info,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 export default function Settings() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, updateProfile } = useAuth();
   const navigate = useNavigate();
-  const [name, setName] = useState(user?.name || "");
+  const [name, setName] = useState("");
   const [monthlyIncome, setMonthlyIncome] = useState("");
-  const [financialGoal, setFinancialGoal] = useState(
-    user?.financial_goal || "",
-  );
+  const [financialGoal, setFinancialGoal] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || "");
+      setMonthlyIncome(
+        user.monthly_income ? user.monthly_income.toString() : "",
+      );
+      setFinancialGoal(user.financial_goal || "");
+    }
+  }, [user]);
 
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
@@ -39,8 +48,13 @@ export default function Settings() {
 
   const handleSave = async () => {
     try {
-      // Profile is managed by Supabase Auth, updates will be added later
-      toast.success("Perfil atualizado!");
+      const parsedIncome = parseBRLAmount(monthlyIncome);
+      await updateProfile({
+        name: name.trim() || null,
+        monthly_income: parsedIncome > 0 ? parsedIncome : null,
+        financial_goal: financialGoal.trim() || null,
+      });
+      toast.success("Perfil atualizado com sucesso!");
     } catch (error) {
       toast.error("Erro ao salvar. Tente novamente.");
     }
@@ -109,9 +123,8 @@ export default function Settings() {
                 Renda Mensal (opcional)
               </label>
               <Input
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 value={monthlyIncome}
                 onChange={(e) => setMonthlyIncome(e.target.value)}
                 placeholder="Ex: 8000"

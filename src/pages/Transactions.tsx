@@ -209,7 +209,9 @@ export default function Transactions() {
 
     const isCreditCard = form.paymentMethod === "credit_card";
     if (!isCreditCard && !form.accountId) {
-      toast.error("Por favor selecione qual conta está saindo ou entrando o dinheiro.");
+      toast.error(
+        "Por favor selecione qual conta está saindo ou entrando o dinheiro.",
+      );
       return;
     }
 
@@ -256,15 +258,21 @@ export default function Transactions() {
           // 1. Reverter saldo antigo da conta antiga
           const oldAmount = editingTx.amount;
           const oldType = editingTx.type;
-          const oldAccMatch = editingTx.description?.match(/\[Conta:\s*([^\]]+)\]/);
+          const oldAccMatch = editingTx.description?.match(
+            /\[Conta:\s*([^\]]+)\]/,
+          );
           const oldAccName = oldAccMatch ? oldAccMatch[1] : null;
           const oldAcc = accounts.find((a: any) => a.name === oldAccName);
 
           if (oldAcc) {
-            const revertedBalance = oldType === "income"
-              ? oldAcc.balance - oldAmount
-              : oldAcc.balance + oldAmount;
-            await supabase.from("accounts").update({ balance: revertedBalance }).eq("id", oldAcc.id);
+            const revertedBalance =
+              oldType === "income"
+                ? oldAcc.balance - oldAmount
+                : oldAcc.balance + oldAmount;
+            await supabase
+              .from("accounts")
+              .update({ balance: revertedBalance })
+              .eq("id", oldAcc.id);
           }
 
           // 2. Aplicar novo saldo na conta selecionada
@@ -274,13 +282,19 @@ export default function Transactions() {
               .select("balance")
               .eq("id", selectedAcc.id)
               .single();
-            
-            const currentBalance = latestAcc ? latestAcc.balance : selectedAcc.balance;
-            const newBalance = form.type === "income"
-              ? currentBalance + amount
-              : currentBalance - amount;
-            
-            await supabase.from("accounts").update({ balance: newBalance }).eq("id", selectedAcc.id);
+
+            const currentBalance = latestAcc
+              ? latestAcc.balance
+              : selectedAcc.balance;
+            const newBalance =
+              form.type === "income"
+                ? currentBalance + amount
+                : currentBalance - amount;
+
+            await supabase
+              .from("accounts")
+              .update({ balance: newBalance })
+              .eq("id", selectedAcc.id);
           }
 
           await update(editingTx.id, txData);
@@ -288,19 +302,25 @@ export default function Transactions() {
         } else {
           // Nova Transação: aplicar saldo na conta
           if (selectedAcc) {
-            const newBalance = form.type === "income"
-              ? selectedAcc.balance + amount
-              : selectedAcc.balance - amount;
-            await supabase.from("accounts").update({ balance: newBalance }).eq("id", selectedAcc.id);
+            const newBalance =
+              form.type === "income"
+                ? selectedAcc.balance + amount
+                : selectedAcc.balance - amount;
+            await supabase
+              .from("accounts")
+              .update({ balance: newBalance })
+              .eq("id", selectedAcc.id);
           }
 
           await create(txData);
           toast.success("Transação adicionada!");
         }
-        
+
         refetchAccounts();
       } else {
-        toast.info("Transações não alteram o banco de dados no modo demonstração.");
+        toast.info(
+          "Transações não alteram o banco de dados no modo demonstração.",
+        );
       }
       setDialogOpen(false);
       resetForm();
@@ -514,7 +534,10 @@ export default function Transactions() {
                       className="overflow-hidden"
                     >
                       <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
-                        {form.type === "expense" ? "Pagar com a Conta" : "Receber na Conta"} <span className="text-destructive">*</span>
+                        {form.type === "expense"
+                          ? "Pagar com a Conta"
+                          : "Receber na Conta"}{" "}
+                        <span className="text-destructive">*</span>
                       </label>
                       {accounts && accounts.length > 0 ? (
                         <div className="grid grid-cols-2 gap-2">
@@ -840,9 +863,13 @@ export default function Transactions() {
                                         : "pix";
                               }
                             }
-                            const accMatch = tx.description?.match(/\[Conta:\s*([^\]]+)\]/);
+                            const accMatch = tx.description?.match(
+                              /\[Conta:\s*([^\]]+)\]/,
+                            );
                             const accountName = accMatch ? accMatch[1] : null;
-                            const foundAcc = accounts.find((a: any) => a.name === accountName);
+                            const foundAcc = accounts.find(
+                              (a: any) => a.name === accountName,
+                            );
 
                             setForm({
                               categoryId: tx.category_id,
@@ -930,19 +957,27 @@ export default function Transactions() {
               onClick={async () => {
                 if (deleteId) {
                   if (!useDemo) {
-                    const txToDelete = realTransactions.find((t: any) => t.id === deleteId);
+                    const txToDelete = realTransactions.find(
+                      (t: any) => t.id === deleteId,
+                    );
                     if (txToDelete) {
                       const amount = txToDelete.amount;
                       const type = txToDelete.type;
-                      const accMatch = txToDelete.description?.match(/\[Conta:\s*([^\]]+)\]/);
+                      const accMatch = txToDelete.description?.match(
+                        /\[Conta:\s*([^\]]+)\]/,
+                      );
                       const accName = accMatch ? accMatch[1] : null;
                       const acc = accounts.find((a: any) => a.name === accName);
 
                       if (acc) {
-                        const newBalance = type === "income"
-                          ? acc.balance - amount
-                          : acc.balance + amount;
-                        await supabase.from("accounts").update({ balance: newBalance }).eq("id", acc.id);
+                        const newBalance =
+                          type === "income"
+                            ? acc.balance - amount
+                            : acc.balance + amount;
+                        await supabase
+                          .from("accounts")
+                          .update({ balance: newBalance })
+                          .eq("id", acc.id);
                         refetchAccounts();
                       }
                     }

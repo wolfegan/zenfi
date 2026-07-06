@@ -8,13 +8,13 @@ export function cn(...inputs: ClassValue[]) {
 export function parseBRLAmount(value: string | number): number {
   if (typeof value === "number") return value;
   if (!value) return 0;
-  
+
   let cleanValue = value.trim();
-  
+
   if (cleanValue.includes(",")) {
     cleanValue = cleanValue.replace(/\./g, "").replace(",", ".");
   }
-  
+
   const parsed = parseFloat(cleanValue);
   return isNaN(parsed) ? 0 : parsed;
 }

@@ -378,10 +378,14 @@ export default function Dashboard() {
 
         // Nova Transação: aplicar saldo na conta
         if (selectedAcc) {
-          const newBalance = quickType === "income"
-            ? selectedAcc.balance + amount
-            : selectedAcc.balance - amount;
-          await supabase.from("accounts").update({ balance: newBalance }).eq("id", selectedAcc.id);
+          const newBalance =
+            quickType === "income"
+              ? selectedAcc.balance + amount
+              : selectedAcc.balance - amount;
+          await supabase
+            .from("accounts")
+            .update({ balance: newBalance })
+            .eq("id", selectedAcc.id);
         }
 
         await createTransaction({
@@ -1344,7 +1348,10 @@ export default function Dashboard() {
                       className="overflow-hidden space-y-1"
                     >
                       <label className="text-[10px] text-muted-foreground block font-medium">
-                        {quickType === "expense" ? "Pagar com a Conta" : "Receber na Conta"} <span className="text-destructive">*</span>
+                        {quickType === "expense"
+                          ? "Pagar com a Conta"
+                          : "Receber na Conta"}{" "}
+                        <span className="text-destructive">*</span>
                       </label>
                       {accounts && accounts.length > 0 ? (
                         <div className="grid grid-cols-2 gap-1.5">

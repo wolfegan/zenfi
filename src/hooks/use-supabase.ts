@@ -489,7 +489,8 @@ export function useFinancialHealthScore() {
     else status = "poor";
 
     const messages: Record<string, string> = {
-      excellent: "Você é o orgulho da família! Suas finanças estão tão saudáveis que até o gerente do banco chora de emoção ao ver seu saldo. Já pode pagar o almoço da firma! 💸",
+      excellent:
+        "Você é o orgulho da família! Suas finanças estão tão saudáveis que até o gerente do banco chora de emoção ao ver seu saldo. Já pode pagar o almoço da firma! 💸",
       good: "Saldo positivo! Mas ainda não dá pra gastar tudo em compras aleatórias na internet à meia-noite. Segura o 'eu mereço' no fim de semana! 👍",
       fair: "Seu dinheiro está sumindo mais rápido que folga no meio da semana. A luz amarela acendeu, hora de dar férias para o seu cartão de crédito! ⚠️",
       poor: "S.O.S! Seu extrato bancário está parecendo um filme de terror. Se continuar assim, o Serasa vai te mandar presente de aniversário. Bora fechar a torneira! 🚨",
