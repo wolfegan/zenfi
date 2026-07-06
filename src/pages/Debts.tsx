@@ -1,5 +1,6 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
-import { useDebts } from "@/hooks/use-supabase";
+import { useDebts, useAccounts, useCreditCards, syncCreditCardBill } from "@/hooks/use-supabase";
+import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import {
   HandCoins,
@@ -58,10 +60,14 @@ export default function Debts() {
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [payingDebt, setPayingDebt] = useState<any>(null);
   const [payAmount, setPayAmount] = useState("");
+  const [payPaymentMethod, setPayPaymentMethod] = useState("pix");
+  const [payAccountId, setPayAccountId] = useState("");
+  const [payCreditCardId, setPayCreditCardId] = useState("");
   const [editingDebt, setEditingDebt] = useState<any>(null);
   const [form, setForm] = useState({
     creditor: "",
     description: "",
+    originalAmount: "",
     totalAmount: "",
     remainingAmount: "",
     monthlyPayment: "",
@@ -84,6 +90,9 @@ export default function Debts() {
     markAsPaid,
   } = useDebts();
 
+  const { data: realAccounts, refetch: refetchAccounts } = useAccounts();
+  const { data: realCreditCards } = useCreditCards();
+
   useEffect(() => {
     if (!debtsLoading && realDebts.length > 0) {
       getSummary().then(setSummary);
@@ -103,6 +112,8 @@ export default function Debts() {
 
   const debts = useDemo ? demoDebts : realDebts;
   const summaryData = useDemo ? demoDebtsSummary : summary;
+  const accounts = useDemo ? [] : realAccounts;
+  const creditCards = useDemo ? [] : realCreditCards;
 
   if (isLoading) return null;
   if (!isAuthenticated) {
@@ -114,6 +125,7 @@ export default function Debts() {
     setForm({
       creditor: "",
       description: "",
+      originalAmount: "",
       totalAmount: "",
       remainingAmount: "",
       monthlyPayment: "",
@@ -206,10 +218,24 @@ export default function Debts() {
                     className="resize-none h-16"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1.5 block">
-                      Valor Total da Compra *
+                    <label className="text-[10px] text-muted-foreground mb-1 block">
+                      Valor Original (À Vista)
+                    </label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={form.originalAmount}
+                      onChange={(e) =>
+                        setForm({ ...form, originalAmount: e.target.value })
+                      }
+                      placeholder="Ex: 800,00"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground mb-1 block">
+                      Valor Total (Juros) *
                     </label>
                     <Input
                       type="text"
@@ -222,8 +248,8 @@ export default function Debts() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1.5 block">
-                      Valor Restante a Pagar *
+                    <label className="text-[10px] text-muted-foreground mb-1 block">
+                      Restante a Pagar *
                     </label>
                     <Input
                       type="text"
@@ -334,9 +360,13 @@ export default function Debts() {
                       const remainingAmt = parseBRLAmount(form.remainingAmount);
                       const monthlyPymt =
                         parseBRLAmount(form.monthlyPayment) || 0;
+                      let descVal = form.description.trim();
+                      if (form.originalAmount.trim()) {
+                        descVal = `[Original: ${form.originalAmount.trim()}] ${descVal}`;
+                      }
                       const data = {
                         creditor: form.creditor,
-                        description: form.description || null,
+                        description: descVal || null,
                         total_amount: totalAmt,
                         remaining_amount: remainingAmt,
                         monthly_payment: monthlyPymt,
@@ -397,19 +427,105 @@ export default function Debts() {
                     </span>
                   </div>
                 </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1.5 block">
-                    Valor pago *
-                  </label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    value={payAmount}
-                    onChange={(e) => setPayAmount(e.target.value)}
-                    placeholder="Ex: 300,00"
-                    autoFocus
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">
+                      Valor pago *
+                    </label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={payAmount}
+                      onChange={(e) => setPayAmount(e.target.value)}
+                      placeholder="Ex: 300,00"
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">
+                      Método
+                    </label>
+                    <Select
+                      value={payPaymentMethod}
+                      onValueChange={(v) => {
+                        setPayPaymentMethod(v);
+                        if (v === "credit_card") {
+                          setPayAccountId("");
+                          if (creditCards.length > 0) setPayCreditCardId(creditCards[0].id);
+                        } else {
+                          setPayCreditCardId("");
+                          if (accounts.length > 0) setPayAccountId(accounts[0].id);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="text-xs h-9">
+                        <SelectValue placeholder="Selecione o método" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pix">PIX</SelectItem>
+                        <SelectItem value="money">Dinheiro</SelectItem>
+                        <SelectItem value="debit">Débito</SelectItem>
+                        <SelectItem value="credit_card">Cartão</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+
+                {payPaymentMethod !== "credit_card" ? (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">
+                      Conta de Débito
+                    </label>
+                    {accounts.length > 0 ? (
+                      <Select
+                        value={payAccountId}
+                        onValueChange={setPayAccountId}
+                      >
+                        <SelectTrigger className="text-xs h-9">
+                          <SelectValue placeholder="Selecione a conta" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {accounts.map((acc: any) => (
+                            <SelectItem key={acc.id} value={acc.id}>
+                              {acc.name} ({formatCurrency(acc.balance)})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-[10px] text-destructive">
+                        Nenhuma conta cadastrada.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">
+                      Cartão de Crédito
+                    </label>
+                    {creditCards.length > 0 ? (
+                      <Select
+                        value={payCreditCardId}
+                        onValueChange={setPayCreditCardId}
+                      >
+                        <SelectTrigger className="text-xs h-9">
+                          <SelectValue placeholder="Selecione o cartão" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {creditCards.map((card: any) => (
+                            <SelectItem key={card.id} value={card.id}>
+                              {card.name} (Venc. dia {card.due_day})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-[10px] text-destructive">
+                        Nenhum cartão cadastrado.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
             <DialogFooter>
@@ -432,9 +548,77 @@ export default function Debts() {
                   const amount = parseBRLAmount(payAmount);
                   if (payingDebt && amount > 0) {
                     if (!useDemo) {
+                      // 1. Registrar pagamento na tabela debts
                       if (amount >= payingDebt.remaining_amount)
                         await markAsPaid(payingDebt.id);
                       else await payInstallment(payingDebt.id, amount);
+
+                      // 2. Criar transação e descontar da conta/cartão correspondente
+                      if (payPaymentMethod === "credit_card") {
+                        if (payCreditCardId) {
+                          const { data: newTx } = await supabase
+                            .from("transactions")
+                            .insert({
+                              user_id: user?.id,
+                              type: "expense",
+                              amount: amount,
+                              description: `[Pagamento Dívida] ${payingDebt.creditor}`,
+                              date: new Date().toISOString().split("T")[0],
+                              category_id: null,
+                              is_fixed: false,
+                              is_credit_card: true,
+                              credit_card_id: payCreditCardId,
+                            })
+                            .select()
+                            .single();
+
+                          if (newTx) {
+                            await syncCreditCardBill(
+                              payCreditCardId,
+                              newTx.date,
+                              newTx.amount,
+                              user?.id || ""
+                            );
+                          }
+                        }
+                      } else {
+                        if (payAccountId) {
+                          const selectedAcc = accounts.find(
+                            (a: any) => a.id === payAccountId
+                          );
+                          if (selectedAcc) {
+                            const newBalance = selectedAcc.balance - amount;
+                            await supabase
+                              .from("accounts")
+                              .update({ balance: newBalance })
+                              .eq("id", selectedAcc.id);
+
+                            const methodLabel =
+                              payPaymentMethod === "pix"
+                                ? "PIX"
+                                : payPaymentMethod === "money"
+                                ? "Dinheiro"
+                                : "Débito";
+                            
+                            await supabase.from("transactions").insert({
+                              user_id: user?.id,
+                              type: "expense",
+                              amount: amount,
+                              description: `[Conta: ${selectedAcc.name}] [Pagamento Dívida] ${payingDebt.creditor}`,
+                              date: new Date().toISOString().split("T")[0],
+                              category_id: null,
+                              is_fixed: false,
+                              is_credit_card: false,
+                              payment_method: methodLabel,
+                            });
+
+                            refetchAccounts();
+                          }
+                        }
+                      }
+                      toast.success("Pagamento registrado com sucesso!");
+                    } else {
+                      toast.info("Modo demonstração não altera dados.");
                     }
                     setPayDialogOpen(false);
                     setPayingDebt(null);
@@ -442,7 +626,7 @@ export default function Debts() {
                   }
                 }}
               >
-                Pagar
+                Confirmar Pagamento
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -514,6 +698,10 @@ export default function Debts() {
                       debt.total_amount) *
                     100
                   : 0;
+              const origMatch = debt.description?.match(/\[Original:\s*([^\]]+)\]/);
+              const origVal = origMatch ? parseBRLAmount(origMatch[1]) : 0;
+              const interestAmount = origVal > 0 ? Math.max(0, debt.total_amount - origVal) : 0;
+              const cleanDesc = debt.description?.replace(/\[Original:\s*([^\]]+)\]\s*/, "") || "";
               const dueDate = new Date(
                 debt.due_date +
                   (debt.due_date.includes("T") ? "" : "T00:00:00"),
@@ -556,11 +744,26 @@ export default function Debts() {
                             </span>
                           )}
                         </div>
-                        {debt.description && (
+                        {cleanDesc && (
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {debt.description}
+                            {cleanDesc}
                           </p>
                         )}
+
+                        {/* Detalhes de Juros e Valor Original */}
+                        {origVal > 0 && (
+                          <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground flex-wrap">
+                            <div>
+                              Original: <span className="font-semibold text-foreground">{formatCurrency(origVal)}</span>
+                            </div>
+                            {interestAmount > 0 && (
+                              <div>
+                                Juros: <span className="font-semibold text-warning">{formatCurrency(interestAmount)}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         <div className="flex items-center gap-3 mt-2">
                           <div className="flex items-center gap-1">
                             <CircleDollarSign className="w-3 h-3 text-muted-foreground" />
@@ -580,6 +783,22 @@ export default function Debts() {
                             </div>
                           )}
                         </div>
+
+                        {/* Barra de Progresso Visual de Pagamento */}
+                        {!debt.is_paid && debt.total_amount > 0 && (
+                          <div className="mt-3 space-y-1 max-w-sm">
+                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                              <span>Progresso de pagamento</span>
+                              <span className="font-semibold tabular-nums">{progress.toFixed(0)}% pago</span>
+                            </div>
+                            <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-success rounded-full transition-all duration-500"
+                                style={{ width: `${Math.min(progress, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div className="text-right shrink-0">
                         <p
@@ -598,6 +817,9 @@ export default function Debts() {
                                 setPayAmount(
                                   String(debt.monthly_payment || ""),
                                 );
+                                setPayPaymentMethod("pix");
+                                if (accounts.length > 0) setPayAccountId(accounts[0].id);
+                                setPayCreditCardId("");
                                 setPayDialogOpen(true);
                               }}
                             >
@@ -610,10 +832,15 @@ export default function Debts() {
                                 className="h-7 w-7"
                                 onClick={() => {
                                   const sd = new Date(debt.start_date);
+                                  const origMatch = debt.description?.match(/\[Original:\s*([^\]]+)\]/);
+                                  const origVal = origMatch ? origMatch[1] : "";
+                                  const cleanDesc = debt.description?.replace(/\[Original:\s*([^\]]+)\]\s*/, "") || "";
+
                                   setEditingDebt(debt);
                                   setForm({
                                     creditor: debt.creditor,
-                                    description: debt.description || "",
+                                    description: cleanDesc,
+                                    originalAmount: origVal,
                                     totalAmount: String(debt.total_amount),
                                     remainingAmount: String(
                                       debt.remaining_amount,

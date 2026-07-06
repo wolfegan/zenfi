@@ -131,7 +131,7 @@ function getBillMonthForDate(dateStr: string, closingDay: number): string {
 }
 
 // Sincroniza o valor de uma transação na fatura do cartão
-async function syncCreditCardBill(
+export async function syncCreditCardBill(
   creditCardId: string,
   dateStr: string,
   amountChange: number,
