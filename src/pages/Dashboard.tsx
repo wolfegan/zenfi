@@ -170,7 +170,9 @@ export default function Dashboard() {
     // onboarding_completed is either false or null for new users
     if (user && !user.is_anonymous && user.onboarding_completed !== true) {
       setOnboardingOpen(true);
-      setOnboardingName(user.name || "");
+      // Don't pre-fill with email address (some triggers set name = email)
+      const storedName = user.name || "";
+      setOnboardingName(storedName.includes("@") ? "" : storedName);
     }
   }, [user]);
 
