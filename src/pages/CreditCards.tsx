@@ -1,5 +1,6 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { useCreditCards } from "@/hooks/use-supabase";
+import { parseBRLAmount } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   CreditCard,
@@ -50,6 +52,15 @@ export default function CreditCardsPage() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingCard, setEditingCard] = useState<any>(null);
+  const [deleteCardId, setDeleteCardId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [billDialogOpen, setBillDialogOpen] = useState(false);
+  const [billForm, setBillForm] = useState({
+    cardId: "",
+    month: new Date().toISOString().split("T")[0].substring(0, 7),
+    initialAmount: "0",
+  });
   const [form, setForm] = useState({
     name: "",
     limit: "",
@@ -58,7 +69,15 @@ export default function CreditCardsPage() {
     color: "#0a0a0a",
   });
 
-  const { data: realCards, loading: cardsLoading, create } = useCreditCards();
+  const {
+    data: realCards,
+    loading: cardsLoading,
+    create,
+    update,
+    remove,
+    toggleBillPaid,
+    createBill,
+  } = useCreditCards();
 
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
@@ -74,7 +93,7 @@ export default function CreditCardsPage() {
     return null;
   }
 
-  const resetForm = () =>
+  const resetForm = () => {
     setForm({
       name: "",
       limit: "",
@@ -82,6 +101,8 @@ export default function CreditCardsPage() {
       dueDay: "10",
       color: "#0a0a0a",
     });
+    setEditingCard(null);
+  };
 
   return (
     <DashboardLayout>
@@ -118,10 +139,12 @@ export default function CreditCardsPage() {
             <DialogContent className="sm:max-w-[380px]">
               <DialogHeader>
                 <DialogTitle className="text-sm font-medium">
-                  Novo Cartão
+                  {editingCard ? "Editar Cartão" : "Novo Cartão"}
                 </DialogTitle>
                 <DialogDescription className="text-xs">
-                  Adicione os detalhes do seu cartão de crédito
+                  {editingCard
+                    ? "Edite as configurações do seu cartão de crédito"
+                    : "Adicione os detalhes do seu cartão de crédito"}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
@@ -264,20 +287,28 @@ export default function CreditCardsPage() {
                   className="text-xs"
                   onClick={async () => {
                     if (form.name && form.limit) {
-                      if (!useDemo)
-                        await create({
+                      if (!useDemo) {
+                        const data = {
                           name: form.name,
                           limit: parseFloat(form.limit),
                           closing_day: parseInt(form.closingDay),
                           due_day: parseInt(form.dueDay),
                           color: form.color,
-                        });
+                        };
+                        if (editingCard) {
+                          await update(editingCard.id, data);
+                          toast.success("Cartão atualizado!");
+                        } else {
+                          await create(data);
+                          toast.success("Cartão adicionado!");
+                        }
+                      }
                       setDialogOpen(false);
                       resetForm();
                     }
                   }}
                 >
-                  Adicionar
+                  {editingCard ? "Salvar" : "Adicionar"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -322,9 +353,56 @@ export default function CreditCardsPage() {
                           </p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
+                          title="Adicionar Fatura Antecipada"
+                          onClick={() => {
+                            setBillForm({
+                              cardId: card.id,
+                              month: new Date()
+                                .toISOString()
+                                .split("T")[0]
+                                .substring(0, 7),
+                              initialAmount: "0",
+                            });
+                            setBillDialogOpen(true);
+                          }}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            setEditingCard(card);
+                            setForm({
+                              name: card.name,
+                              limit: card.limit.toString(),
+                              closingDay: card.closing_day.toString(),
+                              dueDay: card.due_day.toString(),
+                              color: card.color,
+                            });
+                            setDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            setDeleteCardId(card.id);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-xs text-muted-foreground">
@@ -360,11 +438,34 @@ export default function CreditCardsPage() {
                           className="flex items-center justify-between px-5 py-2.5"
                         >
                           <div className="flex items-center gap-2">
-                            {bill.is_paid ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-                            ) : (
-                              <Circle className="w-3.5 h-3.5 text-muted-foreground" />
-                            )}
+                            <button
+                              onClick={async () => {
+                                if (!useDemo) {
+                                  await toggleBillPaid(bill.id, !bill.is_paid);
+                                  toast.success(
+                                    bill.is_paid
+                                      ? "Fatura reaberta!"
+                                      : "Fatura marcada como paga!",
+                                  );
+                                } else {
+                                  toast.info(
+                                    "Modo demonstração não altera dados.",
+                                  );
+                                }
+                              }}
+                              className="mt-0.5 shrink-0 hover:scale-105 transition-transform"
+                              title={
+                                bill.is_paid
+                                  ? "Marcar como pendente"
+                                  : "Marcar como paga"
+                              }
+                            >
+                              {bill.is_paid ? (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                              ) : (
+                                <Circle className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                              )}
+                            </button>
                             <div>
                               <span className="text-xs">
                                 {new Date(
@@ -414,6 +515,146 @@ export default function CreditCardsPage() {
           </div>
         )}
       </div>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[340px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">
+              Excluir cartão de crédito?
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Todas as faturas e transações vinculadas a este cartão serão
+              removidas. Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs rounded-lg"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setDeleteCardId(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              className="text-xs rounded-lg bg-destructive hover:bg-destructive/90"
+              onClick={async () => {
+                if (deleteCardId) {
+                  if (!useDemo) await remove(deleteCardId);
+                  toast.success("Cartão excluído com sucesso!");
+                }
+                setDeleteDialogOpen(false);
+                setDeleteCardId(null);
+              }}
+            >
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={billDialogOpen} onOpenChange={setBillDialogOpen}>
+        <DialogContent className="sm:max-w-[340px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">
+              Nova Fatura Antecipada
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Cadastre faturas futuras para lançar e prever gastos nos próximos
+              meses.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1.5 block">
+                Mês da Fatura *
+              </label>
+              <Input
+                type="month"
+                value={billForm.month}
+                onChange={(e) =>
+                  setBillForm({ ...billForm, month: e.target.value })
+                }
+                className="h-9 text-xs rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1.5 block">
+                Valor Inicial / Estimado (R$)
+              </label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={billForm.initialAmount}
+                onChange={(e) =>
+                  setBillForm({ ...billForm, initialAmount: e.target.value })
+                }
+                placeholder="Ex: 0,00"
+                className="h-9 text-xs rounded-lg"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs rounded-lg"
+              onClick={() => {
+                setBillDialogOpen(false);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              className="text-xs rounded-lg"
+              onClick={async () => {
+                if (!billForm.month) return;
+                const amount = parseBRLAmount(billForm.initialAmount);
+                if (!useDemo) {
+                  const card = cards.find((c) => c.id === billForm.cardId);
+                  if (!card) return;
+
+                  const closingDay = card.closing_day || 5;
+                  const dueDay = card.due_day || 10;
+
+                  const [targetYear, targetMonth] = billForm.month
+                    .split("-")
+                    .map(Number);
+                  const dueDate = `${targetYear}-${String(targetMonth).padStart(2, "0")}-${String(dueDay).padStart(2, "0")}`;
+
+                  let closingMonth = targetMonth - 1;
+                  let closingYear = targetYear;
+                  if (closingMonth < 1) {
+                    closingMonth = 12;
+                    closingYear -= 1;
+                  }
+                  const closingDate = `${closingYear}-${String(closingMonth).padStart(2, "0")}-${String(closingDay).padStart(2, "0")}`;
+
+                  await createBill({
+                    credit_card_id: billForm.cardId,
+                    month: billForm.month,
+                    total_amount: amount,
+                    is_paid: false,
+                    due_date: dueDate,
+                    closing_date: closingDate,
+                  });
+                  toast.success("Fatura criada com sucesso!");
+                } else {
+                  toast.info("Modo demonstração não altera dados.");
+                }
+                setBillDialogOpen(false);
+              }}
+            >
+              Criar Fatura
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

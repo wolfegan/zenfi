@@ -10,6 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { parseBRLAmount } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -145,10 +146,10 @@ export default function Debts() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-medium tracking-tight">
-              Dívidas & Empréstimos
+              Dívidas & Crediários
             </h1>
             <p className="text-xs text-muted-foreground mt-1">
-              Acompanhe tudo que você precisa pagar
+              Acompanhe suas parcelas, crediários, carnês e empréstimos
             </p>
           </div>
           <Dialog
@@ -164,89 +165,89 @@ export default function Debts() {
             <DialogTrigger asChild>
               <Button size="sm" className="text-xs h-9">
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
-                Nova Dívida
+                Novo Crediário / Dívida
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[400px]">
               <DialogHeader>
                 <DialogTitle className="text-sm font-medium">
-                  {editingDebt ? "Editar Dívida" : "Nova Dívida"}
+                  {editingDebt
+                    ? "Editar Dívida / Crediário"
+                    : "Novo Crediário ou Dívida"}
                 </DialogTitle>
                 <DialogDescription className="text-xs">
-                  Cadastre um pagamento que você precisa fazer
+                  Adicione os detalhes do seu crediário, carnê, débito ou
+                  empréstimo
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1.5 block">
-                    Credor *
+                    Credor / Loja / Banco *
                   </label>
                   <Input
                     value={form.creditor}
                     onChange={(e) =>
                       setForm({ ...form, creditor: e.target.value })
                     }
-                    placeholder="Ex: Fulano, Crediário Y, Banco X"
+                    placeholder="Ex: Casas Bahia, Magazine Luiza, Banco Itaú..."
                   />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1.5 block">
-                    Descrição
+                    Descrição (opcional)
                   </label>
                   <Textarea
                     value={form.description}
                     onChange={(e) =>
                       setForm({ ...form, description: e.target.value })
                     }
-                    placeholder="Ex: Empréstimo pessoal..."
+                    placeholder="Ex: Celular parcelado em 12x..."
                     className="resize-none h-16"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 block">
-                      Valor Total *
+                      Valor Total da Compra *
                     </label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       value={form.totalAmount}
                       onChange={(e) =>
                         setForm({ ...form, totalAmount: e.target.value })
                       }
-                      placeholder="1000"
+                      placeholder="Ex: 1.200,00"
                     />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 block">
-                      Valor Restante *
+                      Valor Restante a Pagar *
                     </label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       value={form.remainingAmount}
                       onChange={(e) =>
                         setForm({ ...form, remainingAmount: e.target.value })
                       }
-                      placeholder="1000"
+                      placeholder="Ex: 1.000,00"
                     />
                   </div>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1.5 block">
-                    Pagamento Mensal
+                    Valor da Parcela Mensal
                   </label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     value={form.monthlyPayment}
                     onChange={(e) =>
                       setForm({ ...form, monthlyPayment: e.target.value })
                     }
-                    placeholder="Ex: 200"
+                    placeholder="Ex: 100,00"
                   />
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -329,12 +330,16 @@ export default function Debts() {
                     ) {
                       const startDate = `${form.startYear}-${form.dueMonth}-${String(form.dueDay).padStart(2, "0")}`;
                       const dueDate = `${now.getFullYear()}-${form.dueMonth}-${String(form.dueDay).padStart(2, "0")}`;
+                      const totalAmt = parseBRLAmount(form.totalAmount);
+                      const remainingAmt = parseBRLAmount(form.remainingAmount);
+                      const monthlyPymt =
+                        parseBRLAmount(form.monthlyPayment) || 0;
                       const data = {
                         creditor: form.creditor,
                         description: form.description || null,
-                        total_amount: parseFloat(form.totalAmount),
-                        remaining_amount: parseFloat(form.remainingAmount),
-                        monthly_payment: parseFloat(form.monthlyPayment) || 0,
+                        total_amount: totalAmt,
+                        remaining_amount: remainingAmt,
+                        monthly_payment: monthlyPymt,
                         due_date: dueDate,
                         start_date: startDate,
                       };
@@ -397,13 +402,11 @@ export default function Debts() {
                     Valor pago *
                   </label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max={payingDebt.remaining_amount}
+                    type="text"
+                    inputMode="decimal"
                     value={payAmount}
                     onChange={(e) => setPayAmount(e.target.value)}
-                    placeholder="Ex: 300"
+                    placeholder="Ex: 300,00"
                     autoFocus
                   />
                 </div>
@@ -426,8 +429,8 @@ export default function Debts() {
                 size="sm"
                 className="text-xs"
                 onClick={async () => {
-                  if (payingDebt && payAmount && parseFloat(payAmount) > 0) {
-                    const amount = parseFloat(payAmount);
+                  const amount = parseBRLAmount(payAmount);
+                  if (payingDebt && amount > 0) {
                     if (!useDemo) {
                       if (amount >= payingDebt.remaining_amount)
                         await markAsPaid(payingDebt.id);

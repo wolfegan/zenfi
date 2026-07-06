@@ -40,7 +40,7 @@ const navItems = [
   { to: "/accounts", label: "Contas", icon: Landmark },
   { to: "/credit-cards", label: "Cartões", icon: CreditCard },
   { to: "/investments", label: "Investimentos", icon: TrendingUp },
-  { to: "/debts", label: "Dívidas", icon: HandCoins },
+  { to: "/debts", label: "Dívidas & Crediários", icon: HandCoins },
   { to: "/goals", label: "Metas", icon: Target },
   { to: "/reports", label: "Relatórios", icon: FileText },
 ];

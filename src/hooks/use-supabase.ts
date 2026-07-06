@@ -114,6 +114,82 @@ export function useCategoriesByType(type: "income" | "expense") {
   return data.filter((c) => c.type === type);
 }
 
+// Helper para calcular o mês da fatura com base no dia de fechamento do cartão
+function getBillMonthForDate(dateStr: string, closingDay: number): string {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  let targetMonth = month;
+  let targetYear = year;
+
+  if (day > closingDay) {
+    targetMonth += 1;
+    if (targetMonth > 12) {
+      targetMonth = 1;
+      targetYear += 1;
+    }
+  }
+  return `${targetYear}-${String(targetMonth).padStart(2, "0")}`;
+}
+
+// Sincroniza o valor de uma transação na fatura do cartão
+async function syncCreditCardBill(
+  creditCardId: string,
+  dateStr: string,
+  amountChange: number,
+  userId: string,
+) {
+  try {
+    const { data: card } = await supabase
+      .from("credit_cards")
+      .select("*")
+      .eq("id", creditCardId)
+      .single();
+
+    if (!card) return;
+
+    const closingDay = card.closing_day || 5;
+    const dueDay = card.due_day || 10;
+    const billMonth = getBillMonthForDate(dateStr, closingDay);
+
+    const { data: bill } = await supabase
+      .from("credit_card_bills")
+      .select("*")
+      .eq("credit_card_id", creditCardId)
+      .eq("month", billMonth)
+      .maybeSingle();
+
+    if (bill) {
+      const newAmount = Math.max(0, Number(bill.total_amount) + amountChange);
+      await supabase
+        .from("credit_card_bills")
+        .update({ total_amount: newAmount })
+        .eq("id", bill.id);
+    } else if (amountChange > 0) {
+      const [targetYear, targetMonth] = billMonth.split("-").map(Number);
+      const dueDate = `${targetYear}-${String(targetMonth).padStart(2, "0")}-${String(dueDay).padStart(2, "0")}`;
+
+      let closingMonth = targetMonth - 1;
+      let closingYear = targetYear;
+      if (closingMonth < 1) {
+        closingMonth = 12;
+        closingYear -= 1;
+      }
+      const closingDate = `${closingYear}-${String(closingMonth).padStart(2, "0")}-${String(closingDay).padStart(2, "0")}`;
+
+      await supabase.from("credit_card_bills").insert({
+        user_id: userId,
+        credit_card_id: creditCardId,
+        month: billMonth,
+        total_amount: amountChange,
+        is_paid: false,
+        due_date: dueDate,
+        closing_date: closingDate,
+      });
+    }
+  } catch (err) {
+    console.error("Error syncing credit card bill:", err);
+  }
+}
+
 // =============================================================================
 // Transactions
 // =============================================================================
@@ -174,7 +250,17 @@ export function useTransactions() {
         .insert({ user_id: userId, ...tx })
         .select()
         .single();
-      if (result) setData((prev) => [result, ...prev]);
+      if (result) {
+        setData((prev) => [result, ...prev]);
+        if (result.is_credit_card && result.credit_card_id) {
+          await syncCreditCardBill(
+            result.credit_card_id,
+            result.date,
+            result.amount,
+            userId,
+          );
+        }
+      }
       return result;
     },
     [userId],
@@ -185,18 +271,66 @@ export function useTransactions() {
       id: string,
       updates: Partial<Omit<Transaction, "id" | "user_id" | "created_at">>,
     ) => {
+      if (!userId) return;
+
+      const { data: oldTx } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (oldTx && oldTx.is_credit_card && oldTx.credit_card_id) {
+        await syncCreditCardBill(
+          oldTx.credit_card_id,
+          oldTx.date,
+          -oldTx.amount,
+          userId,
+        );
+      }
+
       await supabase.from("transactions").update(updates).eq("id", id);
+
+      const updatedTx = { ...oldTx, ...updates };
+      if (updatedTx && updatedTx.is_credit_card && updatedTx.credit_card_id) {
+        await syncCreditCardBill(
+          updatedTx.credit_card_id,
+          updatedTx.date,
+          updatedTx.amount,
+          userId,
+        );
+      }
+
       setData((prev) =>
         prev.map((t) => (t.id === id ? { ...t, ...updates } : t)),
       );
     },
-    [],
+    [userId],
   );
 
-  const remove = useCallback(async (id: string) => {
-    await supabase.from("transactions").delete().eq("id", id);
-    setData((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+  const remove = useCallback(
+    async (id: string) => {
+      if (!userId) return;
+
+      const { data: oldTx } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (oldTx && oldTx.is_credit_card && oldTx.credit_card_id) {
+        await syncCreditCardBill(
+          oldTx.credit_card_id,
+          oldTx.date,
+          -oldTx.amount,
+          userId,
+        );
+      }
+
+      await supabase.from("transactions").delete().eq("id", id);
+      setData((prev) => prev.filter((t) => t.id !== id));
+    },
+    [userId],
+  );
 
   return {
     data,

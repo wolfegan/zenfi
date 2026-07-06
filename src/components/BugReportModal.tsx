@@ -109,32 +109,33 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
         console.warn("Could not save bug report to Supabase table:", dbErr);
       }
 
-      // 3. Open mail client to send the email directly to developer
+      // 3. Enviar e-mail de forma silenciosa via AJAX usando FormSubmit
       const emailRecipient = "victorwolfegan@gmail.com";
-      const emailSubject = encodeURIComponent(
-        `[Zenfi Bug Report] ${title.trim()}`,
-      );
-
-      let emailBody = `Olá Victor,\n\n`;
-      emailBody += `Foi reportado um problema no Zenfi por: ${user?.email || "Usuário não identificado"}\n\n`;
-      emailBody += `--- DETALHES DO REPORTE ---\n`;
-      emailBody += `Título: ${title.trim()}\n`;
-      emailBody += `Descrição:\n${description.trim()}\n\n`;
-      if (attachmentUrl) {
-        emailBody += `Anexo hospedado: ${attachmentUrl}\n`;
-      } else if (file) {
-        emailBody += `Anexo: ${file.name} (Por favor, anexe o arquivo manualmente neste e-mail caso não tenha sido enviado automaticamente)\n`;
+      try {
+        await fetch(`https://formsubmit.co/ajax/${emailRecipient}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            _subject: `[Zenfi Bug Report] ${title.trim()}`,
+            "E-mail do Usuário": user?.email || "Não identificado",
+            "Título do Reporte": title.trim(),
+            Descrição: description.trim(),
+            "Link do Anexo": attachmentUrl || "Nenhum",
+            _honey: "",
+          }),
+        });
+      } catch (mailErr) {
+        console.warn(
+          "FormSubmit failed, report was still saved in DB:",
+          mailErr,
+        );
       }
-      emailBody += `\n---------------------------\n`;
-      emailBody += `Enviado do aplicativo Zenfi.`;
-
-      const mailtoUrl = `mailto:${emailRecipient}?subject=${emailSubject}&body=${encodeURIComponent(emailBody)}`;
-
-      // Open default mail client
-      window.open(mailtoUrl, "_blank");
 
       toast.success(
-        "Reporte registrado! O seu cliente de e-mail foi aberto para envio final.",
+        "Muito obrigado! Seu reporte foi enviado diretamente ao desenvolvedor.",
       );
 
       // Reset form
