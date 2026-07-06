@@ -1,5 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useDebtNotifications } from "@/hooks/use-debt-notifications";
+import { parseBRLAmount } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 import {
   useCategories,
   useMonthlySummary,
@@ -116,49 +118,71 @@ function HealthScoreGauge({
   const offset = circumference - (animatedScore / 100) * circumference;
 
   const getScoreColor = (s: number) => {
-    if (s >= 80) return "var(--color-success)";
-    if (s >= 60) return "var(--color-warning)";
-    return "var(--color-danger)";
+    if (s >= 80) return "oklch(0.52 0.15 178)";
+    if (s >= 60) return "oklch(0.72 0.16 85)";
+    return "oklch(0.58 0.19 27.33)";
+  };
+
+  const getStatusLabel = (s: string) => {
+    switch (s) {
+      case "excellent":
+        return "Excelente";
+      case "good":
+        return "Bom";
+      case "fair":
+        return "Regular";
+      case "poor":
+        return "Ruim";
+      default:
+        return s;
+    }
   };
 
   return (
-    <div className="relative w-44 h-44 mx-auto flex items-center justify-center">
-      <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
-        <circle
-          cx="100"
-          cy="100"
-          r="80"
-          fill="none"
-          stroke="var(--border)"
-          strokeWidth="6"
-        />
-        <circle
-          cx="100"
-          cy="100"
-          r="80"
-          fill="none"
-          stroke={getScoreColor(animatedScore)}
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className="transition-all duration-200 ease-out"
-          style={{
-            filter: `drop-shadow(0 0 6px ${getScoreColor(animatedScore)}44)`,
-          }}
-        />
-      </svg>
-      <div className="absolute flex flex-col items-center justify-center">
-        <span
-          className="text-4xl font-light tracking-tight tabular-nums"
-          style={{ color: getScoreColor(animatedScore) }}
-        >
-          {animatedScore}
-        </span>
-        <span className="text-[10px] text-muted-foreground mt-0.5 tracking-wider uppercase font-medium">
-          {status}
-        </span>
+    <div className="flex flex-col items-center justify-center text-center w-full">
+      <div className="relative w-40 h-40 flex items-center justify-center">
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
+          <circle
+            cx="100"
+            cy="100"
+            r="80"
+            fill="none"
+            stroke="oklch(0.92 0 0)"
+            strokeWidth="8"
+          />
+          <circle
+            cx="100"
+            cy="100"
+            r="80"
+            fill="none"
+            stroke={getScoreColor(animatedScore)}
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            className="transition-all duration-200 ease-out"
+            style={{
+              filter: `drop-shadow(0 0 4px ${getScoreColor(animatedScore)}22)`,
+            }}
+          />
+        </svg>
+        <div className="absolute flex flex-col items-center justify-center">
+          <span
+            className="text-4xl font-light tracking-tight tabular-nums"
+            style={{ color: getScoreColor(animatedScore) }}
+          >
+            {animatedScore}
+          </span>
+          <span className="text-[9px] text-muted-foreground mt-0.5 tracking-wider uppercase font-semibold">
+            {getStatusLabel(status)}
+          </span>
+        </div>
       </div>
+      {message && (
+        <p className="text-xs text-muted-foreground mt-3.5 max-w-[280px] leading-relaxed font-normal">
+          {message}
+        </p>
+      )}
     </div>
   );
 }
@@ -289,7 +313,7 @@ export default function Dashboard() {
     useMonthlyEvolution(6);
   const { data: realCategories, loading: catsLoading } = useCategories();
   const { data: realDebts } = useDebts();
-  const { data: realAccounts } = useAccounts();
+  const { data: realAccounts, refetch: refetchAccounts } = useAccounts();
   const { data: realGoals } = useGoals();
   const { create: createTransaction } = useTransactions();
   const { data: realCreditCards } = useCreditCards();
@@ -301,6 +325,7 @@ export default function Dashboard() {
   const [quickCategoryId, setQuickCategoryId] = useState("");
   const [quickPaymentMethod, setQuickPaymentMethod] = useState("pix");
   const [quickCreditCardId, setQuickCreditCardId] = useState("");
+  const [quickAccountId, setQuickAccountId] = useState("");
   const [quickDate, setQuickDate] = useState(
     new Date().toISOString().split("T")[0],
   );
@@ -312,18 +337,24 @@ export default function Dashboard() {
       toast.error("Por favor preencha o valor e a categoria.");
       return;
     }
-    const amount = parseFloat(quickAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast.error("Insira um valor maior que zero.");
+    const amount = parseBRLAmount(quickAmount);
+    if (amount <= 0) {
+      toast.error("Por favor insira um valor maior que zero.");
+      return;
+    }
+
+    const isCreditCard = quickPaymentMethod === "credit_card";
+    if (!isCreditCard && !quickAccountId) {
+      toast.error("Por favor selecione a conta bancária.");
       return;
     }
 
     setQuickSubmitting(true);
     try {
       if (!useDemo) {
-        const isCreditCard = quickPaymentMethod === "credit_card";
-
         let descriptionValue = quickDescription.trim();
+        const selectedAcc = accounts.find((a: any) => a.id === quickAccountId);
+
         if (!isCreditCard) {
           const label =
             quickPaymentMethod === "pix"
@@ -338,6 +369,19 @@ export default function Dashboard() {
               ? `[${label}] ${descriptionValue}`
               : `[${label}]`;
           }
+        }
+
+        // Prepend account prefix to description
+        if (!isCreditCard && selectedAcc) {
+          descriptionValue = `[Conta: ${selectedAcc.name}] ${descriptionValue}`;
+        }
+
+        // Nova Transação: aplicar saldo na conta
+        if (selectedAcc) {
+          const newBalance = quickType === "income"
+            ? selectedAcc.balance + amount
+            : selectedAcc.balance - amount;
+          await supabase.from("accounts").update({ balance: newBalance }).eq("id", selectedAcc.id);
         }
 
         await createTransaction({
@@ -358,6 +402,7 @@ export default function Dashboard() {
           refetchSummary(),
           refetchHealth(),
           refetchEvolution(),
+          refetchAccounts(),
         ]);
       } else {
         toast.info("Transações não são salvas no modo demonstração.");
@@ -368,6 +413,7 @@ export default function Dashboard() {
       setQuickCategoryId("");
       setQuickPaymentMethod("pix");
       setQuickCreditCardId("");
+      setQuickAccountId("");
       setQuickDate(new Date().toISOString().split("T")[0]);
     } catch (err) {
       toast.error("Erro ao salvar transação rápida.");
@@ -1099,9 +1145,8 @@ export default function Dashboard() {
                       Valor (R$)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="0,00"
                       value={quickAmount}
                       onChange={(e) => setQuickAmount(e.target.value)}
@@ -1287,6 +1332,66 @@ export default function Dashboard() {
                         )}
                       </motion.div>
                     )}
+                </AnimatePresence>
+
+                {/* Seleção de Conta Bancária */}
+                <AnimatePresence>
+                  {quickType && quickPaymentMethod !== "credit_card" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden space-y-1"
+                    >
+                      <label className="text-[10px] text-muted-foreground block font-medium">
+                        {quickType === "expense" ? "Pagar com a Conta" : "Receber na Conta"} <span className="text-destructive">*</span>
+                      </label>
+                      {accounts && accounts.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {accounts.map((acc: any) => (
+                            <button
+                              key={acc.id}
+                              type="button"
+                              onClick={() => setQuickAccountId(acc.id)}
+                              className={`flex items-center gap-1.5 p-1.5 rounded-lg border text-left transition-all duration-200 ${
+                                quickAccountId === acc.id
+                                  ? "border-primary bg-primary/10"
+                                  : "border-border bg-background hover:border-primary/40"
+                              }`}
+                            >
+                              <div
+                                className="w-4 h-4 rounded-sm shrink-0"
+                                style={{
+                                  backgroundColor: acc.color || "#6366f1",
+                                }}
+                              />
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[10px] font-semibold truncate leading-none mb-0.5">
+                                  {acc.name}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground leading-none">
+                                  {acc.balance.toLocaleString("pt-BR", {
+                                    style: "currency",
+                                    currency: "BRL",
+                                  })}
+                                </span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[9px] text-muted-foreground p-2 bg-secondary/50 rounded-lg">
+                          Nenhuma conta cadastrada.{" "}
+                          <a
+                            href="/accounts"
+                            className="text-primary underline"
+                          >
+                            Cadastrar
+                          </a>
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
                 </AnimatePresence>
 
                 {/* Botão de Envio */}

@@ -656,7 +656,7 @@ export const demoHealthScore = {
   score: 72,
   status: "good" as const,
   message:
-    "Você está no caminho certo. Alguns ajustes podem melhorar ainda mais.",
+    "Saldo positivo! Mas ainda não dá pra gastar tudo em compras aleatórias na internet à meia-noite. Segura o 'eu mereço' no fim de semana! 👍",
   components: {
     savings: { score: 60, weight: 25 },
     expenses: { score: 65, weight: 25 },

@@ -1,4 +1,5 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -32,7 +33,9 @@ import {
   useTransactions,
   useCategories,
   useCreditCards,
+  useAccounts,
 } from "@/hooks/use-supabase";
+import { parseBRLAmount } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -67,7 +70,11 @@ function getPaymentMethod(tx: any): string | null {
 }
 
 function stripPaymentPrefix(desc: string): string {
-  return desc ? desc.replace(PAYMENT_PREFIX_RE, "").trim() : "";
+  if (!desc) return "";
+  return desc
+    .replace(PAYMENT_PREFIX_RE, "")
+    .replace(/\[Conta:\s*([^\]]+)\]\s*/, "")
+    .trim();
 }
 
 const EXPENSE_PAYMENT_OPTIONS = [
@@ -113,6 +120,7 @@ export default function Transactions() {
     isFixed: false,
     paymentMethod: "pix" as string,
     creditCardId: "",
+    accountId: "",
   });
 
   const month = currentMonth();
@@ -125,6 +133,7 @@ export default function Transactions() {
   } = useTransactions();
   const { data: realCategories } = useCategories();
   const { data: realCreditCards } = useCreditCards();
+  const { data: realAccounts, refetch: refetchAccounts } = useAccounts();
 
   const filteredRealTransactions = useMemo(
     () => realTransactions.filter((t: any) => t.date.startsWith(month)),
@@ -145,6 +154,7 @@ export default function Transactions() {
   const allTxs = useDemo ? demoTransactions : filteredRealTransactions;
   const categories = useDemo ? demoCategories : realCategories;
   const creditCards = useDemo ? [] : realCreditCards;
+  const accounts = useDemo ? [] : realAccounts;
 
   const txs = useMemo(() => {
     if (!search.trim()) return allTxs;
@@ -184,18 +194,31 @@ export default function Transactions() {
       isFixed: false,
       paymentMethod: "pix",
       creditCardId: "",
+      accountId: "",
     });
     setEditingTx(null);
   };
 
   const handleSubmit = async () => {
     if (!form.categoryId || !form.amount) return;
-    const amount = parseFloat(form.amount);
-    if (isNaN(amount) || amount <= 0) return;
+    const amount = parseBRLAmount(form.amount);
+    if (amount <= 0) {
+      toast.error("Por favor insira um valor válido maior que zero.");
+      return;
+    }
+
+    const isCreditCard = form.paymentMethod === "credit_card";
+    if (!isCreditCard && !form.accountId) {
+      toast.error("Por favor selecione qual conta está saindo ou entrando o dinheiro.");
+      return;
+    }
+
     try {
       if (!useDemo) {
-        const isCreditCard = form.paymentMethod === "credit_card";
         let descriptionValue = form.description.trim();
+        const selectedAcc = accounts.find((a: any) => a.id === form.accountId);
+
+        // Prepend payment method label to description
         if (!isCreditCard) {
           const label =
             form.paymentMethod === "pix"
@@ -211,6 +234,12 @@ export default function Transactions() {
               : `[${label}]`;
           }
         }
+
+        // Prepend account prefix to description if linked to account
+        if (!isCreditCard && selectedAcc) {
+          descriptionValue = `[Conta: ${selectedAcc.name}] ${descriptionValue}`;
+        }
+
         const txData: any = {
           category_id: form.categoryId,
           amount,
@@ -222,13 +251,56 @@ export default function Transactions() {
           credit_card_id:
             isCreditCard && form.creditCardId ? form.creditCardId : null,
         };
+
         if (editingTx) {
+          // 1. Reverter saldo antigo da conta antiga
+          const oldAmount = editingTx.amount;
+          const oldType = editingTx.type;
+          const oldAccMatch = editingTx.description?.match(/\[Conta:\s*([^\]]+)\]/);
+          const oldAccName = oldAccMatch ? oldAccMatch[1] : null;
+          const oldAcc = accounts.find((a: any) => a.name === oldAccName);
+
+          if (oldAcc) {
+            const revertedBalance = oldType === "income"
+              ? oldAcc.balance - oldAmount
+              : oldAcc.balance + oldAmount;
+            await supabase.from("accounts").update({ balance: revertedBalance }).eq("id", oldAcc.id);
+          }
+
+          // 2. Aplicar novo saldo na conta selecionada
+          if (selectedAcc) {
+            const { data: latestAcc } = await supabase
+              .from("accounts")
+              .select("balance")
+              .eq("id", selectedAcc.id)
+              .single();
+            
+            const currentBalance = latestAcc ? latestAcc.balance : selectedAcc.balance;
+            const newBalance = form.type === "income"
+              ? currentBalance + amount
+              : currentBalance - amount;
+            
+            await supabase.from("accounts").update({ balance: newBalance }).eq("id", selectedAcc.id);
+          }
+
           await update(editingTx.id, txData);
           toast.success("Transação atualizada!");
         } else {
+          // Nova Transação: aplicar saldo na conta
+          if (selectedAcc) {
+            const newBalance = form.type === "income"
+              ? selectedAcc.balance + amount
+              : selectedAcc.balance - amount;
+            await supabase.from("accounts").update({ balance: newBalance }).eq("id", selectedAcc.id);
+          }
+
           await create(txData);
           toast.success("Transação adicionada!");
         }
+        
+        refetchAccounts();
+      } else {
+        toast.info("Transações não alteram o banco de dados no modo demonstração.");
       }
       setDialogOpen(false);
       resetForm();
@@ -431,6 +503,66 @@ export default function Transactions() {
                   )}
                 </AnimatePresence>
 
+                {/* Account selector */}
+                <AnimatePresence>
+                  {form.paymentMethod !== "credit_card" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                        {form.type === "expense" ? "Pagar com a Conta" : "Receber na Conta"} <span className="text-destructive">*</span>
+                      </label>
+                      {accounts && accounts.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          {accounts.map((acc: any) => (
+                            <button
+                              key={acc.id}
+                              type="button"
+                              onClick={() =>
+                                setForm({ ...form, accountId: acc.id })
+                              }
+                              className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all duration-200 ${
+                                form.accountId === acc.id
+                                  ? "border-primary bg-primary/10"
+                                  : "border-border bg-background hover:border-primary/40"
+                              }`}
+                            >
+                              <div
+                                className="w-5.5 h-5.5 rounded-md shrink-0"
+                                style={{
+                                  backgroundColor: acc.color || "#6366f1",
+                                }}
+                              />
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-xs font-semibold truncate leading-none mb-0.5">
+                                  {acc.name}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground leading-none">
+                                  Saldo: {formatCurrency(acc.balance)}
+                                </span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground p-3 bg-secondary/50 rounded-xl">
+                          Nenhuma conta cadastrada.{" "}
+                          <a
+                            href="/accounts"
+                            className="text-primary underline"
+                          >
+                            Cadastrar conta
+                          </a>
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Amount */}
                 <div>
                   <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
@@ -441,9 +573,8 @@ export default function Transactions() {
                       R$
                     </span>
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="0,00"
                       value={form.amount}
                       onChange={(e) =>
@@ -709,6 +840,10 @@ export default function Transactions() {
                                         : "pix";
                               }
                             }
+                            const accMatch = tx.description?.match(/\[Conta:\s*([^\]]+)\]/);
+                            const accountName = accMatch ? accMatch[1] : null;
+                            const foundAcc = accounts.find((a: any) => a.name === accountName);
+
                             setForm({
                               categoryId: tx.category_id,
                               amount: tx.amount.toString(),
@@ -720,6 +855,7 @@ export default function Transactions() {
                               isFixed: tx.is_fixed,
                               paymentMethod: pm,
                               creditCardId: tx.credit_card_id || "",
+                              accountId: foundAcc ? foundAcc.id : "",
                             });
                             setDialogOpen(true);
                           }
@@ -793,7 +929,25 @@ export default function Transactions() {
               className="text-xs rounded-lg bg-destructive hover:bg-destructive/90"
               onClick={async () => {
                 if (deleteId) {
-                  if (!useDemo) await remove(deleteId);
+                  if (!useDemo) {
+                    const txToDelete = realTransactions.find((t: any) => t.id === deleteId);
+                    if (txToDelete) {
+                      const amount = txToDelete.amount;
+                      const type = txToDelete.type;
+                      const accMatch = txToDelete.description?.match(/\[Conta:\s*([^\]]+)\]/);
+                      const accName = accMatch ? accMatch[1] : null;
+                      const acc = accounts.find((a: any) => a.name === accName);
+
+                      if (acc) {
+                        const newBalance = type === "income"
+                          ? acc.balance - amount
+                          : acc.balance + amount;
+                        await supabase.from("accounts").update({ balance: newBalance }).eq("id", acc.id);
+                        refetchAccounts();
+                      }
+                    }
+                    await remove(deleteId);
+                  }
                   toast.success("Transação excluída!");
                 }
                 setDeleteDialogOpen(false);
