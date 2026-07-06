@@ -19,7 +19,7 @@ function currentMonth() {
 }
 
 export default function Transactions() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
 
   // All hooks must be called unconditionally before any early returns
@@ -52,9 +52,9 @@ export default function Transactions() {
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
     if (!isLoading && !txsLoading) {
-      setUseDemo(realTransactions.length === 0 && realCategories.length === 0);
+      setUseDemo(!!user?.is_anonymous && realTransactions.length === 0 && realCategories.length === 0);
     }
-  }, [isLoading, txsLoading, realTransactions, realCategories]);
+  }, [isLoading, txsLoading, realTransactions, realCategories, user]);
 
   const allTxs = useDemo ? demoTransactions : filteredRealTransactions;
   const categories = useDemo ? demoCategories : realCategories;

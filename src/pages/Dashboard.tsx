@@ -18,6 +18,11 @@ import {
   demoTransactions, demoDebts as demoDebtList, demoAccounts as demoAcc,
   demoGoals as demoGoalList,
 } from "@/lib/demo-data";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 function LoadingSkeleton() {
   return (
@@ -55,34 +60,40 @@ function HealthScoreGauge({ score, status, message }: { score: number; status: s
           if (prev >= score) { clearInterval(interval); return score; }
           return prev + 1;
         });
-      }, 25);
+      }, 15);
       return () => clearInterval(interval);
-    }, 300);
+    }, 400);
     return () => clearTimeout(timer);
   }, [score]);
 
   const offset = circumference - (animatedScore / 100) * circumference;
 
   const getScoreColor = (s: number) => {
-    if (s >= 80) return "oklch(0.45 0.13 145)";
-    if (s >= 60) return "oklch(0.65 0.14 100)";
-    if (s >= 40) return "oklch(0.75 0.14 75)";
-    return "oklch(0.58 0.19 27.33)";
+    if (s >= 80) return "var(--color-success)";
+    if (s >= 60) return "var(--color-warning)";
+    return "var(--color-danger)";
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="relative w-44 h-44 sm:w-52 sm:h-52">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 180 180">
-          <circle cx="90" cy="90" r="80" fill="none" stroke="oklch(0.92 0 0)" strokeWidth="6" className="dark:stroke-[oklch(0.22 0 0)]" />
-          <circle cx="90" cy="90" r="80" fill="none" stroke={getScoreColor(animatedScore)} strokeWidth="6" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} className="transition-all duration-200 ease-out" style={{ filter: `drop-shadow(0 0 4px ${getScoreColor(animatedScore)}44)` }} />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-4xl sm:text-5xl font-light tabular-nums" style={{ color: getScoreColor(animatedScore) }}>{animatedScore}</span>
-          <span className="text-[10px] text-muted-foreground mt-0.5 tracking-widest uppercase">{status === "excellent" ? "Excelente" : status === "good" ? "Bom" : status === "fair" ? "Atenção" : "Crítico"}</span>
-        </div>
+    <div className="relative w-44 h-44 mx-auto flex items-center justify-center">
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
+        <circle cx="100" cy="100" r="80" fill="none" stroke="var(--border)" strokeWidth="6" />
+        <circle
+          cx="100" cy="100" r="80" fill="none"
+          stroke={getScoreColor(animatedScore)}
+          strokeWidth="6" strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className="transition-all duration-200 ease-out"
+          style={{ filter: `drop-shadow(0 0 6px ${getScoreColor(animatedScore)}44)` }}
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center justify-center">
+        <span className="text-4xl font-light tracking-tight tabular-nums" style={{ color: getScoreColor(animatedScore) }}>
+          {animatedScore}
+        </span>
+        <span className="text-[10px] text-muted-foreground mt-0.5 tracking-wider uppercase font-medium">{status}</span>
       </div>
-      <p className="text-xs text-muted-foreground text-center mt-4 max-w-[220px] leading-relaxed">{message}</p>
     </div>
   );
 }
@@ -135,7 +146,7 @@ const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
 });
 
 export default function Dashboard() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user, updateProfile } = useAuth();
   const navigate = useNavigate();
   const now = new Date();
   const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -147,22 +158,58 @@ export default function Dashboard() {
     return true;
   });
 
+  // Onboarding modal states
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingName, setOnboardingName] = useState("");
+  const [onboardingIncome, setOnboardingIncome] = useState("");
+  const [onboardingGoal, setOnboardingGoal] = useState("");
+  const [onboardingSubmitting, setOnboardingSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && user && !user.is_anonymous && !user.onboarding_completed) {
+      setOnboardingOpen(true);
+      setOnboardingName(user.name || "");
+    } else {
+      setOnboardingOpen(false);
+    }
+  }, [isLoading, user]);
+
+  const handleOnboardingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onboardingName.trim()) return;
+    setOnboardingSubmitting(true);
+    try {
+      await updateProfile({
+        name: onboardingName,
+        monthly_income: onboardingIncome ? parseFloat(onboardingIncome) : null,
+        financial_goal: onboardingGoal || null,
+        onboarding_completed: true,
+      });
+      setOnboardingOpen(false);
+      toast.success("Boas-vindas ao Zenfi! Seu espaço foi configurado.");
+    } catch (error) {
+      toast.error("Ocorreu um erro ao salvar as configurações.");
+    } finally {
+      setOnboardingSubmitting(false);
+    }
+  };
+
   // Supabase hooks
   const { data: realSummary, loading: summaryLoading } = useMonthlySummary(selectedMonth);
   const { data: realHealth } = useFinancialHealthScore();
   const { data: realEvolution } = useMonthlyEvolution(6);
-  const { data: realCategories } = useCategories();
+  const { data: realCategories, loading: catsLoading } = useCategories();
   const { data: realDebts } = useDebts();
   const { data: realAccounts } = useAccounts();
   const { data: realGoals } = useGoals();
 
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
-    if (!isLoading && !summaryLoading) {
-      const allFailed = realCategories.length === 0;
-      setUseDemo(allFailed);
+    if (!isLoading && !summaryLoading && !catsLoading) {
+      // Demo mode ONLY for guest/anonymous users with no categories setup
+      setUseDemo(!!user?.is_anonymous && realCategories.length === 0);
     }
-  }, [isLoading, summaryLoading, realCategories]);
+  }, [isLoading, summaryLoading, catsLoading, realCategories, user]);
 
   const summary = useDemo ? demoMonthlySummary() : (realSummary ?? undefined);
   const health = useDemo ? demoHealthScore : (realHealth ?? undefined);
@@ -508,6 +555,57 @@ export default function Dashboard() {
           </motion.div>
         </div>
       </div>
+
+      <Dialog open={onboardingOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl [&>button]:hidden bg-card border text-foreground" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold tracking-tight text-center">Boas-vindas ao Zenfi! 🎉</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground text-center mt-1">
+              Para começarmos, conte-nos um pouco sobre você e seus objetivos financeiros.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleOnboardingSubmit} className="space-y-4 py-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="onboarding-name" className="text-xs font-semibold">Como gostaria de ser chamado?</Label>
+              <Input
+                id="onboarding-name"
+                placeholder="Seu nome"
+                value={onboardingName}
+                onChange={(e) => setOnboardingName(e.target.value)}
+                required
+                className="rounded-xl h-10 border bg-background"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="onboarding-income" className="text-xs font-semibold">Qual sua renda mensal? (Opcional)</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">R$</span>
+                <Input
+                  id="onboarding-income"
+                  type="number"
+                  placeholder="0,00"
+                  value={onboardingIncome}
+                  onChange={(e) => setOnboardingIncome(e.target.value)}
+                  className="pl-9 rounded-xl h-10 border bg-background"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="onboarding-goal" className="text-xs font-semibold">Seu principal objetivo financeiro? (Opcional)</Label>
+              <Input
+                id="onboarding-goal"
+                placeholder="Ex: Reserva de emergência, Comprar um carro, Investir"
+                value={onboardingGoal}
+                onChange={(e) => setOnboardingGoal(e.target.value)}
+                className="rounded-xl h-10 border bg-background"
+              />
+            </div>
+            <Button type="submit" className="w-full rounded-xl h-10 text-sm font-semibold mt-2" disabled={onboardingSubmitting || !onboardingName.trim()}>
+              {onboardingSubmitting ? "Configurando..." : "Começar no Zenfi"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

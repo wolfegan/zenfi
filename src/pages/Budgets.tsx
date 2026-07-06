@@ -14,7 +14,7 @@ import { demoBudgets, demoCategories, demoTransactions } from "@/lib/demo-data";
 const currentMonth = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`; };
 
 export default function Budgets() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const [selectedMonth, setSelectedMonth] = useState(currentMonth());
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -29,7 +29,11 @@ export default function Budgets() {
   }, [selectedMonth, getByMonth]);
 
   const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => { if (!isLoading) setUseDemo(realBudgets.length === 0 && realCategories.length === 0); }, [isLoading, realBudgets, realCategories]);
+  useEffect(() => {
+    if (!isLoading) {
+      setUseDemo(!!user?.is_anonymous && realBudgets.length === 0 && realCategories.length === 0);
+    }
+  }, [isLoading, realBudgets, realCategories, user]);
 
   const budgets = useDemo ? demoBudgets : realBudgets;
   const categories = useDemo ? demoCategories : realCategories;

@@ -21,7 +21,7 @@ const colorOptions = [
 const iconOptions = ["ShoppingCart", "Home", "Car", "Coffee", "Wifi", "Heart", "Briefcase", "PiggyBank", "Book", "Music", "Dumbbell", "Plane"];
 
 export default function Categories() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
 
   // All hooks declared before any early return
@@ -41,8 +41,10 @@ export default function Categories() {
 
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
-    if (!isLoading && !catsLoading) setUseDemo(realCategories.length === 0);
-  }, [isLoading, catsLoading, realCategories]);
+    if (!isLoading && !catsLoading) {
+      setUseDemo(!!user?.is_anonymous && realCategories.length === 0);
+    }
+  }, [isLoading, catsLoading, realCategories, user]);
 
   const categories = useDemo ? demoCategories : realCategories;
 

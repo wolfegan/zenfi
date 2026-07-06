@@ -26,7 +26,7 @@ function getAccountIcon(type: string) { return accountTypes.find((a) => a.value 
 function getAccountLabel(type: string) { return accountTypes.find((a) => a.value === type)?.label || type; }
 
 export default function Accounts() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAcc, setEditingAcc] = useState<any>(null);
@@ -38,7 +38,11 @@ export default function Accounts() {
   const { data: realAccounts, loading: accsLoading, create, update, remove } = useAccounts();
 
   const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => { if (!isLoading && !accsLoading) setUseDemo(realAccounts.length === 0); }, [isLoading, accsLoading, realAccounts]);
+  useEffect(() => {
+    if (!isLoading && !accsLoading) {
+      setUseDemo(!!user?.is_anonymous && realAccounts.length === 0);
+    }
+  }, [isLoading, accsLoading, realAccounts, user]);
   const accounts = useDemo ? demoAccounts : realAccounts;
 
   if (isLoading) return null;

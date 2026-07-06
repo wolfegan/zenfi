@@ -29,7 +29,7 @@ function getCategoryIcon(cat: string) { return goalCategories.find((c) => c.valu
 function getCategoryLabel(cat: string) { return goalCategories.find((c) => c.value === cat)?.label || cat; }
 
 export default function Goals() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [contributeDialogOpen, setContributeDialogOpen] = useState(false);
@@ -49,7 +49,11 @@ export default function Goals() {
   }, [goalsLoading, realGoals, getSummary]);
 
   const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => { if (!isLoading && !goalsLoading) setUseDemo(realGoals.length === 0); }, [isLoading, goalsLoading, realGoals]);
+  useEffect(() => {
+    if (!isLoading && !goalsLoading) {
+      setUseDemo(!!user?.is_anonymous && realGoals.length === 0);
+    }
+  }, [isLoading, goalsLoading, realGoals, user]);
 
   const goals = useDemo ? demoGoals : realGoals;
   const summaryData = useDemo ? demoGoalsSummary : summary;

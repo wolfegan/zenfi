@@ -116,6 +116,18 @@ export function useAuth() {
     setIsAuthenticated(false);
   }
 
+  async function updateProfile(updates: Partial<Profile>) {
+    if (!user?.id) return;
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(updates)
+      .eq("id", user.id)
+      .select()
+      .single();
+    if (error) throw error;
+    setUser(data);
+  }
+
   return {
     user,
     isLoading,
@@ -124,5 +136,6 @@ export function useAuth() {
     signInWithEmail,
     signInAnonymously,
     signOut,
+    updateProfile,
   };
 }

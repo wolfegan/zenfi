@@ -14,7 +14,7 @@ import { demoCreditCards } from "@/lib/demo-data";
 const colorOptions = ["#0a0a0a", "#444444", "#666666", "#888888", "#aaaaaa", "#c44", "#2a7"];
 
 export default function CreditCardsPage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ name: "", limit: "", closingDay: "5", dueDay: "10", color: "#0a0a0a" });
@@ -22,7 +22,11 @@ export default function CreditCardsPage() {
   const { data: realCards, loading: cardsLoading, create } = useCreditCards();
 
   const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => { if (!isLoading && !cardsLoading) setUseDemo(realCards.length === 0); }, [isLoading, cardsLoading, realCards]);
+  useEffect(() => {
+    if (!isLoading && !cardsLoading) {
+      setUseDemo(!!user?.is_anonymous && realCards.length === 0);
+    }
+  }, [isLoading, cardsLoading, realCards, user]);
   const cards = useDemo ? demoCreditCards : realCards;
 
   if (isLoading) return null;

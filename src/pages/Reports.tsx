@@ -30,7 +30,7 @@ function exportToCSV(data: any[], filename: string) {
 }
 
 export default function Reports() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
 
@@ -40,8 +40,10 @@ export default function Reports() {
 
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
-    if (!isLoading) setUseDemo(realSummary === null && realEvolution.length === 0);
-  }, [isLoading, realSummary, realEvolution]);
+    if (!isLoading) {
+      setUseDemo(!!user?.is_anonymous && realSummary === null && realEvolution.length === 0);
+    }
+  }, [isLoading, realSummary, realEvolution, user]);
 
   const summary = useDemo ? demoMonthlySummary() : (realSummary ?? undefined);
   const evolution = useDemo ? demoEvolution : (realEvolution ?? []);

@@ -16,7 +16,7 @@ const investmentTypes = [
 ];
 
 export default function Investments() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingInv, setEditingInv] = useState<any>(null);
@@ -32,7 +32,11 @@ export default function Investments() {
   }, [invLoading, realInvestments, getSummary]);
 
   const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => { if (!isLoading && !invLoading) setUseDemo(realInvestments.length === 0); }, [isLoading, invLoading, realInvestments]);
+  useEffect(() => {
+    if (!isLoading && !invLoading) {
+      setUseDemo(!!user?.is_anonymous && realInvestments.length === 0);
+    }
+  }, [isLoading, invLoading, realInvestments, user]);
 
   const investments = useDemo ? demoInvestments : realInvestments;
   const summaryData = useDemo ? demoInvestmentsSummary : summary;

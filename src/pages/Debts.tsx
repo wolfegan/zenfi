@@ -22,7 +22,7 @@ const MONTHS = [
 ];
 
 export default function Debts() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
@@ -45,7 +45,11 @@ export default function Debts() {
   }, [debtsLoading, realDebts, getSummary]);
 
   const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => { if (!isLoading && !debtsLoading) setUseDemo(realDebts.length === 0); }, [isLoading, debtsLoading, realDebts]);
+  useEffect(() => {
+    if (!isLoading && !debtsLoading) {
+      setUseDemo(!!user?.is_anonymous && realDebts.length === 0);
+    }
+  }, [isLoading, debtsLoading, realDebts, user]);
 
   const now = new Date();
   const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
