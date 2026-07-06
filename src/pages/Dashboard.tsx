@@ -166,13 +166,13 @@ export default function Dashboard() {
   const [onboardingSubmitting, setOnboardingSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && user && !user.is_anonymous && !user.onboarding_completed) {
+    // Only act when user has fully loaded (user is not null)
+    // onboarding_completed is either false or null for new users
+    if (user && !user.is_anonymous && user.onboarding_completed !== true) {
       setOnboardingOpen(true);
       setOnboardingName(user.name || "");
-    } else {
-      setOnboardingOpen(false);
     }
-  }, [isLoading, user]);
+  }, [user]);
 
   const handleOnboardingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
