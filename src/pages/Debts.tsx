@@ -825,7 +825,12 @@ export default function Debts() {
                       <button
                         onClick={() => {
                           if (debt.is_paid) return;
-                          if (!useDemo) markAsPaid(debt.id);
+                          setPayingDebt(debt);
+                          setPayAmount(String(debt.remaining_amount || ""));
+                          setPayPaymentMethod("pix");
+                          if (accounts.length > 0) setPayAccountId(accounts[0].id);
+                          setPayCreditCardId("");
+                          setPayDialogOpen(true);
                         }}
                         className="mt-0.5 shrink-0"
                         title={debt.is_paid ? "Paga" : "Marcar como paga"}
