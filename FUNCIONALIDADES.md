@@ -4,6 +4,23 @@ O **Zenfi** é um aplicativo moderno de gestão financeira pessoal desenvolvido 
 
 ---
 
+## 🔑 Como Acessar / Contas de Teste
+
+Para testar o aplicativo e validar todas as funcionalidades no link **`https://zenfiweb.vercel.app`**:
+
+### Opção 1: Entrar como Convidado (1 Clique — Sem necessidade de cadastro)
+1. Acesse **`https://zenfiweb.vercel.app/auth`**.
+2. Clique no botão **"Entrar como Convidado"**.
+3. O sistema gerará uma sessão de teste anônima e pré-carregará dados de demonstração (transações, cartões, orçamentos, dívidas e metas) para você explorar tudo imediatamente.
+
+### Opção 2: Credenciais de Teste Recomendadas
+- **E-mail**: `teste@zenfi.com`
+- **Senha**: `123456`
+
+*(Você também pode cadastrar uma conta nova com qualquer e-mail e senha diretamente na tela de login).*
+
+---
+
 ## 📌 Principais Funcionalidades
 
 ### 1. 🔐 Autenticação e Segurança de Acesso
