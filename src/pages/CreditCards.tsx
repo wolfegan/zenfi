@@ -36,17 +36,28 @@ import { useNavigate } from "react-router";
 import { demoCreditCards } from "@/lib/demo-data";
 
 const colorOptions = [
-  "#0a0a0a",
-  "#6366f1",
-  "#8b5cf6",
-  "#ec4899",
-  "#ef4444",
-  "#f97316",
-  "#eab308",
-  "#22c55e",
-  "#10b981",
-  "#3b82f6",
-  "#0ea5e9",
+  "#0a0a0a", // Preto C6 / Dark
+  "#820ad1", // Roxo Nubank
+  "#ff7a00", // Laranja Inter / Itaú
+  "#cc092f", // Vermelho Santander / Bradesco
+  "#005ca9", // Azul Caixa
+  "#00d68f", // Verde XP
+  "#6366f1", // Indigo
+  "#8b5cf6", // Violeta
+  "#ec4899", // Rosa Hot
+  "#ef4444", // Vermelho Vivo
+  "#f97316", // Laranja Coral
+  "#eab308", // Dourado
+  "#22c55e", // Verde Esmeralda
+  "#10b981", // Menta
+  "#06b6d4", // Ciano
+  "#3b82f6", // Azul Royal
+  "#1e40af", // Azul Marinho
+  "#475569", // Grafite Slate
+  "#d97706", // Ámbar / Bronze
+  "#be185d", // Vinho / Magenta
+  "#4c1d95", // Roxo Escuro
+  "#065f46", // Verde Floresta
 ];
 
 export default function CreditCardsPage() {
@@ -238,15 +249,26 @@ export default function CreditCardsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1.5 block">
-                    Cor
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs text-muted-foreground block">
+                      Cor do Cartão
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="w-3.5 h-3.5 rounded-full border shadow-xs"
+                        style={{ backgroundColor: form.color }}
+                      />
+                      <span className="text-[11px] font-mono text-muted-foreground uppercase">
+                        {form.color}
+                      </span>
+                    </div>
+                  </div>
                   <div className="flex gap-2 flex-wrap items-center">
                     {colorOptions.map((color) => (
                       <button
                         key={color}
                         type="button"
-                        className={`w-7 h-7 rounded-full border-2 transition-all ${form.color === color ? "border-foreground scale-110" : "border-transparent"}`}
+                        className={`w-7 h-7 rounded-full border-2 transition-all ${form.color === color ? "border-foreground scale-110 shadow-sm" : "border-transparent opacity-90 hover:opacity-100"}`}
                         style={{ backgroundColor: color }}
                         onClick={() => setForm({ ...form, color })}
                       />
@@ -262,7 +284,7 @@ export default function CreditCardsPage() {
                           ? form.color
                           : undefined,
                       }}
-                      title="Cor personalizada"
+                      title="Seletor de Cor Personalizado"
                     >
                       <span
                         className={`text-[10px] font-bold leading-none ${!colorOptions.includes(form.color) ? "mix-blend-difference text-white" : "text-muted-foreground"}`}

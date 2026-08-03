@@ -1320,3 +1320,54 @@ export function useAccounts() {
     refetch: fetch,
   };
 }
+
+// =============================================================================
+// Reset Account Helper
+// =============================================================================
+
+export async function resetUserAccountData(userId: string) {
+  if (!userId) return;
+
+  try {
+    // 1. Get user's credit cards to delete their bills
+    const { data: cards } = await supabase
+      .from("credit_cards")
+      .select("id")
+      .eq("user_id", userId);
+
+    if (cards && cards.length > 0) {
+      const cardIds = cards.map((c) => c.id);
+      await supabase.from("credit_card_bills").delete().in("card_id", cardIds);
+    }
+
+    // 2. Delete all user records from dependent tables
+    await Promise.all([
+      supabase.from("transactions").delete().eq("user_id", userId),
+      supabase.from("credit_cards").delete().eq("user_id", userId),
+      supabase.from("debts").delete().eq("user_id", userId),
+      supabase.from("investments").delete().eq("user_id", userId),
+      supabase.from("goals").delete().eq("user_id", userId),
+      supabase.from("monthly_budgets").delete().eq("user_id", userId),
+      supabase.from("accounts").delete().eq("user_id", userId),
+      supabase.from("categories").delete().eq("user_id", userId),
+    ]);
+
+    // 3. Reset profile onboarding status and goals
+    await supabase
+      .from("profiles")
+      .update({
+        onboarding_completed: false,
+        monthly_income: null,
+        financial_goal: null,
+      })
+      .eq("id", userId);
+
+    // 4. Clear local storage flags
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("onboarding-dismissed");
+    }
+  } catch (err) {
+    console.error("Error resetting account data:", err);
+    throw err;
+  }
+}

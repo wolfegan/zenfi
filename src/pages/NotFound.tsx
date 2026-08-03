@@ -1,22 +1,29 @@
 import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import { Link } from "react-router";
 
 export default function NotFound() {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen flex flex-col"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="min-h-screen flex flex-col items-center justify-center bg-background px-4 text-center"
     >
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center">
-        <div className="max-w-5xl mx-auto relative px-4">
-          <div className="flex items-center justify-center min-h-[200px]">
-            <div className="text-center">
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
-              <p className="text-lg text-gray-600">Page Not Found</p>
-            </div>
-          </div>
+      <div className="max-w-md space-y-4">
+        <h1 className="text-6xl font-bold tracking-tight text-primary">404</h1>
+        <h2 className="text-xl font-semibold">Página não encontrada</h2>
+        <p className="text-sm text-muted-foreground">
+          A página que você está procurando não existe ou foi movida.
+        </p>
+        <div className="pt-4">
+          <Link to="/">
+            <Button size="sm" className="rounded-xl gap-2 text-xs">
+              <ArrowLeft className="w-4 h-4" />
+              Voltar ao início
+            </Button>
+          </Link>
         </div>
       </div>
     </motion.div>

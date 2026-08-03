@@ -90,7 +90,7 @@ function ErrorDialog({
         </div>
         <DialogFooter>
           <a
-            href={`https://freebuff.com/project/${import.meta.env.VITE_VLY_APP_ID}`}
+            href="/"
             target="_blank"
           >
             <Button>
