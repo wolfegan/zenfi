@@ -239,16 +239,21 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
             </div>
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-10 rounded-xl text-sm"
-            onClick={handleGuestLogin}
-            disabled={isLoading}
-          >
-            <UserX className="mr-2 h-4 w-4" />
-            Entrar como Convidado
-          </Button>
+          <div className="space-y-1.5">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-11 rounded-xl text-xs sm:text-sm font-semibold border-primary/30 hover:bg-primary/5 text-primary flex items-center justify-center gap-2"
+              onClick={handleGuestLogin}
+              disabled={isLoading}
+            >
+              <UserX className="h-4 w-4" />
+              Acessar Conta Teste de Demonstração
+            </Button>
+            <p className="text-[10px] text-center text-muted-foreground">
+              Explore o aplicativo com 8 meses de dados financeiros fictícios pré-carregados.
+            </p>
+          </div>
 
           <p className="text-center text-xs text-muted-foreground mt-6">
             {step === "signup" ? "Já tem conta?" : "Não tem conta?"}{" "}

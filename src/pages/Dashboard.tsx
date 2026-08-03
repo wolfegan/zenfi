@@ -36,6 +36,7 @@ import {
   Banknote,
   Building2,
   Plus,
+  AlertTriangle,
 } from "lucide-react";
 import {
   PieChart,
@@ -309,7 +310,7 @@ export default function Dashboard() {
     async function runSeed() {
       if (user?.is_anonymous && !testCatsLoading && testCategories.length === 0 && !seeding) {
         setSeeding(true);
-        const toastId = toast.loading("Configurando sua conta teste com dados de demonstração...");
+        const toastId = toast.loading("Configurando sua conta de demonstração com 8 meses de dados (Jan a Ago 2026)...");
         try {
           const uId = user.id;
 
@@ -320,7 +321,7 @@ export default function Dashboard() {
             { user_id: uId, name: "Moradia", type: "expense", icon: "Home", color: "#8b5cf6", is_fixed: true, order: 2 },
             { user_id: uId, name: "Saúde", type: "expense", icon: "Stethoscope", color: "#ec4899", is_fixed: false, order: 3 },
             { user_id: uId, name: "Lazer", type: "expense", icon: "Gamepad2", color: "#eab308", is_fixed: false, order: 4 },
-            { user_id: uId, name: "Salário", type: "income", icon: "Briefcase", color: "#22c55e", is_fixed: false, order: 5 },
+            { user_id: uId, name: "Salário", type: "income", icon: "Briefcase", color: "#22c55e", is_fixed: true, order: 5 },
             { user_id: uId, name: "Outros", type: "expense", icon: "CircleDollarSign", color: "#64748b", is_fixed: false, order: 6 },
           ];
           const { data: createdCats, error: catErr } = await supabase
@@ -331,68 +332,186 @@ export default function Dashboard() {
 
           // 2. Criar contas bancárias de demonstração
           const accountsRows = [
-            { user_id: uId, name: "Banco Inter (Corrente)", type: "checking", balance: 3500.00, color: "#f97316" },
-            { user_id: uId, name: "Nubank (Reserva)", type: "savings", balance: 12000.00, color: "#8b5cf6" },
-            { user_id: uId, name: "Dinheiro em Espécie", type: "cash", balance: 350.00, color: "#22c55e" }
+            { user_id: uId, name: "Banco Inter (Corrente)", type: "checking", balance: 4250.00, color: "#f97316" },
+            { user_id: uId, name: "Nubank (Reserva)", type: "savings", balance: 18500.00, color: "#8b5cf6" },
+            { user_id: uId, name: "Dinheiro em Carteira", type: "cash", balance: 420.00, color: "#22c55e" }
           ];
           const { error: accErr } = await supabase.from("accounts").insert(accountsRows);
           if (accErr) throw accErr;
 
           // 3. Criar cartões de crédito
           const cardRows = [
-            { user_id: uId, name: "Nubank Platinum", limit: 4000.00, closing_day: 5, due_day: 10, color: "#8b5cf6" },
-            { user_id: uId, name: "Inter Black", limit: 12000.00, closing_day: 15, due_day: 22, color: "#f97316" }
+            { user_id: uId, name: "Nubank Platinum", limit: 6000.00, closing_day: 5, due_day: 10, color: "#820ad1" },
+            { user_id: uId, name: "Inter Black", limit: 15000.00, closing_day: 15, due_day: 22, color: "#ff7a00" }
           ];
           const { error: cardErr } = await supabase.from("credit_cards").insert(cardRows);
           if (cardErr) throw cardErr;
 
           // 4. Criar dívidas com juros e valor original
-          const currentMonthStr = String(now.getMonth() + 1).padStart(2, "0");
           const debtRows = [
-            { user_id: uId, creditor: "Casas Bahia", total_amount: 1200.00, remaining_amount: 800.00, monthly_payment: 100.00, due_date: `${now.getFullYear()}-${currentMonthStr}-15`, start_date: `${now.getFullYear()}-01-15`, description: "[Original: 800,00] Compra de celular parcelado em 12x", is_paid: false },
-            { user_id: uId, creditor: "Banco Itaú (Empréstimo)", total_amount: 15000.00, remaining_amount: 10000.00, monthly_payment: 500.00, due_date: `${now.getFullYear()}-${currentMonthStr}-25`, start_date: `${now.getFullYear() - 1}-06-25`, description: "[Original: 10.000,00] Empréstimo pessoal com juros", is_paid: false },
-            { user_id: uId, creditor: "Financiamento Veículo", total_amount: 48000.00, remaining_amount: 32000.00, monthly_payment: 800.00, due_date: `${now.getFullYear()}-${currentMonthStr}-10`, start_date: `${now.getFullYear() - 2}-10-10`, description: "[Original: 36.000,00] Financiamento do carro em 60x", is_paid: false }
+            { user_id: uId, creditor: "Casas Bahia (Smartphone)", total_amount: 2400.00, remaining_amount: 600.00, monthly_payment: 200.00, due_date: `2026-08-15`, start_date: `2026-01-15`, description: "[Original: 2.400,00] Celular parcelado em 12x", is_paid: false },
+            { user_id: uId, creditor: "Banco Itaú (Empréstimo)", total_amount: 15000.00, remaining_amount: 8000.00, monthly_payment: 500.00, due_date: `2026-08-25`, start_date: `2025-06-25`, description: "[Original: 15.000,00] Empréstimo pessoal com juros baixos", is_paid: false }
           ];
           const { error: debtErr } = await supabase.from("debts").insert(debtRows);
           if (debtErr) throw debtErr;
 
-          // 5. Criar transações iniciais
+          // 5. Criar transações simuladas de Janeiro até Agosto de 2026
           const salaryCat = createdCats?.find(c => c.name === "Salário");
           const foodCat = createdCats?.find(c => c.name === "Alimentação");
-          
-          const transactionsRows = [];
-          if (salaryCat) {
-            transactionsRows.push({
-              user_id: uId,
-              type: "income",
-              amount: 5000.00,
-              description: "[PIX] Salário Mensal",
-              date: `${now.getFullYear()}-${currentMonthStr}-05`,
-              category_id: salaryCat.id,
-              is_fixed: false,
-              is_credit_card: false,
-            });
-          }
-          if (foodCat) {
-            transactionsRows.push({
-              user_id: uId,
-              type: "expense",
-              amount: 450.00,
-              description: "[Débito] Compra Supermercado",
-              date: `${now.getFullYear()}-${currentMonthStr}-02`,
-              category_id: foodCat.id,
-              is_fixed: false,
-              is_credit_card: false,
-            });
-          }
+          const transCat = createdCats?.find(c => c.name === "Transporte");
+          const homeCat = createdCats?.find(c => c.name === "Moradia");
+          const healthCat = createdCats?.find(c => c.name === "Saúde");
+          const leisureCat = createdCats?.find(c => c.name === "Lazer");
+          const otherCat = createdCats?.find(c => c.name === "Outros");
+
+          const transactionsRows: any[] = [];
+          const monthsToSeed = ["01", "02", "03", "04", "05", "06", "07", "08"];
+
+          monthsToSeed.forEach((m) => {
+            const yyyyMm = `2026-${m}`;
+            // Receita Fixa: Salário
+            if (salaryCat) {
+              transactionsRows.push({
+                user_id: uId,
+                type: "income",
+                amount: 5500.00,
+                description: "[PIX] Salário Mensal",
+                date: `${yyyyMm}-05`,
+                category_id: salaryCat.id,
+                is_fixed: true,
+                is_credit_card: false,
+              });
+            }
+            // Receita Extra: Freelance
+            if (salaryCat && (m === "02" || m === "04" || m === "06" || m === "08")) {
+              transactionsRows.push({
+                user_id: uId,
+                type: "income",
+                amount: 1200.00,
+                description: "[PIX] Projeto Freelance",
+                date: `${yyyyMm}-18`,
+                category_id: salaryCat.id,
+                is_fixed: false,
+                is_credit_card: false,
+              });
+            }
+            // Despesa Fixa: Aluguel
+            if (homeCat) {
+              transactionsRows.push({
+                user_id: uId,
+                type: "expense",
+                amount: 1800.00,
+                description: "[Débito] Aluguel e Condomínio",
+                date: `${yyyyMm}-10`,
+                category_id: homeCat.id,
+                is_fixed: true,
+                is_credit_card: false,
+              });
+            }
+            // Despesas: Supermercado
+            if (foodCat) {
+              transactionsRows.push({
+                user_id: uId,
+                type: "expense",
+                amount: 420.50,
+                description: "[Débito] Supermercado Mensal",
+                date: `${yyyyMm}-03`,
+                category_id: foodCat.id,
+                is_fixed: false,
+                is_credit_card: false,
+              });
+              transactionsRows.push({
+                user_id: uId,
+                type: "expense",
+                amount: 380.00,
+                description: "[Crédito] Feira & Sacolão",
+                date: `${yyyyMm}-17`,
+                category_id: foodCat.id,
+                is_fixed: false,
+                is_credit_card: true,
+              });
+            }
+            // Despesas: Contas
+            if (otherCat) {
+              transactionsRows.push({
+                user_id: uId,
+                type: "expense",
+                amount: 215.30,
+                description: "[Débito] Conta de Luz",
+                date: `${yyyyMm}-15`,
+                category_id: otherCat.id,
+                is_fixed: true,
+                is_credit_card: false,
+              });
+              transactionsRows.push({
+                user_id: uId,
+                type: "expense",
+                amount: 139.90,
+                description: "[Débito] Internet Fibra",
+                date: `${yyyyMm}-12`,
+                category_id: otherCat.id,
+                is_fixed: true,
+                is_credit_card: false,
+              });
+            }
+            // Despesas: Transporte
+            if (transCat) {
+              transactionsRows.push({
+                user_id: uId,
+                type: "expense",
+                amount: 250.00,
+                description: "[Crédito] Abastecimento Posto Shell",
+                date: `${yyyyMm}-08`,
+                category_id: transCat.id,
+                is_fixed: false,
+                is_credit_card: true,
+              });
+              transactionsRows.push({
+                user_id: uId,
+                type: "expense",
+                amount: 65.00,
+                description: "[Débito] Uber / Transporte App",
+                date: `${yyyyMm}-22`,
+                category_id: transCat.id,
+                is_fixed: false,
+                is_credit_card: false,
+              });
+            }
+            // Despesas: Saúde & Lazer
+            if (healthCat) {
+              transactionsRows.push({
+                user_id: uId,
+                type: "expense",
+                amount: 145.00,
+                description: "[Débito] Farmácia Drogasil",
+                date: `${yyyyMm}-14`,
+                category_id: healthCat.id,
+                is_fixed: false,
+                is_credit_card: false,
+              });
+            }
+            if (leisureCat) {
+              transactionsRows.push({
+                user_id: uId,
+                type: "expense",
+                amount: 185.00,
+                description: "[Crédito] Jantar Restaurante",
+                date: `${yyyyMm}-20`,
+                category_id: leisureCat.id,
+                is_fixed: false,
+                is_credit_card: true,
+              });
+            }
+          });
+
           if (transactionsRows.length > 0) {
             await supabase.from("transactions").insert(transactionsRows);
           }
 
           // 6. Concluir onboarding do perfil do usuário de teste
-          await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", uId);
+          await supabase.from("profiles").update({ onboarding_completed: true, monthly_income: 5500.00, financial_goal: "Reserva de Emergência e Investimentos" }).eq("id", uId);
 
-          toast.success("Conta de teste configurada com sucesso!", { id: toastId });
+          toast.success("Conta de teste configurada com 8 meses de histórico de 2026!", { id: toastId });
           
           // Forçar recarga para renderizar o estado real
           window.location.reload();
@@ -587,6 +706,41 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
+        {(user?.is_anonymous || useDemo) && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl border border-amber-500/30 bg-amber-500/10 dark:bg-amber-500/15 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs"
+          >
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-200">
+                    Modo de Demonstração (Dados 100% Fictícios)
+                  </h3>
+                  <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-200 uppercase tracking-wide">
+                    Jan a Ago 2026
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  Você está navegando em uma <strong>conta de testes de demonstração</strong> com simulação completa de transações, cartões, dívidas e metas. 
+                  Para iniciar com suas finanças reais, acesse Configurações e selecione "Redefinir Conta".
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 pt-1 sm:pt-0">
+              <a href="/settings" className="w-full sm:w-auto">
+                <button className="w-full sm:w-auto px-3.5 py-2 text-xs font-semibold rounded-xl bg-amber-500 text-amber-950 hover:bg-amber-400 transition-colors shadow-xs">
+                  Redefinir / Começar do Zero
+                </button>
+              </a>
+            </div>
+          </motion.div>
+        )}
+
         {showOnboarding && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
