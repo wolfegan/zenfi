@@ -49,6 +49,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
+import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
 import type { Profile } from "@/lib/supabase-types";
 
 // ─── Icon Registry ──────────────────────────────────────────────────────────
@@ -595,12 +596,10 @@ export function OnboardingModal({
                   <Label className="text-xs font-semibold">
                     Valor mensal <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="R$ 0,00"
+                  <BRLCurrencyInput
                     value={monthlyIncome}
-                    onChange={(e) => setMonthlyIncome(formatCurrencyInput(e.target.value))}
+                    onChangeValue={setMonthlyIncome}
+                    placeholder="R$ 0,00"
                     className="h-10 rounded-xl border bg-background"
                   />
                 </div>

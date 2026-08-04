@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
+import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
 import {
   Select,
   SelectContent,
@@ -241,13 +242,9 @@ export default function Debts() {
                     <label className="text-[10px] text-muted-foreground mb-1 block">
                       Valor Total (Juros) *
                     </label>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
+                    <BRLCurrencyInput
                       value={form.totalAmount}
-                      onChange={(e) =>
-                        setForm({ ...form, totalAmount: formatCurrencyInput(e.target.value) })
-                      }
+                      onChangeValue={(val) => setForm({ ...form, totalAmount: val })}
                       placeholder="R$ 0,00"
                     />
                   </div>
@@ -255,13 +252,9 @@ export default function Debts() {
                     <label className="text-[10px] text-muted-foreground mb-1 block">
                       Restante a Pagar *
                     </label>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
+                    <BRLCurrencyInput
                       value={form.remainingAmount}
-                      onChange={(e) =>
-                        setForm({ ...form, remainingAmount: formatCurrencyInput(e.target.value) })
-                      }
+                      onChangeValue={(val) => setForm({ ...form, remainingAmount: val })}
                       placeholder="R$ 0,00"
                     />
                   </div>
@@ -270,13 +263,9 @@ export default function Debts() {
                   <label className="text-xs text-muted-foreground mb-1.5 block">
                     Valor da Parcela Mensal
                   </label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
+                  <BRLCurrencyInput
                     value={form.monthlyPayment}
-                    onChange={(e) =>
-                      setForm({ ...form, monthlyPayment: formatCurrencyInput(e.target.value) })
-                    }
+                    onChangeValue={(val) => setForm({ ...form, monthlyPayment: val })}
                     placeholder="R$ 0,00"
                   />
                 </div>
@@ -446,11 +435,9 @@ export default function Debts() {
                     <label className="text-xs text-muted-foreground mb-1.5 block">
                       Valor pago *
                     </label>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
+                    <BRLCurrencyInput
                       value={payAmount}
-                      onChange={(e) => setPayAmount(formatCurrencyInput(e.target.value))}
+                      onChangeValue={setPayAmount}
                       placeholder="R$ 0,00"
                       autoFocus
                     />
@@ -459,11 +446,9 @@ export default function Debts() {
                     <label className="text-xs text-muted-foreground mb-1.5 block">
                       Desconto (opcional)
                     </label>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
+                    <BRLCurrencyInput
                       value={payDiscount}
-                      onChange={(e) => setPayDiscount(formatCurrencyInput(e.target.value))}
+                      onChangeValue={setPayDiscount}
                       placeholder="R$ 0,00"
                     />
                   </div>

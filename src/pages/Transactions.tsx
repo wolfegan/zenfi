@@ -36,6 +36,7 @@ import {
   useAccounts,
 } from "@/hooks/use-supabase";
 import { parseBRLAmount, formatCurrencyInput, getCategoryIcon } from "@/lib/utils";
+import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -589,16 +590,12 @@ export default function Transactions() {
                 {/* Amount */}
                 <div>
                   <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
-                    Valor
+                    Valor <span className="text-destructive">*</span>
                   </label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="R$ 0,00"
+                  <BRLCurrencyInput
                     value={form.amount}
-                    onChange={(e) =>
-                      setForm({ ...form, amount: formatCurrencyInput(e.target.value) })
-                    }
+                    onChangeValue={(val) => setForm({ ...form, amount: val })}
+                    placeholder="R$ 0,00"
                     className="h-9 rounded-lg"
                   />
                 </div>

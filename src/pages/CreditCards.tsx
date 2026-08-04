@@ -21,6 +21,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useCreditCards, useAccounts, useCategories } from "@/hooks/use-supabase";
 import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
+import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import {
@@ -184,14 +185,10 @@ export default function CreditCardsPage() {
                   <label className="text-xs text-muted-foreground mb-1.5 block">
                     Limite *
                   </label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="R$ 0,00"
+                  <BRLCurrencyInput
                     value={form.limit}
-                    onChange={(e) =>
-                      setForm({ ...form, limit: formatCurrencyInput(e.target.value) })
-                    }
+                    onChangeValue={(val) => setForm({ ...form, limit: val })}
+                    placeholder="R$ 0,00"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -649,12 +646,10 @@ export default function CreditCardsPage() {
               <label className="text-xs text-muted-foreground mb-1.5 block">
                 Valor Inicial / Estimado (R$)
               </label>
-              <Input
-                type="text"
-                inputMode="numeric"
+              <BRLCurrencyInput
                 value={billForm.initialAmount}
-                onChange={(e) =>
-                  setBillForm({ ...billForm, initialAmount: formatCurrencyInput(e.target.value) })
+                onChangeValue={(val) =>
+                  setBillForm({ ...billForm, initialAmount: val })
                 }
                 placeholder="R$ 0,00"
                 className="h-9 text-xs rounded-lg"

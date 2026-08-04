@@ -30,6 +30,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useAccounts } from "@/hooks/use-supabase";
 import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
+import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
 import { motion } from "framer-motion";
 import {
   Landmark,
@@ -74,14 +75,28 @@ export default function Accounts() {
     color: "#0a0a0a",
   });
   const colorOptions = [
-    "#0a0a0a",
-    "#444444",
-    "#666666",
-    "#2a7",
-    "#27a",
-    "#a72",
-    "#c44",
-    "#74a",
+    "#0a0a0a", // Preto C6 / Dark
+    "#820ad1", // Roxo Nubank
+    "#ff5700", // Laranja Inter
+    "#ec0000", // Vermelho Santander
+    "#cc092f", // Vermelho Bradesco
+    "#ec7000", // Laranja Itaú
+    "#003399", // Azul Caixa
+    "#005aa5", // Azul Banco do Brasil
+    "#003641", // Verde Sicoob
+    "#00aa5b", // Verde Sicredi
+    "#121212", // BTG Pactual
+    "#0ea5e9", // Azul Safra
+    "#eab308", // Dourado Wealth
+    "#6366f1", // Indigo
+    "#a855f7", // Purple
+    "#ec4899", // Pink
+    "#ef4444", // Red
+    "#f97316", // Orange
+    "#10b981", // Emerald
+    "#06b6d4", // Cyan
+    "#3b82f6", // Blue
+    "#64748b", // Slate
   ];
 
   const {
@@ -192,33 +207,51 @@ export default function Accounts() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1.5 block">
+                  <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
                     Saldo *
                   </label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
+                  <BRLCurrencyInput
                     value={form.balance}
-                    onChange={(e) =>
-                      setForm({ ...form, balance: formatCurrencyInput(e.target.value) })
-                    }
+                    onChangeValue={(val) => setForm({ ...form, balance: val })}
                     placeholder="R$ 0,00"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1.5 block">
-                    Cor
+                  <label className="text-xs text-muted-foreground mb-1.5 flex items-center justify-between font-medium">
+                    <span>Cor da Conta</span>
+                    <span
+                      className="text-[10px] font-mono px-2 py-0.5 rounded border border-border"
+                      style={{ color: form.color }}
+                    >
+                      {form.color}
+                    </span>
                   </label>
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="flex gap-2 flex-wrap items-center">
                     {colorOptions.map((color) => (
                       <button
                         key={color}
                         type="button"
-                        className={`w-7 h-7 rounded-sm border-2 transition-all ${form.color === color ? "border-foreground scale-110" : "border-transparent"}`}
+                        className={`w-7 h-7 rounded-lg border-2 transition-all ${
+                          form.color === color
+                            ? "border-foreground scale-110 shadow-sm"
+                            : "border-transparent hover:scale-105"
+                        }`}
                         style={{ backgroundColor: color }}
                         onClick={() => setForm({ ...form, color })}
                       />
                     ))}
+                    <label
+                      title="Seletor de cor personalizada"
+                      className="w-7 h-7 rounded-lg border-2 border-dashed border-muted-foreground/50 hover:border-foreground flex items-center justify-center cursor-pointer transition-all bg-secondary/30 relative overflow-hidden shrink-0"
+                    >
+                      <span className="text-xs font-bold select-none">🎨</span>
+                      <input
+                        type="color"
+                        value={form.color}
+                        onChange={(e) => setForm({ ...form, color: e.target.value })}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                      />
+                    </label>
                   </div>
                 </div>
               </div>
@@ -300,27 +333,59 @@ export default function Accounts() {
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <div
-                          className="w-9 h-9 rounded-sm flex items-center justify-center shrink-0"
+                          className="w-9.5 h-9.5 rounded-xl flex items-center justify-center shrink-0 shadow-xs"
                           style={{ backgroundColor: acc.color }}
                         >
-                          <Icon className="w-4 h-4 text-white" />
+                          <Icon className="w-4.5 h-4.5 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium">{acc.name}</p>
+                          <p className="text-sm font-semibold">{acc.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {getAccountLabel(acc.type)}
                           </p>
                         </div>
                       </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            setEditingAcc(acc);
+                            setForm({
+                              name: acc.name,
+                              type: acc.type,
+                              balance: formatCurrencyInput(acc.balance),
+                              color: acc.color,
+                            });
+                            setDialogOpen(true);
+                          }}
+                          title="Editar Conta"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive/80 hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            setDeletingId(acc.id);
+                            setDeleteDialogOpen(true);
+                          }}
+                          title="Excluir Conta"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                    <p className="text-xl font-light tabular-nums">
+                    <p className="text-xl font-medium tracking-tight tabular-nums">
                       {formatCurrency(acc.balance)}
                     </p>
-                    <div className="flex items-center gap-2 mt-4 pt-3 border-t opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/40">
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="text-[10px] h-7 px-2"
+                        className="text-xs h-7 px-2.5 rounded-lg flex-1 justify-center border-border/60"
                         onClick={() => {
                           setEditingAcc(acc);
                           setForm({
@@ -332,19 +397,19 @@ export default function Accounts() {
                           setDialogOpen(true);
                         }}
                       >
-                        <Pencil className="w-3 h-3 mr-1" />
-                        Editar
+                        <Pencil className="w-3 h-3 mr-1.5" />
+                        Editar Conta
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="text-[10px] h-7 px-2 text-destructive"
+                        className="text-xs h-7 px-2.5 rounded-lg text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
                         onClick={() => {
                           setDeletingId(acc.id);
                           setDeleteDialogOpen(true);
                         }}
                       >
-                        <Trash2 className="w-3 h-3 mr-1" />
+                        <Trash2 className="w-3 h-3 mr-1.5" />
                         Excluir
                       </Button>
                     </div>

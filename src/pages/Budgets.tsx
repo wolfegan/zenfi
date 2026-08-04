@@ -20,6 +20,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useBudgets, useCategories } from "@/hooks/use-supabase";
 import { getCategoryIcon, parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
+import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
 import { motion } from "framer-motion";
 import { Percent, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -135,14 +136,10 @@ export default function Budgets() {
                   <label className="text-xs text-muted-foreground mb-1.5 block">
                     Limite Mensal
                   </label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="R$ 0,00"
+                  <BRLCurrencyInput
                     value={form.amount}
-                    onChange={(e) =>
-                      setForm({ ...form, amount: formatCurrencyInput(e.target.value) })
-                    }
+                    onChangeValue={(val) => setForm({ ...form, amount: val })}
+                    placeholder="R$ 0,00"
                   />
                 </div>
               </div>

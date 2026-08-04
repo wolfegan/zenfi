@@ -30,6 +30,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useGoals } from "@/hooks/use-supabase";
 import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
+import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
 import { motion } from "framer-motion";
 import {
   Target,
@@ -221,13 +222,9 @@ export default function Goals() {
                     <label className="text-xs text-muted-foreground mb-1.5 block">
                       Valor Total *
                     </label>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
+                    <BRLCurrencyInput
                       value={form.targetAmount}
-                      onChange={(e) =>
-                        setForm({ ...form, targetAmount: formatCurrencyInput(e.target.value) })
-                      }
+                      onChangeValue={(val) => setForm({ ...form, targetAmount: val })}
                       placeholder="R$ 0,00"
                     />
                   </div>
@@ -235,13 +232,9 @@ export default function Goals() {
                     <label className="text-xs text-muted-foreground mb-1.5 block">
                       Já tem guardado
                     </label>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
+                    <BRLCurrencyInput
                       value={form.currentAmount}
-                      onChange={(e) =>
-                        setForm({ ...form, currentAmount: formatCurrencyInput(e.target.value) })
-                      }
+                      onChangeValue={(val) => setForm({ ...form, currentAmount: val })}
                       placeholder="R$ 0,00"
                     />
                   </div>
@@ -251,16 +244,9 @@ export default function Goals() {
                     <label className="text-xs text-muted-foreground mb-1.5 block">
                       Aporte Mensal
                     </label>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
+                    <BRLCurrencyInput
                       value={form.monthlyContribution}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          monthlyContribution: formatCurrencyInput(e.target.value),
-                        })
-                      }
+                      onChangeValue={(val) => setForm({ ...form, monthlyContribution: val })}
                       placeholder="R$ 0,00"
                     />
                   </div>
@@ -614,12 +600,10 @@ export default function Goals() {
                   <label className="text-xs text-muted-foreground mb-1.5 block">
                     Valor para guardar *
                   </label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="R$ 0,00"
+                  <BRLCurrencyInput
                     value={contributeAmount}
-                    onChange={(e) => setContributeAmount(formatCurrencyInput(e.target.value))}
+                    onChangeValue={setContributeAmount}
+                    placeholder="R$ 0,00"
                     autoFocus
                   />
                 </div>

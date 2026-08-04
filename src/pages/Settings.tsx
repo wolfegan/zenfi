@@ -12,6 +12,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { resetUserAccountData } from "@/hooks/use-supabase";
 import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
+import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
 import { motion } from "framer-motion";
 import {
   User,
@@ -158,11 +159,9 @@ export default function Settings() {
               <label className="text-xs text-muted-foreground mb-1.5 block">
                 Renda Mensal (opcional)
               </label>
-              <Input
-                type="text"
-                inputMode="numeric"
+              <BRLCurrencyInput
                 value={monthlyIncome}
-                onChange={(e) => setMonthlyIncome(formatCurrencyInput(e.target.value))}
+                onChangeValue={setMonthlyIncome}
                 placeholder="R$ 0,00"
                 className="rounded-lg h-9"
               />
