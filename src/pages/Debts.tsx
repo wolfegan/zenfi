@@ -107,7 +107,7 @@ export default function Debts() {
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
     if (!isLoading && !debtsLoading) {
-      setUseDemo(!!user?.is_anonymous && realDebts.length === 0);
+      setUseDemo(!!user?.is_anonymous || realDebts.length === 0);
     }
   }, [isLoading, debtsLoading, realDebts, user]);
 

@@ -103,7 +103,7 @@ export default function CreditCardsPage() {
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
     if (!isLoading && !cardsLoading) {
-      setUseDemo(!!user?.is_anonymous && realCards.length === 0);
+      setUseDemo(!!user?.is_anonymous || realCards.length === 0);
     }
   }, [isLoading, cardsLoading, realCards, user]);
   const cards = useDemo ? demoCreditCards : realCards;

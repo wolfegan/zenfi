@@ -51,9 +51,8 @@ export default function Budgets() {
   useEffect(() => {
     if (!isLoading) {
       setUseDemo(
-        !!user?.is_anonymous &&
-          realBudgets.length === 0 &&
-          realCategories.length === 0,
+        !!user?.is_anonymous ||
+          (realBudgets.length === 0 && realCategories.length === 0),
       );
     }
   }, [isLoading, realBudgets, realCategories, user]);

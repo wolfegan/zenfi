@@ -108,7 +108,7 @@ export default function Goals() {
   const [useDemo, setUseDemo] = useState(false);
   useEffect(() => {
     if (!isLoading && !goalsLoading) {
-      setUseDemo(!!user?.is_anonymous && realGoals.length === 0);
+      setUseDemo(!!user?.is_anonymous || realGoals.length === 0);
     }
   }, [isLoading, goalsLoading, realGoals, user]);
 

@@ -55,7 +55,7 @@ import {
 import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router";
-import { demoTransactions, demoCategories } from "@/lib/demo-data";
+import { demoTransactions, demoCategories, demoCreditCards, demoAccounts } from "@/lib/demo-data";
 
 function currentMonth() {
   const now = new Date();
@@ -146,17 +146,16 @@ export default function Transactions() {
   useEffect(() => {
     if (!isLoading && !txsLoading) {
       setUseDemo(
-        !!user?.is_anonymous &&
-          realTransactions.length === 0 &&
-          realCategories.length === 0,
+        !!user?.is_anonymous ||
+          (realTransactions.length === 0 && realCategories.length === 0),
       );
     }
   }, [isLoading, txsLoading, realTransactions, realCategories, user]);
 
   const allTxs = useDemo ? demoTransactions : filteredRealTransactions;
   const categories = useDemo ? demoCategories : realCategories;
-  const creditCards = useDemo ? [] : realCreditCards;
-  const accounts = useDemo ? [] : realAccounts;
+  const creditCards = useDemo ? demoCreditCards : realCreditCards;
+  const accounts = useDemo ? demoAccounts : realAccounts;
 
   const txs = useMemo(() => {
     if (!search.trim()) return allTxs;
