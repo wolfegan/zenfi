@@ -31,6 +31,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useAccounts } from "@/hooks/use-supabase";
 import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
+import { BankLogo, POPULAR_BANKS } from "@/components/BankLogo";
 import { motion } from "framer-motion";
 import {
   Landmark,
@@ -173,14 +174,60 @@ export default function Accounts() {
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1.5 block">
-                    Nome *
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center justify-between">
+                    <span>Bancos Populares (Clique para Selecionar)</span>
                   </label>
-                  <Input
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Ex: Conta Corrente"
-                  />
+                  <div className="grid grid-cols-4 gap-2 max-h-36 overflow-y-auto p-1.5 bg-secondary/20 rounded-xl border border-border/50">
+                    {POPULAR_BANKS.map((b) => {
+                      const isSelected =
+                        form.name.toLowerCase().trim() === b.name.toLowerCase().trim();
+                      return (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() =>
+                            setForm({
+                              ...form,
+                              name: b.name,
+                              color: b.color,
+                            })
+                          }
+                          className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all duration-200 ${
+                            isSelected
+                              ? "border-primary bg-primary/10 ring-2 ring-primary/20 scale-105"
+                              : "border-border/60 bg-background hover:border-primary/40 hover:bg-secondary/40"
+                          }`}
+                        >
+                          <div
+                            className="w-7 h-7 rounded-lg flex items-center justify-center mb-1 shrink-0 shadow-xs"
+                            style={{ backgroundColor: b.color }}
+                          >
+                            <BankLogo bankKeyOrName={b.id} className="w-4 h-4 text-white" />
+                          </div>
+                          <span className="text-[10px] font-medium truncate w-full leading-tight">
+                            {b.name}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                    Nome da Conta / Banco *
+                  </label>
+                  <div className="relative">
+                    <Input
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      placeholder="Ex: Nubank, Itaú, Bradesco..."
+                      className="pr-9"
+                    />
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-md flex items-center justify-center pointer-events-none" style={{ backgroundColor: form.color }}>
+                      <BankLogo bankKeyOrName={form.name} type={form.type} className="w-3.5 h-3.5 text-white" />
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1.5 block">
@@ -336,7 +383,7 @@ export default function Accounts() {
                           className="w-9.5 h-9.5 rounded-xl flex items-center justify-center shrink-0 shadow-xs"
                           style={{ backgroundColor: acc.color }}
                         >
-                          <Icon className="w-4.5 h-4.5 text-white" />
+                          <BankLogo bankKeyOrName={acc.name} type={acc.type} className="w-4.5 h-4.5 text-white" />
                         </div>
                         <div>
                           <p className="text-sm font-semibold">{acc.name}</p>

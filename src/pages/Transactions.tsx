@@ -37,6 +37,7 @@ import {
 } from "@/hooks/use-supabase";
 import { parseBRLAmount, formatCurrencyInput, getCategoryIcon } from "@/lib/utils";
 import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
+import { BankLogo } from "@/components/BankLogo";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -556,11 +557,13 @@ export default function Transactions() {
                               }`}
                             >
                               <div
-                                className="w-5.5 h-5.5 rounded-md shrink-0"
+                                className="w-5.5 h-5.5 rounded-md shrink-0 flex items-center justify-center"
                                 style={{
                                   backgroundColor: acc.color || "#6366f1",
                                 }}
-                              />
+                              >
+                                <BankLogo bankKeyOrName={acc.name} type={acc.type} className="w-3.5 h-3.5 text-white" />
+                              </div>
                               <div className="flex flex-col min-w-0">
                                 <span className="text-xs font-semibold truncate leading-none mb-0.5">
                                   {acc.name}
