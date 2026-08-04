@@ -27,7 +27,6 @@ export function BRLCurrencyInput({
       {...props}
       type="text"
       inputMode="numeric"
-      pattern="[0-9]*"
       autoComplete="off"
       autoCorrect="off"
       autoCapitalize="off"
