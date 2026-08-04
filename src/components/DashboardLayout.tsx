@@ -21,6 +21,7 @@ import {
   Moon,
   Sun,
   Bug,
+  Plus,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -307,7 +308,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 px-5 py-6 sm:px-8 sm:py-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 px-4 py-5 sm:px-8 sm:py-8 pb-24 sm:pb-8 max-w-7xl w-full mx-auto">
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 8 }}
@@ -317,6 +318,61 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             {children}
           </motion.div>
         </main>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-md border-t border-border/80 px-2 py-1.5 flex items-center justify-around shadow-lg">
+          <Link
+            to="/dashboard"
+            className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl text-[10px] font-medium transition-colors ${
+              location.pathname === "/dashboard"
+                ? "text-primary font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            <span>Início</span>
+          </Link>
+
+          <Link
+            to="/transactions"
+            className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl text-[10px] font-medium transition-colors ${
+              location.pathname === "/transactions"
+                ? "text-primary font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ArrowDownUp className="w-5 h-5" />
+            <span>Transações</span>
+          </Link>
+
+          <Link
+            to="/transactions"
+            className="flex items-center justify-center w-11 h-11 rounded-full bg-primary text-primary-foreground shadow-md hover:scale-105 transition-transform active:scale-95 -mt-4 border-2 border-background"
+            title="Nova Transação"
+          >
+            <Plus className="w-6 h-6" />
+          </Link>
+
+          <Link
+            to="/accounts"
+            className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl text-[10px] font-medium transition-colors ${
+              location.pathname === "/accounts"
+                ? "text-primary font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Landmark className="w-5 h-5" />
+            <span>Contas</span>
+          </Link>
+
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Menu className="w-5 h-5" />
+            <span>Mais</span>
+          </button>
+        </nav>
       </div>
 
       <BugReportModal open={bugModalOpen} onOpenChange={setBugModalOpen} />

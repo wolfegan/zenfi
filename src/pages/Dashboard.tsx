@@ -18,6 +18,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ArrowDown,
   ArrowUp,
   Wallet,
@@ -37,6 +44,8 @@ import {
   Building2,
   Plus,
   AlertTriangle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   PieChart,
@@ -49,7 +58,11 @@ import {
   ResponsiveContainer,
   Area,
   AreaChart,
+  BarChart,
+  Bar,
+  Legend,
 } from "recharts";
+import { BankLogo } from "@/components/BankLogo";
 import {
   demoMonthlySummary,
   demoHealthScore,
@@ -691,6 +704,21 @@ export default function Dashboard() {
     localStorage.setItem("onboarding-dismissed", "true");
   };
 
+  const [hideBalance, setHideBalance] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("zenfi_hide_balance") === "true";
+    }
+    return false;
+  });
+
+  const toggleHideBalance = () => {
+    setHideBalance((prev) => {
+      const next = !prev;
+      localStorage.setItem("zenfi_hide_balance", String(next));
+      return next;
+    });
+  };
+
   const totalAccountsBalance = accounts.reduce(
     (s: number, a: any) => s + a.balance,
     0,
@@ -700,8 +728,10 @@ export default function Dashboard() {
     .reduce((s: number, d: any) => s + d.remaining_amount, 0);
   const netWorth = totalAccountsBalance - totalDebtsRemaining;
 
-  const formatCurrency = (v: number) =>
-    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const formatCurrency = (v: number) => {
+    if (hideBalance) return "R$ ••••••";
+    return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  };
 
   return (
     <DashboardLayout>
@@ -949,19 +979,152 @@ export default function Dashboard() {
             );
           })()}
 
-          <div className="shrink-0">
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="text-xs h-9 rounded-sm border bg-background px-3 text-muted-foreground focus:outline-none w-full sm:w-auto"
-            >
-              {MONTH_OPTIONS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
+        </div>
+
+        {/* Hero Header Bar (Title, Privacy Eye & Month Filter) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card/80 p-4 sm:p-5 rounded-2xl border border-border/60 shadow-xs">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-xs">
+              <Landmark className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base sm:text-lg font-bold tracking-tight">Visão Geral Financeira</h1>
+                <button
+                  onClick={toggleHideBalance}
+                  className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                  title={hideBalance ? "Exibir valores" : "Ocultar valores"}
+                >
+                  {hideBalance ? <EyeOff className="w-4 h-4 text-primary" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Resumo do mês de {MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label || selectedMonth}
+              </p>
+            </div>
           </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-full sm:w-[170px] h-9 text-xs rounded-xl bg-background border-border">
+                <SelectValue placeholder="Selecione o mês" />
+              </SelectTrigger>
+              <SelectContent>
+                {MONTH_OPTIONS.map((m) => (
+                  <SelectItem key={m.value} value={m.value} className="text-xs">
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* 4 Main Summary Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Saldo Atual em Contas */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="p-5 rounded-2xl border bg-card hover:border-primary/40 transition-all shadow-xs relative overflow-hidden group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Saldo Atual em Contas
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Wallet className="w-4 h-4" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold tracking-tight tabular-nums">
+              {formatCurrency(totalAccountsBalance)}
+            </p>
+            <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/40 text-[11px] text-muted-foreground">
+              <span>{accounts.length} conta{accounts.length !== 1 ? "s" : ""} cadastrada{accounts.length !== 1 ? "s" : ""}</span>
+              <a href="/accounts" className="text-primary font-medium hover:underline flex items-center gap-0.5">
+                Ver contas →
+              </a>
+            </div>
+          </motion.div>
+
+          {/* Receitas (Entradas) */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="p-5 rounded-2xl border bg-card hover:border-emerald-500/40 transition-all shadow-xs relative overflow-hidden group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Entradas (Receitas)
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <ArrowUp className="w-4 h-4" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold tracking-tight tabular-nums text-emerald-600 dark:text-emerald-400">
+              {formatCurrency(summary?.totalIncome || 0)}
+            </p>
+            <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/40 text-[11px] text-muted-foreground">
+              <span>No mês selecionado</span>
+              <a href="/transactions" className="text-emerald-600 dark:text-emerald-400 font-medium hover:underline">
+                Detalhes →
+              </a>
+            </div>
+          </motion.div>
+
+          {/* Despesas (Saídas) */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="p-5 rounded-2xl border bg-card hover:border-rose-500/40 transition-all shadow-xs relative overflow-hidden group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Saídas (Despesas)
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <ArrowDown className="w-4 h-4" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold tracking-tight tabular-nums text-rose-600 dark:text-rose-400">
+              {formatCurrency(summary?.totalExpenses || 0)}
+            </p>
+            <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/40 text-[11px] text-muted-foreground">
+              <span>No mês selecionado</span>
+              <a href="/transactions" className="text-rose-600 dark:text-rose-400 font-medium hover:underline">
+                Detalhes →
+              </a>
+            </div>
+          </motion.div>
+
+          {/* Cartões de Crédito */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="p-5 rounded-2xl border bg-card hover:border-purple-500/40 transition-all shadow-xs relative overflow-hidden group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Cartões de Crédito
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                <CreditCard className="w-4 h-4" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold tracking-tight tabular-nums text-purple-600 dark:text-purple-400">
+              {formatCurrency(summary?.creditCardExpenses || 0)}
+            </p>
+            <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/40 text-[11px] text-muted-foreground">
+              <span>Faturas em aberto</span>
+              <a href="/credit-cards" className="text-purple-600 dark:text-purple-400 font-medium hover:underline">
+                Ver faturas →
+              </a>
+            </div>
+          </motion.div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6 items-start">
