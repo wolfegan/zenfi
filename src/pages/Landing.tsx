@@ -21,7 +21,7 @@ const steps = [
 
 function ProductPreview() {
   return <motion.div className="zf-product" initial={{ opacity: 0, y: 28, rotate: 1.5 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ duration: .9, delay: .2, ease }} aria-label="Prévia do painel financeiro Zenfi">
-    <div className="zf-product-top"><div className="zf-product-brand"><span><Leaf size={15}/></span>Zenfi</div><small>Este mês</small></div>
+    <div className="zf-product-top"><div className="zf-product-brand"><img src="/favicon-2.png" alt="Zenfi" className="w-6 h-6 rounded-lg object-cover" />Zenfi</div><small>Este mês</small></div>
     <div className="zf-product-body">
       <div className="zf-product-heading"><div><small>Olá, Marina</small><h3>Seu mês está no caminho certo.</h3></div><b>MO</b></div>
       <div className="zf-product-grid">
@@ -52,7 +52,7 @@ export default function Landing() {
   const reveal = reducedMotion ? {} : { initial: { opacity: 0, y: 28 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, margin: "-80px" }, transition: { duration: .65, ease } };
   return <div className="zf-landing">
     <header className="zf-header"><div className="zf-shell zf-nav">
-      <Link to="/" className="zf-logo" aria-label="Zenfi, página inicial"><span><Leaf size={17}/></span>Zenfi</Link>
+      <Link to="/" className="zf-logo" aria-label="Zenfi, página inicial"><img src="/favicon-2.png" alt="Zenfi" className="w-8 h-8 rounded-xl object-cover shadow-xs" />Zenfi</Link>
       <nav><a href="#recursos">Recursos</a><a href="#como-funciona">Como funciona</a><a href="#seguranca">Segurança</a></nav>
       <div className="zf-nav-actions"><button className="zf-link" onClick={go}>{isLoading ? "Aguarde" : isAuthenticated ? "Meu painel" : "Entrar"}</button><button className="zf-button zf-button-small" onClick={go}>{isAuthenticated ? "Abrir Zenfi" : "Começar grátis"}<ArrowRight size={16}/></button></div>
       <button className="zf-menu" onClick={()=>setMenu(!menu)} aria-label={menu ? "Fechar menu" : "Abrir menu"}>{menu?<X/>:<Menu/>}</button>
@@ -82,6 +82,6 @@ export default function Landing() {
       <section className="zf-quote"><div className="zf-shell"><motion.blockquote {...reveal}><BarChart3 size={30}/><p>“Organizar o dinheiro não deveria parecer um castigo. Deveria trazer a mesma sensação de arrumar a casa: finalmente, espaço para respirar.”</p><footer>O princípio por trás do Zenfi</footer></motion.blockquote></div></section>
       <section className="zf-final"><div className="zf-shell"><motion.div className="zf-final-card" {...reveal}><div><span className="zf-kicker light"><i/>Seu próximo passo</span><h2>Comece pequeno.<br/>Enxergue longe.</h2></div><div><p>Leva poucos minutos para colocar sua vida financeira em ordem.</p><button className="zf-button zf-button-lime" onClick={go}>{isAuthenticated?"Abrir meu painel":"Começar grátis agora"}<ArrowRight size={18}/></button><small>Grátis para começar · Sem cartão de crédito</small></div></motion.div></div></section>
     </main>
-    <footer className="zf-footer"><div className="zf-shell"><div><Link to="/" className="zf-logo footer"><span><Leaf size={17}/></span>Zenfi</Link><p>Finanças no lugar.<br/>Cabeça tranquila.</p></div><nav><a href="#recursos">Recursos</a><a href="#como-funciona">Como funciona</a><a href="#seguranca">Segurança</a></nav><div className="zf-footer-meta"><span>© {new Date().getFullYear()} Zenfi</span><span>Feito com calma no Brasil.</span></div></div></footer>
+    <footer className="zf-footer"><div className="zf-shell"><div><Link to="/" className="zf-logo footer"><img src="/favicon-2.png" alt="Zenfi" className="w-8 h-8 rounded-xl object-cover" />Zenfi</Link><p>Finanças no lugar.<br/>Cabeça tranquila.</p></div><nav><a href="#recursos">Recursos</a><a href="#como-funciona">Como funciona</a><a href="#seguranca">Segurança</a></nav><div className="zf-footer-meta"><span>© {new Date().getFullYear()} Zenfi</span><span>Feito com calma no Brasil.</span></div></div></footer>
   </div>;
 }
