@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
 import { BugReportModal } from "@/components/BugReportModal";
+import { QuickTransactionModal } from "@/components/QuickTransactionModal";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -83,6 +84,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [bugModalOpen, setBugModalOpen] = useState(false);
+  const [quickModalOpen, setQuickModalOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
       return document.documentElement.classList.contains("dark");
@@ -345,13 +347,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <span>Transações</span>
           </Link>
 
-          <Link
-            to="/transactions"
-            className="flex items-center justify-center w-11 h-11 rounded-full bg-primary text-primary-foreground shadow-md hover:scale-105 transition-transform active:scale-95 -mt-4 border-2 border-background"
-            title="Nova Transação"
+          <button
+            onClick={() => setQuickModalOpen(true)}
+            className="flex items-center justify-center w-11 h-11 rounded-full bg-primary text-primary-foreground shadow-md hover:scale-105 transition-transform active:scale-95 -mt-4 border-2 border-background cursor-pointer"
+            title="Nova Transação Rápida"
           >
             <Plus className="w-6 h-6" />
-          </Link>
+          </button>
 
           <Link
             to="/accounts"
@@ -376,6 +378,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <BugReportModal open={bugModalOpen} onOpenChange={setBugModalOpen} />
+      <QuickTransactionModal open={quickModalOpen} onOpenChange={setQuickModalOpen} />
     </div>
   );
 }
