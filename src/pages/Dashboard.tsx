@@ -569,6 +569,21 @@ export default function Dashboard() {
   );
   const [quickSubmitting, setQuickSubmitting] = useState(false);
 
+  const [hideBalance, setHideBalance] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("zenfi_hide_balance") === "true";
+    }
+    return false;
+  });
+
+  const toggleHideBalance = () => {
+    setHideBalance((prev) => {
+      const next = !prev;
+      localStorage.setItem("zenfi_hide_balance", String(next));
+      return next;
+    });
+  };
+
   const handleQuickSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickCategoryId || !quickAmount) {
@@ -702,21 +717,6 @@ export default function Dashboard() {
   const dismissOnboarding = () => {
     setShowOnboarding(false);
     localStorage.setItem("onboarding-dismissed", "true");
-  };
-
-  const [hideBalance, setHideBalance] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("zenfi_hide_balance") === "true";
-    }
-    return false;
-  });
-
-  const toggleHideBalance = () => {
-    setHideBalance((prev) => {
-      const next = !prev;
-      localStorage.setItem("zenfi_hide_balance", String(next));
-      return next;
-    });
   };
 
   const totalAccountsBalance = accounts.reduce(
