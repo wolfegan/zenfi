@@ -321,9 +321,11 @@ export default function Dashboard() {
   
   useEffect(() => {
     async function runSeed() {
-      if (user?.is_anonymous && !testCatsLoading && testCategories.length === 0 && !seeding) {
+      const hasSeeded = typeof window !== "undefined" && localStorage.getItem("zenfi_demo_seeded") === "true";
+      if (user?.is_anonymous && !testCatsLoading && testCategories.length === 0 && !seeding && !hasSeeded) {
         setSeeding(true);
-        const toastId = toast.loading("Configurando sua conta de demonstração com 8 meses de dados (Jan a Ago 2026)...");
+        localStorage.setItem("zenfi_demo_seeded", "true");
+        const toastId = toast.loading("Configurando sua conta de demonstração com dados fictícios de teste...");
         try {
           const uId = user.id;
 

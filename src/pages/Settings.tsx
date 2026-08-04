@@ -91,6 +91,9 @@ export default function Settings() {
     if (!user?.id) return;
     setIsResetting(true);
     try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("zenfi_demo_seeded");
+      }
       await resetUserAccountData(user.id);
       toast.success(
         "Sua conta foi redefinida com sucesso! Redirecionando para a tela inicial de dados...",
