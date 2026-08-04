@@ -48,6 +48,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import type { Profile } from "@/lib/supabase-types";
 
 // ─── Icon Registry ──────────────────────────────────────────────────────────
@@ -364,7 +365,7 @@ export function OnboardingModal({
         .from("profiles")
         .update({
           name: name.trim(),
-          monthly_income: monthlyIncome ? parseFloat(monthlyIncome) : null,
+          monthly_income: parseBRLAmount(monthlyIncome),
           financial_goal: selectedGoal || null,
           onboarding_completed: true,
         })
@@ -594,18 +595,14 @@ export function OnboardingModal({
                   <Label className="text-xs font-semibold">
                     Valor mensal <span className="text-destructive">*</span>
                   </Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-semibold">
-                      R$
-                    </span>
-                    <Input
-                      type="number"
-                      placeholder="0,00"
-                      value={monthlyIncome}
-                      onChange={(e) => setMonthlyIncome(e.target.value)}
-                      className="pl-9 h-10 rounded-xl border bg-background"
-                    />
-                  </div>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="R$ 0,00"
+                    value={monthlyIncome}
+                    onChange={(e) => setMonthlyIncome(formatCurrencyInput(e.target.value))}
+                    className="h-10 rounded-xl border bg-background"
+                  />
                 </div>
 
                 <div className="space-y-2">

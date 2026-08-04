@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { useInvestments } from "@/hooks/use-supabase";
+import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -176,12 +177,12 @@ export default function Investments() {
                       Total Investido
                     </label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
                       value={form.amount}
                       onChange={(e) =>
-                        setForm({ ...form, amount: e.target.value })
+                        setForm({ ...form, amount: formatCurrencyInput(e.target.value) })
                       }
                     />
                   </div>
@@ -190,12 +191,12 @@ export default function Investments() {
                       Valor Atual
                     </label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
                       value={form.currentValue}
                       onChange={(e) =>
-                        setForm({ ...form, currentValue: e.target.value })
+                        setForm({ ...form, currentValue: formatCurrencyInput(e.target.value) })
                       }
                     />
                   </div>
@@ -205,12 +206,12 @@ export default function Investments() {
                     Aporte Mensal
                   </label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="R$ 0,00"
                     value={form.monthlyContribution}
                     onChange={(e) =>
-                      setForm({ ...form, monthlyContribution: e.target.value })
+                      setForm({ ...form, monthlyContribution: formatCurrencyInput(e.target.value) })
                     }
                   />
                 </div>
@@ -232,26 +233,25 @@ export default function Investments() {
                   className="text-xs"
                   onClick={async () => {
                     if (form.name && form.amount && form.currentValue) {
+                      const amountVal = parseBRLAmount(form.amount);
+                      const currentVal = parseBRLAmount(form.currentValue);
+                      const monthlyVal = parseBRLAmount(form.monthlyContribution);
                       if (!useDemo) {
                         if (editingInv)
                           await update(editingInv.id, {
                             name: form.name,
                             type: form.type as any,
-                            amount: parseFloat(form.amount),
-                            current_value: parseFloat(form.currentValue),
-                            monthly_contribution: parseFloat(
-                              form.monthlyContribution,
-                            ),
+                            amount: amountVal,
+                            current_value: currentVal,
+                            monthly_contribution: monthlyVal,
                           });
                         else
                           await create({
                             name: form.name,
                             type: form.type as any,
-                            amount: parseFloat(form.amount),
-                            current_value: parseFloat(form.currentValue),
-                            monthly_contribution: parseFloat(
-                              form.monthlyContribution,
-                            ),
+                            amount: amountVal,
+                            current_value: currentVal,
+                            monthly_contribution: monthlyVal,
                           });
                       }
                       setDialogOpen(false);
@@ -392,9 +392,9 @@ export default function Investments() {
                         setForm({
                           name: inv.name,
                           type: inv.type,
-                          amount: String(inv.amount),
-                          currentValue: String(inv.current_value),
-                          monthlyContribution: String(inv.monthly_contribution),
+                          amount: formatCurrencyInput(inv.amount),
+                          currentValue: formatCurrencyInput(inv.current_value),
+                          monthlyContribution: formatCurrencyInput(inv.monthly_contribution),
                         });
                         setDialogOpen(true);
                       }}

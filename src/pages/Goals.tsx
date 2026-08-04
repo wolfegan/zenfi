@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { useGoals } from "@/hooks/use-supabase";
+import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   Target,
@@ -221,14 +222,13 @@ export default function Goals() {
                       Valor Total *
                     </label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="numeric"
                       value={form.targetAmount}
                       onChange={(e) =>
-                        setForm({ ...form, targetAmount: e.target.value })
+                        setForm({ ...form, targetAmount: formatCurrencyInput(e.target.value) })
                       }
-                      placeholder="10000"
+                      placeholder="R$ 0,00"
                     />
                   </div>
                   <div>
@@ -236,13 +236,13 @@ export default function Goals() {
                       Já tem guardado
                     </label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="numeric"
                       value={form.currentAmount}
                       onChange={(e) =>
-                        setForm({ ...form, currentAmount: e.target.value })
+                        setForm({ ...form, currentAmount: formatCurrencyInput(e.target.value) })
                       }
+                      placeholder="R$ 0,00"
                     />
                   </div>
                 </div>
@@ -252,17 +252,16 @@ export default function Goals() {
                       Aporte Mensal
                     </label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="numeric"
                       value={form.monthlyContribution}
                       onChange={(e) =>
                         setForm({
                           ...form,
-                          monthlyContribution: e.target.value,
+                          monthlyContribution: formatCurrencyInput(e.target.value),
                         })
                       }
-                      placeholder="500"
+                      placeholder="R$ 0,00"
                     />
                   </div>
                   <div>
@@ -299,10 +298,10 @@ export default function Goals() {
                     if (form.name && form.targetAmount) {
                       const data = {
                         name: form.name,
-                        target_amount: parseFloat(form.targetAmount),
-                        current_amount: parseFloat(form.currentAmount) || 0,
+                        target_amount: parseBRLAmount(form.targetAmount),
+                        current_amount: parseBRLAmount(form.currentAmount),
                         monthly_contribution:
-                          parseFloat(form.monthlyContribution) || 0,
+                          parseBRLAmount(form.monthlyContribution),
                         target_date: form.targetDate || null,
                         category: form.category as any,
                       };
@@ -475,7 +474,7 @@ export default function Goals() {
                               onClick={() => {
                                 setContributingGoal(goal);
                                 setContributeAmount(
-                                  String(goal.monthly_contribution || ""),
+                                  formatCurrencyInput(goal.monthly_contribution),
                                 );
                                 setContributeDialogOpen(true);
                               }}
@@ -492,9 +491,9 @@ export default function Goals() {
                                   setEditingGoal(goal);
                                   setForm({
                                     name: goal.name,
-                                    targetAmount: String(goal.target_amount),
-                                    currentAmount: String(goal.current_amount),
-                                    monthlyContribution: String(
+                                    targetAmount: formatCurrencyInput(goal.target_amount),
+                                    currentAmount: formatCurrencyInput(goal.current_amount),
+                                    monthlyContribution: formatCurrencyInput(
                                       goal.monthly_contribution,
                                     ),
                                     targetDate: goal.target_date || "",
@@ -616,11 +615,11 @@ export default function Goals() {
                     Valor para guardar *
                   </label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="R$ 0,00"
                     value={contributeAmount}
-                    onChange={(e) => setContributeAmount(e.target.value)}
+                    onChange={(e) => setContributeAmount(formatCurrencyInput(e.target.value))}
                     autoFocus
                   />
                 </div>
@@ -643,18 +642,18 @@ export default function Goals() {
                 size="sm"
                 className="text-xs"
                 onClick={async () => {
+                  const contribVal = parseBRLAmount(contributeAmount);
                   if (
                     contributingGoal &&
-                    contributeAmount &&
-                    parseFloat(contributeAmount) > 0
+                    contribVal > 0
                   ) {
                     if (!useDemo)
                       await contribute(
                         contributingGoal.id,
-                        parseFloat(contributeAmount),
+                        contribVal,
                       );
                     toast.success(
-                      `${formatCurrency(parseFloat(contributeAmount))} guardado em "${contributingGoal.name}"!`,
+                      `${formatCurrency(contribVal)} guardado em "${contributingGoal.name}"!`,
                     );
                     setContributeDialogOpen(false);
                     setContributingGoal(null);

@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { parseBRLAmount } from "@/lib/utils";
+import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -243,12 +243,12 @@ export default function Debts() {
                     </label>
                     <Input
                       type="text"
-                      inputMode="decimal"
+                      inputMode="numeric"
                       value={form.totalAmount}
                       onChange={(e) =>
-                        setForm({ ...form, totalAmount: e.target.value })
+                        setForm({ ...form, totalAmount: formatCurrencyInput(e.target.value) })
                       }
-                      placeholder="Ex: 1.200,00"
+                      placeholder="R$ 0,00"
                     />
                   </div>
                   <div>
@@ -257,12 +257,12 @@ export default function Debts() {
                     </label>
                     <Input
                       type="text"
-                      inputMode="decimal"
+                      inputMode="numeric"
                       value={form.remainingAmount}
                       onChange={(e) =>
-                        setForm({ ...form, remainingAmount: e.target.value })
+                        setForm({ ...form, remainingAmount: formatCurrencyInput(e.target.value) })
                       }
-                      placeholder="Ex: 1.000,00"
+                      placeholder="R$ 0,00"
                     />
                   </div>
                 </div>
@@ -272,12 +272,12 @@ export default function Debts() {
                   </label>
                   <Input
                     type="text"
-                    inputMode="decimal"
+                    inputMode="numeric"
                     value={form.monthlyPayment}
                     onChange={(e) =>
-                      setForm({ ...form, monthlyPayment: e.target.value })
+                      setForm({ ...form, monthlyPayment: formatCurrencyInput(e.target.value) })
                     }
-                    placeholder="Ex: 100,00"
+                    placeholder="R$ 0,00"
                   />
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -448,10 +448,10 @@ export default function Debts() {
                     </label>
                     <Input
                       type="text"
-                      inputMode="decimal"
+                      inputMode="numeric"
                       value={payAmount}
-                      onChange={(e) => setPayAmount(e.target.value)}
-                      placeholder="Ex: 300,00"
+                      onChange={(e) => setPayAmount(formatCurrencyInput(e.target.value))}
+                      placeholder="R$ 0,00"
                       autoFocus
                     />
                   </div>
@@ -461,10 +461,10 @@ export default function Debts() {
                     </label>
                     <Input
                       type="text"
-                      inputMode="decimal"
+                      inputMode="numeric"
                       value={payDiscount}
-                      onChange={(e) => setPayDiscount(e.target.value)}
-                      placeholder="Ex: 50,00"
+                      onChange={(e) => setPayDiscount(formatCurrencyInput(e.target.value))}
+                      placeholder="R$ 0,00"
                     />
                   </div>
                 </div>
@@ -983,7 +983,7 @@ export default function Debts() {
                               onClick={() => {
                                 setPayingDebt(debt);
                                 setPayAmount(
-                                  String(debt.monthly_payment || ""),
+                                  formatCurrencyInput(debt.monthly_payment),
                                 );
                                 setPayPaymentMethod("pix");
                                 if (accounts.length > 0) setPayAccountId(accounts[0].id);
@@ -1011,11 +1011,11 @@ export default function Debts() {
                                     creditor: debt.creditor,
                                     description: cleanDesc,
                                     originalAmount: origVal,
-                                    totalAmount: String(debt.total_amount),
-                                    remainingAmount: String(
+                                    totalAmount: formatCurrencyInput(debt.total_amount),
+                                    remainingAmount: formatCurrencyInput(
                                       debt.remaining_amount,
                                     ),
-                                    monthlyPayment: String(
+                                    monthlyPayment: formatCurrencyInput(
                                       debt.monthly_payment,
                                     ),
                                     dueDay: String(

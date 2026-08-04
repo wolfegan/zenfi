@@ -35,7 +35,7 @@ import {
   useCreditCards,
   useAccounts,
 } from "@/hooks/use-supabase";
-import { parseBRLAmount, getCategoryIcon } from "@/lib/utils";
+import { parseBRLAmount, formatCurrencyInput, getCategoryIcon } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -591,21 +591,16 @@ export default function Transactions() {
                   <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
                     Valor
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-semibold">
-                      R$
-                    </span>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      placeholder="0,00"
-                      value={form.amount}
-                      onChange={(e) =>
-                        setForm({ ...form, amount: e.target.value })
-                      }
-                      className="pl-9 h-9 rounded-lg"
-                    />
-                  </div>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="R$ 0,00"
+                    value={form.amount}
+                    onChange={(e) =>
+                      setForm({ ...form, amount: formatCurrencyInput(e.target.value) })
+                    }
+                    className="h-9 rounded-lg"
+                  />
                 </div>
 
                 {/* Category */}
@@ -873,7 +868,7 @@ export default function Transactions() {
 
                             setForm({
                               categoryId: tx.category_id,
-                              amount: tx.amount.toString(),
+                              amount: formatCurrencyInput(tx.amount),
                               date: tx.date,
                               type: tx.type,
                               description: stripPaymentPrefix(

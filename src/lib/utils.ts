@@ -5,21 +5,39 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function parseBRLAmount(value: string | number): number {
-  if (typeof value === "number") return value;
-  if (!value) return 0;
+export function parseBRLAmount(value: string | number | null | undefined): number {
+  if (value === null || value === undefined || value === "") return 0;
+  if (typeof value === "number") return isNaN(value) ? 0 : value;
 
-  let cleanValue = value.trim();
+  const digits = String(value).replace(/\D/g, "");
+  if (!digits) return 0;
 
-  if (cleanValue.includes(",")) {
-    cleanValue = cleanValue.replace(/\./g, "").replace(",", ".");
+  return parseInt(digits, 10) / 100;
+}
+
+export function formatCurrencyInput(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "";
+
+  if (typeof value === "number") {
+    if (isNaN(value)) return "";
+    return value.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
   }
 
-  const parsed = parseFloat(cleanValue);
-  return isNaN(parsed) ? 0 : parsed;
+  const digits = String(value).replace(/\D/g, "");
+  if (!digits) return "";
+
+  const cents = parseInt(digits, 10) / 100;
+  return cents.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 }
 
 export function formatCurrency(value: number): string {
+  if (isNaN(value) || value === null || value === undefined) return "R$ 0,00";
   return value.toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",

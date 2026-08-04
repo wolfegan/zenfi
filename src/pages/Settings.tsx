@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { resetUserAccountData } from "@/hooks/use-supabase";
-import { parseBRLAmount } from "@/lib/utils";
+import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   User,
@@ -160,10 +160,10 @@ export default function Settings() {
               </label>
               <Input
                 type="text"
-                inputMode="decimal"
+                inputMode="numeric"
                 value={monthlyIncome}
-                onChange={(e) => setMonthlyIncome(e.target.value)}
-                placeholder="Ex: 8000"
+                onChange={(e) => setMonthlyIncome(formatCurrencyInput(e.target.value))}
+                placeholder="R$ 0,00"
                 className="rounded-lg h-9"
               />
             </div>

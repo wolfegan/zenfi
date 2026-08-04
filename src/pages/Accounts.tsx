@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { useAccounts } from "@/hooks/use-supabase";
+import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   Landmark,
@@ -195,13 +196,13 @@ export default function Accounts() {
                     Saldo *
                   </label>
                   <Input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="numeric"
                     value={form.balance}
                     onChange={(e) =>
-                      setForm({ ...form, balance: e.target.value })
+                      setForm({ ...form, balance: formatCurrencyInput(e.target.value) })
                     }
-                    placeholder="0,00"
+                    placeholder="R$ 0,00"
                   />
                 </div>
                 <div>
@@ -238,11 +239,12 @@ export default function Accounts() {
                   size="sm"
                   className="text-xs"
                   onClick={async () => {
+                    const balanceVal = parseBRLAmount(form.balance);
                     if (form.name && form.balance) {
                       const data = {
                         name: form.name,
                         type: form.type as any,
-                        balance: parseFloat(form.balance),
+                        balance: balanceVal,
                         color: form.color,
                       };
                       if (!useDemo) {
@@ -324,7 +326,7 @@ export default function Accounts() {
                           setForm({
                             name: acc.name,
                             type: acc.type,
-                            balance: String(acc.balance),
+                            balance: formatCurrencyInput(acc.balance),
                             color: acc.color,
                           });
                           setDialogOpen(true);

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { useCreditCards, useAccounts, useCategories } from "@/hooks/use-supabase";
-import { parseBRLAmount } from "@/lib/utils";
+import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import {
@@ -182,15 +182,15 @@ export default function CreditCardsPage() {
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1.5 block">
-                    Limite
+                    Limite *
                   </label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="R$ 0,00"
                     value={form.limit}
                     onChange={(e) =>
-                      setForm({ ...form, limit: e.target.value })
+                      setForm({ ...form, limit: formatCurrencyInput(e.target.value) })
                     }
                   />
                 </div>
@@ -323,7 +323,7 @@ export default function CreditCardsPage() {
                       if (!useDemo) {
                         const data = {
                           name: form.name,
-                          limit: parseFloat(form.limit),
+                          limit: parseBRLAmount(form.limit),
                           closing_day: parseInt(form.closingDay),
                           due_day: parseInt(form.dueDay),
                           color: form.color,
@@ -414,7 +414,7 @@ export default function CreditCardsPage() {
                             setEditingCard(card);
                             setForm({
                               name: card.name,
-                              limit: card.limit.toString(),
+                              limit: formatCurrencyInput(card.limit),
                               closingDay: card.closing_day.toString(),
                               dueDay: card.due_day.toString(),
                               color: card.color,
@@ -651,12 +651,12 @@ export default function CreditCardsPage() {
               </label>
               <Input
                 type="text"
-                inputMode="decimal"
+                inputMode="numeric"
                 value={billForm.initialAmount}
                 onChange={(e) =>
-                  setBillForm({ ...billForm, initialAmount: e.target.value })
+                  setBillForm({ ...billForm, initialAmount: formatCurrencyInput(e.target.value) })
                 }
-                placeholder="Ex: 0,00"
+                placeholder="R$ 0,00"
                 className="h-9 text-xs rounded-lg"
               />
             </div>

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { useBudgets, useCategories } from "@/hooks/use-supabase";
-import { getCategoryIcon } from "@/lib/utils";
+import { getCategoryIcon, parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Percent, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -136,13 +136,12 @@ export default function Budgets() {
                     Limite Mensal
                   </label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0,00"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="R$ 0,00"
                     value={form.amount}
                     onChange={(e) =>
-                      setForm({ ...form, amount: e.target.value })
+                      setForm({ ...form, amount: formatCurrencyInput(e.target.value) })
                     }
                   />
                 </div>
@@ -165,7 +164,7 @@ export default function Budgets() {
                         await setBudget(
                           form.categoryId,
                           selectedMonth,
-                          parseFloat(form.amount),
+                          parseBRLAmount(form.amount),
                         );
                       setDialogOpen(false);
                       setForm({ categoryId: "", amount: "" });
