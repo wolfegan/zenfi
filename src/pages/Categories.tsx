@@ -105,12 +105,7 @@ export default function Categories() {
     remove,
   } = useCategories();
 
-  const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => {
-    if (!isLoading && !catsLoading) {
-      setUseDemo(!!user?.is_anonymous && realCategories.length === 0);
-    }
-  }, [isLoading, catsLoading, realCategories, user]);
+  const useDemo = !!user?.is_anonymous;
 
   const categories = useDemo ? demoCategories : realCategories;
 

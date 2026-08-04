@@ -104,12 +104,7 @@ export default function Debts() {
     }
   }, [debtsLoading, realDebts, getSummary]);
 
-  const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => {
-    if (!isLoading && !debtsLoading) {
-      setUseDemo(!!user?.is_anonymous || realDebts.length === 0);
-    }
-  }, [isLoading, debtsLoading, realDebts, user]);
+  const useDemo = !!user?.is_anonymous;
 
   const now = new Date();
   const currentMonth = String(now.getMonth() + 1).padStart(2, "0");

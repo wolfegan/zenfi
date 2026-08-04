@@ -108,12 +108,7 @@ export default function Accounts() {
     remove,
   } = useAccounts();
 
-  const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => {
-    if (!isLoading && !accsLoading) {
-      setUseDemo(!!user?.is_anonymous || realAccounts.length === 0);
-    }
-  }, [isLoading, accsLoading, realAccounts, user]);
+  const useDemo = !!user?.is_anonymous;
   const accounts = useDemo ? demoAccounts : realAccounts;
 
   if (isLoading) return null;

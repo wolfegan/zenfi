@@ -47,15 +47,7 @@ export default function Budgets() {
     getByMonth(selectedMonth).then(setRealBudgets);
   }, [selectedMonth, getByMonth]);
 
-  const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => {
-    if (!isLoading) {
-      setUseDemo(
-        !!user?.is_anonymous ||
-          (realBudgets.length === 0 && realCategories.length === 0),
-      );
-    }
-  }, [isLoading, realBudgets, realCategories, user]);
+  const useDemo = !!user?.is_anonymous;
 
   const budgets = useDemo ? demoBudgets : realBudgets;
   const categories = useDemo ? demoCategories : realCategories;

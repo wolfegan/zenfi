@@ -74,16 +74,7 @@ export default function Reports() {
   const { data: realEvolution } = useMonthlyEvolution(12);
   const { data: realCategories } = useCategories();
 
-  const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => {
-    if (!isLoading) {
-      setUseDemo(
-        !!user?.is_anonymous &&
-          realSummary === null &&
-          realEvolution.length === 0,
-      );
-    }
-  }, [isLoading, realSummary, realEvolution, user]);
+  const useDemo = !!user?.is_anonymous;
 
   const summary = useDemo ? demoMonthlySummary() : (realSummary ?? undefined);
   const evolution = useDemo ? demoEvolution : (realEvolution ?? []);

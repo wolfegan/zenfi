@@ -46,7 +46,7 @@ export function QuickTransactionModal({
   const { data: realCreditCards } = useCreditCards();
   const { create: createTransaction } = useTransactions();
 
-  const useDemo = !!user?.is_anonymous && (!realCategories || realCategories.length === 0);
+  const useDemo = !!user?.is_anonymous;
   const categories = useDemo ? demoCategories : (realCategories || []);
   const accounts = useDemo ? demoAccounts : (realAccounts || []);
   const creditCards = useDemo ? demoCreditCards : (realCreditCards || []);

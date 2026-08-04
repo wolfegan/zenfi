@@ -100,12 +100,7 @@ export default function CreditCardsPage() {
   const { data: realAccounts, refetch: refetchAccounts } = useAccounts();
   const { data: realCategories } = useCategories();
 
-  const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => {
-    if (!isLoading && !cardsLoading) {
-      setUseDemo(!!user?.is_anonymous || realCards.length === 0);
-    }
-  }, [isLoading, cardsLoading, realCards, user]);
+  const useDemo = !!user?.is_anonymous;
   const cards = useDemo ? demoCreditCards : realCards;
   const accounts = useDemo ? [] : realAccounts;
   const categories = useDemo ? [] : realCategories;

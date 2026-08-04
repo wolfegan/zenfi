@@ -71,12 +71,7 @@ export default function Investments() {
     }
   }, [invLoading, realInvestments, getSummary]);
 
-  const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => {
-    if (!isLoading && !invLoading) {
-      setUseDemo(!!user?.is_anonymous || realInvestments.length === 0);
-    }
-  }, [isLoading, invLoading, realInvestments, user]);
+  const useDemo = !!user?.is_anonymous;
 
   const investments = useDemo ? demoInvestments : realInvestments;
   const summaryData = useDemo ? demoInvestmentsSummary : summary;

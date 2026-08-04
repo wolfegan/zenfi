@@ -472,12 +472,7 @@ export default function Dashboard() {
     }
   };
 
-  const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => {
-    if (!isLoading && !summaryLoading && !catsLoading) {
-      setUseDemo(!!user?.is_anonymous && realCategories.length === 0);
-    }
-  }, [isLoading, summaryLoading, catsLoading, realCategories, user]);
+  const useDemo = !!user?.is_anonymous;
 
   const summary = useDemo ? demoMonthlySummary() : (realSummary ?? undefined);
   const health = useDemo ? demoHealthScore : (realHealth ?? undefined);

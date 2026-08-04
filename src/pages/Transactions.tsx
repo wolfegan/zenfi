@@ -142,15 +142,7 @@ export default function Transactions() {
     [realTransactions, month],
   );
 
-  const [useDemo, setUseDemo] = useState(false);
-  useEffect(() => {
-    if (!isLoading && !txsLoading) {
-      setUseDemo(
-        !!user?.is_anonymous ||
-          (realTransactions.length === 0 && realCategories.length === 0),
-      );
-    }
-  }, [isLoading, txsLoading, realTransactions, realCategories, user]);
+  const useDemo = !!user?.is_anonymous;
 
   const allTxs = useDemo ? demoTransactions : filteredRealTransactions;
   const categories = useDemo ? demoCategories : realCategories;
