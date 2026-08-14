@@ -33,6 +33,7 @@ import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
 import { BankLogo, POPULAR_BANKS } from "@/components/BankLogo";
 import { motion } from "framer-motion";
+import { PluggyConnectModal } from "@/components/PluggyConnectModal";
 import {
   Landmark,
   Plus,
@@ -42,6 +43,7 @@ import {
   Wallet,
   Banknote,
   Building2,
+  Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -100,12 +102,15 @@ export default function Accounts() {
     "#64748b", // Slate
   ];
 
+  const [pluggyOpen, setPluggyOpen] = useState(false);
+
   const {
     data: realAccounts,
     loading: accsLoading,
     create,
     update,
     remove,
+    refetch: refetchAccounts,
   } = useAccounts();
 
   const useDemo = !!user?.is_anonymous;
@@ -133,31 +138,44 @@ export default function Accounts() {
           </div>
         )}
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-lg font-medium tracking-tight">
+            <h1 className="text-lg font-medium tracking-tight flex items-center gap-2">
               Contas Bancárias
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <Zap className="w-3 h-3" /> Open Finance
+              </span>
             </h1>
             <p className="text-xs text-muted-foreground mt-1">
-              Acompanhe o saldo das suas contas
+              Acompanhe o saldo consolidado de suas contas sincronizadas
             </p>
           </div>
-          <Dialog
-            open={dialogOpen}
-            onOpenChange={(open) => {
-              setDialogOpen(open);
-              if (!open) {
-                resetForm();
-                setEditingAcc(null);
-              }
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button size="sm" className="text-xs h-9">
-                <Plus className="w-3.5 h-3.5 mr-1.5" />
-                Nova Conta
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setPluggyOpen(true)}
+              className="text-xs h-9 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20 font-semibold"
+            >
+              <Zap className="w-3.5 h-3.5 mr-1.5 text-emerald-600 dark:text-emerald-400" />
+              Conectar Banco (Open Finance)
+            </Button>
+            <Dialog
+              open={dialogOpen}
+              onOpenChange={(open) => {
+                setDialogOpen(open);
+                if (!open) {
+                  resetForm();
+                  setEditingAcc(null);
+                }
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button size="sm" className="text-xs h-9">
+                  <Plus className="w-3.5 h-3.5 mr-1.5" />
+                  Nova Conta
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-[380px]">
               <DialogHeader>
                 <DialogTitle className="text-sm font-medium">
@@ -341,6 +359,7 @@ export default function Accounts() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
 
         <motion.div
           initial={{ opacity: 0, y: 8 }}
@@ -509,6 +528,14 @@ export default function Accounts() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <PluggyConnectModal
+          open={pluggyOpen}
+          onOpenChange={setPluggyOpen}
+          onSuccess={() => {
+            refetchAccounts();
+          }}
+        />
       </div>
     </DashboardLayout>
   );
