@@ -34,6 +34,7 @@ import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
 import { BankLogo, POPULAR_BANKS } from "@/components/BankLogo";
 import { motion } from "framer-motion";
 import { PluggyConnectModal } from "@/components/PluggyConnectModal";
+import { OFXImportModal } from "@/components/OFXImportModal";
 import {
   Landmark,
   Plus,
@@ -44,6 +45,7 @@ import {
   Banknote,
   Building2,
   Zap,
+  FileText,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -103,6 +105,7 @@ export default function Accounts() {
   ];
 
   const [pluggyOpen, setPluggyOpen] = useState(false);
+  const [ofxOpen, setOfxOpen] = useState(false);
 
   const {
     data: realAccounts,
@@ -150,7 +153,17 @@ export default function Accounts() {
               Acompanhe o saldo consolidado de suas contas sincronizadas
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setOfxOpen(true)}
+              className="text-xs h-9 font-semibold border-border/80"
+            >
+              <FileText className="w-3.5 h-3.5 mr-1.5 text-primary" />
+              Importar Extrato (OFX/CSV)
+            </Button>
+
             <Button
               size="sm"
               variant="outline"
@@ -532,6 +545,14 @@ export default function Accounts() {
         <PluggyConnectModal
           open={pluggyOpen}
           onOpenChange={setPluggyOpen}
+          onSuccess={() => {
+            refetchAccounts();
+          }}
+        />
+
+        <OFXImportModal
+          open={ofxOpen}
+          onOpenChange={setOfxOpen}
           onSuccess={() => {
             refetchAccounts();
           }}

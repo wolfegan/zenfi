@@ -47,8 +47,10 @@ import {
   Eye,
   EyeOff,
   Zap,
+  FileText,
 } from "lucide-react";
 import { PluggyConnectModal } from "@/components/PluggyConnectModal";
+import { OFXImportModal } from "@/components/OFXImportModal";
 import {
   PieChart,
   Pie,
@@ -475,6 +477,7 @@ export default function Dashboard() {
   };
 
   const [pluggyOpen, setPluggyOpen] = useState(false);
+  const [ofxOpen, setOfxOpen] = useState(false);
   const useDemo = !!user?.is_anonymous;
 
   const summary = useDemo ? demoMonthlySummary() : (realSummary ?? undefined);
@@ -794,7 +797,15 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => setOfxOpen(true)}
+              className="h-9 px-3 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border/80 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0"
+            >
+              <FileText className="w-3.5 h-3.5 text-primary" />
+              <span>Importar OFX</span>
+            </button>
+
             <button
               onClick={() => setPluggyOpen(true)}
               className="h-9 px-3 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0"
@@ -1132,6 +1143,17 @@ export default function Dashboard() {
       <PluggyConnectModal
         open={pluggyOpen}
         onOpenChange={setPluggyOpen}
+        onSuccess={() => {
+          refetchSummary();
+          refetchHealth();
+          refetchEvolution();
+          refetchAccounts();
+        }}
+      />
+
+      <OFXImportModal
+        open={ofxOpen}
+        onOpenChange={setOfxOpen}
         onSuccess={() => {
           refetchSummary();
           refetchHealth();
