@@ -33,7 +33,6 @@ import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
 import { BankLogo, POPULAR_BANKS } from "@/components/BankLogo";
 import { motion } from "framer-motion";
-import { PluggyConnectModal } from "@/components/PluggyConnectModal";
 import { OFXImportModal } from "@/components/OFXImportModal";
 import {
   Landmark,
@@ -44,7 +43,6 @@ import {
   Wallet,
   Banknote,
   Building2,
-  Zap,
   FileText,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -104,7 +102,6 @@ export default function Accounts() {
     "#64748b", // Slate
   ];
 
-  const [pluggyOpen, setPluggyOpen] = useState(false);
   const [ofxOpen, setOfxOpen] = useState(false);
 
   const {
@@ -143,14 +140,11 @@ export default function Accounts() {
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-lg font-medium tracking-tight flex items-center gap-2">
+            <h1 className="text-lg font-medium tracking-tight">
               Contas Bancárias
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                <Zap className="w-3 h-3" /> Open Finance
-              </span>
             </h1>
             <p className="text-xs text-muted-foreground mt-1">
-              Acompanhe o saldo consolidado de suas contas sincronizadas
+              Acompanhe o saldo consolidado de suas contas
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -162,16 +156,6 @@ export default function Accounts() {
             >
               <FileText className="w-3.5 h-3.5 mr-1.5 text-primary" />
               Importar Extrato (OFX/CSV)
-            </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setPluggyOpen(true)}
-              className="text-xs h-9 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20 font-semibold"
-            >
-              <Zap className="w-3.5 h-3.5 mr-1.5 text-emerald-600 dark:text-emerald-400" />
-              Conectar Banco (Open Finance)
             </Button>
             <Dialog
               open={dialogOpen}
@@ -541,14 +525,6 @@ export default function Accounts() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        <PluggyConnectModal
-          open={pluggyOpen}
-          onOpenChange={setPluggyOpen}
-          onSuccess={() => {
-            refetchAccounts();
-          }}
-        />
 
         <OFXImportModal
           open={ofxOpen}

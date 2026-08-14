@@ -46,10 +46,8 @@ import {
   AlertTriangle,
   Eye,
   EyeOff,
-  Zap,
   FileText,
 } from "lucide-react";
-import { PluggyConnectModal } from "@/components/PluggyConnectModal";
 import { OFXImportModal } from "@/components/OFXImportModal";
 import {
   PieChart,
@@ -476,7 +474,6 @@ export default function Dashboard() {
     }
   };
 
-  const [pluggyOpen, setPluggyOpen] = useState(false);
   const [ofxOpen, setOfxOpen] = useState(false);
   const useDemo = !!user?.is_anonymous;
 
@@ -806,14 +803,6 @@ export default function Dashboard() {
               <span>Importar OFX</span>
             </button>
 
-            <button
-              onClick={() => setPluggyOpen(true)}
-              className="h-9 px-3 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0"
-            >
-              <Zap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Conectar Banco</span>
-            </button>
-
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
               <SelectTrigger className="w-full sm:w-[170px] h-9 text-xs rounded-xl bg-background border-border">
                 <SelectValue placeholder="Selecione o mês" />
@@ -1139,17 +1128,6 @@ export default function Dashboard() {
           onComplete={handleOnboardingComplete}
         />
       )}
-
-      <PluggyConnectModal
-        open={pluggyOpen}
-        onOpenChange={setPluggyOpen}
-        onSuccess={() => {
-          refetchSummary();
-          refetchHealth();
-          refetchEvolution();
-          refetchAccounts();
-        }}
-      />
 
       <OFXImportModal
         open={ofxOpen}
