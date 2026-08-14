@@ -1,5 +1,10 @@
+import axios from "axios";
 import { supabase } from "@/lib/supabase";
 import { findBankPreset } from "@/components/BankLogo";
+
+export const PLUGGY_CLIENT_ID = import.meta.env.VITE_PLUGGY_CLIENT_ID || "e276b98a-4518-4a6f-8876-96902baf5794";
+export const PLUGGY_CLIENT_SECRET = import.meta.env.VITE_PLUGGY_CLIENT_SECRET || "ACcDNycFVojjES12VmU4850I-mdA7dRfddaQlxvTgos";
+export const PLUGGY_API_KEY = import.meta.env.VITE_PLUGGY_API_KEY || "";
 
 export interface PluggyBankConnection {
   id: string;
@@ -8,6 +13,36 @@ export interface PluggyBankConnection {
   color: string;
   status: "CONNECTED" | "SYNCING" | "ERROR";
   lastSyncedAt: string;
+}
+
+export async function fetchPluggyApiKey(): Promise<string> {
+  if (PLUGGY_API_KEY) return PLUGGY_API_KEY;
+  try {
+    const res = await axios.post("https://api.pluggy.ai/auth", {
+      clientId: PLUGGY_CLIENT_ID,
+      clientSecret: PLUGGY_CLIENT_SECRET,
+    });
+    return res.data.apiKey;
+  } catch (err) {
+    console.warn("Autenticação com Pluggy API falhou:", err);
+    return "";
+  }
+}
+
+export async function fetchPluggyConnectToken(itemId?: string): Promise<string> {
+  try {
+    const apiKey = await fetchPluggyApiKey();
+    if (!apiKey) return "";
+    const res = await axios.post(
+      "https://api.pluggy.ai/connect_token",
+      { itemId },
+      { headers: { "X-API-KEY": apiKey } }
+    );
+    return res.data.accessToken;
+  } catch (err) {
+    console.warn("Erro ao gerar Connect Token na Pluggy:", err);
+    return "";
+  }
 }
 
 // ─── Preset Bank Mock Generators for Open Finance Sandbox ──────────────────────
