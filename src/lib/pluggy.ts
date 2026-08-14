@@ -247,3 +247,143 @@ export async function syncOpenFinanceBank(bankPresetId: string, userId: string):
     transactionsCreated: createdTxsCount,
   };
 }
+
+export async function syncRealPluggyItemToSupabase(itemId: string, userId: string): Promise<{
+  bankName: string;
+  accountsCreated: number;
+  transactionsCreated: number;
+}> {
+  if (!userId || !itemId) {
+    throw new Error("ID do usuário ou Item da Pluggy inválido.");
+  }
+
+  const apiKey = await fetchPluggyApiKey();
+  if (!apiKey) {
+    throw new Error("Não foi possível autenticar na Pluggy API.");
+  }
+
+  // 1. Fetch Item details (bank name, connector)
+  let bankName = "Banco Conectado";
+  try {
+    const itemRes = await axios.get(`https://api.pluggy.ai/items/${itemId}`, {
+      headers: { "X-API-KEY": apiKey },
+    });
+    if (itemRes.data?.connector?.name) {
+      bankName = itemRes.data.connector.name;
+    }
+  } catch (err) {
+    console.warn("Could not fetch item info:", err);
+  }
+
+  // 2. Fetch real accounts for this item
+  const accountsRes = await axios.get(`https://api.pluggy.ai/accounts?itemId=${itemId}`, {
+    headers: { "X-API-KEY": apiKey },
+  });
+  const pluggyAccounts = accountsRes.data?.results || [];
+
+  // 3. Fetch user's categories in Supabase
+  const { data: existingCats } = await supabase
+    .from("categories")
+    .select("id, name, type")
+    .eq("user_id", userId);
+
+  const defaultCatId = existingCats?.[0]?.id || "";
+
+  let createdAccountsCount = 0;
+  let createdTxsCount = 0;
+
+  const preset = findBankPreset(bankName);
+  const color = preset?.color || "#173b2c";
+
+  for (const pluggyAcc of pluggyAccounts) {
+    const accType: "checking" | "savings" | "cash" | "other" =
+      pluggyAcc.type === "SAVINGS"
+        ? "savings"
+        : pluggyAcc.type === "INVESTMENT"
+        ? "savings"
+        : "checking";
+
+    const accName = pluggyAcc.name || `${bankName} (${pluggyAcc.number || "Conta"})`;
+    const accBalance = Math.abs(pluggyAcc.balance || 0);
+
+    const { data: existingAccs } = await supabase
+      .from("accounts")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("name", accName);
+
+    let targetAccountId = "";
+    if (existingAccs && existingAccs.length > 0) {
+      targetAccountId = existingAccs[0].id;
+      await supabase
+        .from("accounts")
+        .update({ balance: accBalance })
+        .eq("id", targetAccountId);
+    } else {
+      const { data: newAcc } = await supabase
+        .from("accounts")
+        .insert({
+          user_id: userId,
+          name: accName,
+          type: accType,
+          balance: accBalance,
+          color,
+        })
+        .select()
+        .single();
+
+      if (newAcc) {
+        targetAccountId = newAcc.id;
+        createdAccountsCount++;
+      }
+    }
+
+    // Fetch real transactions for this account
+    try {
+      const txsRes = await axios.get(
+        `https://api.pluggy.ai/transactions?accountId=${pluggyAcc.id}`,
+        { headers: { "X-API-KEY": apiKey } }
+      );
+      const pluggyTxs = txsRes.data?.results || [];
+
+      for (const tx of pluggyTxs) {
+        const rawAmount = tx.amount || 0;
+        const txType: "income" | "expense" = rawAmount < 0 ? "expense" : "income";
+        const absAmount = Math.abs(rawAmount);
+        const txDate = (tx.date || new Date().toISOString()).split("T")[0];
+        const txDesc = `[${bankName}] ${tx.description || "Lançamento Open Finance"}`;
+
+        const { data: existingTxs } = await supabase
+          .from("transactions")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("description", txDesc)
+          .eq("date", txDate);
+
+        if (!existingTxs || existingTxs.length === 0) {
+          if (defaultCatId) {
+            await supabase.from("transactions").insert({
+              user_id: userId,
+              category_id: defaultCatId,
+              amount: absAmount,
+              type: txType,
+              description: txDesc,
+              date: txDate,
+              is_fixed: false,
+              is_credit_card: false,
+            });
+            createdTxsCount++;
+          }
+        }
+      }
+    } catch (txErr) {
+      console.warn("Could not fetch transactions for account:", pluggyAcc.id, txErr);
+    }
+  }
+
+  return {
+    bankName,
+    accountsCreated: createdAccountsCount,
+    transactionsCreated: createdTxsCount,
+  };
+}

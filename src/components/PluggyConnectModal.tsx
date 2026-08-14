@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { POPULAR_BANKS, BankLogo } from "@/components/BankLogo";
-import { syncOpenFinanceBank, fetchPluggyConnectToken } from "@/lib/pluggy";
+import { syncOpenFinanceBank, syncRealPluggyItemToSupabase, fetchPluggyConnectToken } from "@/lib/pluggy";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -94,10 +94,20 @@ export function PluggyConnectModal({
   };
 
   const handleWidgetSuccess = async (itemData: any) => {
-    if (!user) return;
-    toast.success("Banco conectado via Pluggy Connect Widget!");
-    if (onSuccess) onSuccess();
-    onOpenChange(false);
+    if (!user || !itemData?.item?.id) return;
+    const toastId = toast.loading("Sincronizando contas e extratos reais via Open Finance...");
+    try {
+      const result = await syncRealPluggyItemToSupabase(itemData.item.id, user.id);
+      toast.success(
+        `Banco ${result.bankName} sincronizado com sucesso! ${result.accountsCreated > 0 ? `${result.accountsCreated} conta(s)` : "Saldos"} e ${result.transactionsCreated} transação(ões) importadas.`,
+        { id: toastId }
+      );
+      if (onSuccess) onSuccess();
+      onOpenChange(false);
+    } catch (err: any) {
+      console.error("Erro na sincronização da Pluggy:", err);
+      toast.error("Erro ao importar dados da Pluggy: " + (err?.message || err), { id: toastId });
+    }
   };
 
   return (
