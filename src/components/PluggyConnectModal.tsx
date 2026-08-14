@@ -1,26 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { POPULAR_BANKS, BankLogo } from "@/components/BankLogo";
-import { syncOpenFinanceBank } from "@/lib/pluggy";
+import { syncOpenFinanceBank, fetchPluggyConnectToken } from "@/lib/pluggy";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { PluggyConnect } from "react-pluggy-connect";
 import {
   ShieldCheck,
-  Building2,
   CheckCircle2,
   RefreshCw,
   Zap,
   Lock,
   ArrowRight,
-  Sparkles,
+  Globe,
 } from "lucide-react";
 
 interface PluggyConnectModalProps {
@@ -38,8 +35,26 @@ export function PluggyConnectModal({
   const [selectedBankId, setSelectedBankId] = useState<string>("nubank");
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectedBankName, setConnectedBankName] = useState<string | null>(null);
+  const [connectToken, setConnectToken] = useState<string | null>(null);
+  const [useWidgetMode, setUseWidgetMode] = useState(false);
 
-  const handleConnect = async () => {
+  useEffect(() => {
+    if (open) {
+      // Try to fetch connect token from Pluggy API
+      fetchPluggyConnectToken()
+        .then((token) => {
+          if (token) setConnectToken(token);
+        })
+        .catch((err) => {
+          console.warn("Connect token error:", err);
+        });
+    } else {
+      setConnectToken(null);
+      setUseWidgetMode(false);
+    }
+  }, [open]);
+
+  const handleConnectPreset = async () => {
     if (!user) {
       toast.error("Por favor, faça login para conectar seu banco.");
       return;
@@ -52,8 +67,7 @@ export function PluggyConnectModal({
     );
 
     try {
-      // Simulate real-time OAuth/Open Finance authentication sequence
-      await new Promise((resolve) => setTimeout(resolve, 2200));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       const result = await syncOpenFinanceBank(selectedBankId, user.id);
 
@@ -77,6 +91,13 @@ export function PluggyConnectModal({
       });
       setIsConnecting(false);
     }
+  };
+
+  const handleWidgetSuccess = async (itemData: any) => {
+    if (!user) return;
+    toast.success("Banco conectado via Pluggy Connect Widget!");
+    if (onSuccess) onSuccess();
+    onOpenChange(false);
   };
 
   return (
@@ -142,6 +163,19 @@ export function PluggyConnectModal({
                   </p>
                 </div>
               </motion.div>
+            ) : useWidgetMode && connectToken ? (
+              <div className="py-2">
+                <PluggyConnect
+                  connectToken={connectToken}
+                  includeSandbox={true}
+                  onSuccess={handleWidgetSuccess}
+                  onError={(error) => {
+                    console.error("Connection failed", error);
+                    toast.error("Erro no widget Pluggy Connect.");
+                  }}
+                  onClose={() => setUseWidgetMode(false)}
+                />
+              </div>
             ) : (
               <motion.div
                 key="form"
@@ -152,9 +186,20 @@ export function PluggyConnectModal({
               >
                 {/* Select Bank Label */}
                 <div>
-                  <label className="text-xs font-bold text-foreground uppercase tracking-wider block mb-2">
-                    Selecione sua Instituição Bancária
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-bold text-foreground uppercase tracking-wider block">
+                      Selecione sua Instituição Bancária
+                    </label>
+                    {connectToken && (
+                      <button
+                        type="button"
+                        onClick={() => setUseWidgetMode(true)}
+                        className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                      >
+                        <Globe className="w-3 h-3" /> Abrir Widget Pluggy
+                      </button>
+                    )}
+                  </div>
 
                   {/* Grid of Bank Presets */}
                   <div className="grid grid-cols-4 gap-2.5 max-h-[220px] overflow-y-auto pr-1">
@@ -196,7 +241,7 @@ export function PluggyConnectModal({
 
                 {/* Submit Connect Button */}
                 <Button
-                  onClick={handleConnect}
+                  onClick={handleConnectPreset}
                   disabled={isConnecting}
                   className="w-full h-11 rounded-2xl bg-[#173b2c] hover:bg-[#102a1f] text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 group transition-all"
                 >
