@@ -703,7 +703,7 @@ export function useMonthlyEvolution(months: number) {
         .reduce((s, t) => s + t.amount, 0);
       return {
         month,
-        label: new Date(month + "-01").toLocaleDateString("pt-BR", {
+        label: new Date(month + "-01T12:00:00").toLocaleDateString("pt-BR", {
           month: "short",
           year: "2-digit",
         }),

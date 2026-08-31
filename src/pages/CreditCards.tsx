@@ -474,7 +474,7 @@ export default function CreditCardsPage() {
                     <div className="border-t divide-y">
                       {(card as any).bills.map((bill: any) => {
                         const monthLabel = new Date(
-                          bill.month + "-01",
+                          bill.month + "-01T12:00:00",
                         ).toLocaleDateString("pt-BR", {
                           month: "long",
                           year: "numeric",
@@ -692,7 +692,7 @@ export default function CreditCardsPage() {
                 <div className="flex items-center justify-between">
                   <span>Mês da Fatura</span>
                   <span className="text-muted-foreground">
-                    {new Date(payingBill.month + "-01").toLocaleDateString("pt-BR", {
+                    {new Date(payingBill.month + "-01T12:00:00").toLocaleDateString("pt-BR", {
                       month: "long",
                       year: "numeric",
                     })}
@@ -792,7 +792,7 @@ export default function CreditCardsPage() {
 
                       const card = cards.find(c => c.id === payingBill.credit_card_id);
                       const cardName = card ? card.name : "Cartão";
-                      const monthLabel = new Date(payingBill.month + "-01").toLocaleDateString("pt-BR", {
+                      const monthLabel = new Date(payingBill.month + "-01T12:00:00").toLocaleDateString("pt-BR", {
                         month: "long",
                         year: "numeric",
                       });

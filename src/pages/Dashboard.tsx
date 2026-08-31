@@ -400,29 +400,7 @@ export default function Dashboard() {
     setQuickSubmitting(true);
     try {
       if (!useDemo) {
-        let descriptionValue = quickDescription.trim();
         const selectedAcc = accounts.find((a: any) => a.id === quickAccountId);
-
-        if (!isCreditCard) {
-          const label =
-            quickPaymentMethod === "pix"
-              ? "PIX"
-              : quickPaymentMethod === "cash"
-                ? "Dinheiro"
-                : quickPaymentMethod === "debit"
-                  ? "Débito"
-                  : "";
-          if (label) {
-            descriptionValue = descriptionValue
-              ? `[${label}] ${descriptionValue}`
-              : `[${label}]`;
-          }
-        }
-
-        // Prepend account prefix to description
-        if (!isCreditCard && selectedAcc) {
-          descriptionValue = `[Conta: ${selectedAcc.name}] ${descriptionValue}`;
-        }
 
         // saldo ajustado dentro de createTransaction (via account_id)
         await createTransaction({
@@ -430,7 +408,7 @@ export default function Dashboard() {
           amount,
           date: quickDate,
           type: quickType,
-          description: descriptionValue || null,
+          description: quickDescription.trim() || null,
           is_fixed: false,
           is_credit_card: isCreditCard,
           credit_card_id:

@@ -62,10 +62,15 @@ function currentMonth() {
 }
 
 // ─── Payment method helpers ──────────────────────────────────────────────────
+// Transações novas guardam a forma de pagamento na coluna `payment_method` e a
+// conta em `account_id`. Os prefixos "[PIX]" / "[Conta: X]" só existem em
+// registros antigos — as funções abaixo mantêm compatibilidade com eles.
 const PAYMENT_PREFIX_RE = /^\[(PIX|Dinheiro|Débito)\]\s*/;
 
 function getPaymentMethod(tx: any): string | null {
   if (tx.is_credit_card) return "Cartão";
+  if (tx.payment_method && PAYMENT_BADGE[tx.payment_method])
+    return tx.payment_method;
   const match = tx.description?.match(PAYMENT_PREFIX_RE);
   return match ? match[1] : null;
 }
@@ -73,8 +78,9 @@ function getPaymentMethod(tx: any): string | null {
 function stripPaymentPrefix(desc: string): string {
   if (!desc) return "";
   return desc
+    .replace(/\[Conta:\s*([^\]]+)\]\s*/g, "")
     .replace(PAYMENT_PREFIX_RE, "")
-    .replace(/\[Conta:\s*([^\]]+)\]\s*/, "")
+    .replace(PAYMENT_PREFIX_RE, "")
     .trim();
 }
 
@@ -235,30 +241,9 @@ export default function Transactions() {
           resetForm();
           return;
         }
-        let descriptionValue = form.description.trim();
         const selectedAcc = accounts.find((a: any) => a.id === form.accountId);
-
-        // Prepend payment method label to description
-        if (!isCreditCard) {
-          const label =
-            form.paymentMethod === "pix"
-              ? "PIX"
-              : form.paymentMethod === "cash"
-                ? "Dinheiro"
-                : form.paymentMethod === "debit"
-                  ? "Débito"
-                  : "";
-          if (label) {
-            descriptionValue = descriptionValue
-              ? `[${label}] ${descriptionValue}`
-              : `[${label}]`;
-          }
-        }
-
-        // Prepend account prefix to description if linked to account
-        if (!isCreditCard && selectedAcc) {
-          descriptionValue = `[Conta: ${selectedAcc.name}] ${descriptionValue}`;
-        }
+        // forma de pagamento e conta vão em colunas próprias — sem prefixo no texto
+        const descriptionValue = stripPaymentPrefix(form.description.trim());
 
         const txData: any = {
           category_id: form.categoryId,
@@ -864,29 +849,28 @@ export default function Transactions() {
                         onClick={() => {
                           if (!useDemo) {
                             setEditingTx(tx);
+                            const methodMap: Record<string, string> = {
+                              PIX: "pix",
+                              Dinheiro: "cash",
+                              Débito: "debit",
+                            };
                             let pm = "pix";
                             if (tx.is_credit_card) pm = "credit_card";
+                            else if (tx.payment_method && methodMap[tx.payment_method])
+                              pm = methodMap[tx.payment_method];
                             else {
                               const m =
                                 tx.description?.match(PAYMENT_PREFIX_RE);
-                              if (m) {
-                                pm =
-                                  m[1] === "PIX"
-                                    ? "pix"
-                                    : m[1] === "Dinheiro"
-                                      ? "cash"
-                                      : m[1] === "Débito"
-                                        ? "debit"
-                                        : "pix";
-                              }
+                              if (m) pm = methodMap[m[1]] || "pix";
                             }
                             const accMatch = tx.description?.match(
                               /\[Conta:\s*([^\]]+)\]/,
                             );
-                            const accountName = accMatch ? accMatch[1] : null;
-                            const foundAcc = accounts.find(
-                              (a: any) => a.name === accountName,
-                            );
+                            const foundAcc =
+                              accounts.find((a: any) => a.id === tx.account_id) ||
+                              accounts.find(
+                                (a: any) => a.name === (accMatch ? accMatch[1] : null),
+                              );
 
                             setForm({
                               categoryId: tx.category_id,
