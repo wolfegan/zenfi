@@ -67,6 +67,7 @@ CREATE TABLE credit_card_bills (
   paid_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
   paid_at TEXT,
   rollover_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  rolled_forward BOOLEAN NOT NULL DEFAULT false,
   minimum_payment NUMERIC(12,2) NOT NULL DEFAULT 0,
   due_date TEXT NOT NULL,
   closing_date TEXT NOT NULL,
@@ -201,6 +202,19 @@ CREATE INDEX idx_accounts_user_id ON accounts(user_id);
 ALTER TABLE transactions
   ADD CONSTRAINT transactions_account_id_fkey
   FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL;
+
+-- RPC atômica para ajustar saldo de conta (usada pelos hooks de transação)
+CREATE OR REPLACE FUNCTION public.increment_account_balance(
+  p_account_id UUID,
+  p_delta NUMERIC
+)
+RETURNS void
+LANGUAGE sql
+SECURITY INVOKER
+AS $$
+  UPDATE public.accounts SET balance = balance + p_delta WHERE id = p_account_id;
+$$;
+GRANT EXECUTE ON FUNCTION public.increment_account_balance(UUID, NUMERIC) TO authenticated;
 
 -- =============================================================================
 -- Goals

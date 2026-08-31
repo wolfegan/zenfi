@@ -137,6 +137,7 @@ export interface CreditCardBill {
   paid_amount?: number;
   paid_at?: string | null;
   rollover_amount?: number;
+  rolled_forward?: boolean;
   minimum_payment?: number;
   due_date: string;
   closing_date: string;

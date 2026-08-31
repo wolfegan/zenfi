@@ -424,18 +424,7 @@ export default function Dashboard() {
           descriptionValue = `[Conta: ${selectedAcc.name}] ${descriptionValue}`;
         }
 
-        // Nova Transação: aplicar saldo na conta
-        if (selectedAcc) {
-          const newBalance =
-            quickType === "income"
-              ? selectedAcc.balance + amount
-              : selectedAcc.balance - amount;
-          await supabase
-            .from("accounts")
-            .update({ balance: newBalance })
-            .eq("id", selectedAcc.id);
-        }
-
+        // saldo ajustado dentro de createTransaction (via account_id)
         await createTransaction({
           category_id: quickCategoryId,
           amount,
@@ -446,6 +435,16 @@ export default function Dashboard() {
           is_credit_card: isCreditCard,
           credit_card_id:
             isCreditCard && quickCreditCardId ? quickCreditCardId : null,
+          account_id: !isCreditCard && selectedAcc ? selectedAcc.id : null,
+          payment_method: isCreditCard
+            ? "Cartão"
+            : quickPaymentMethod === "pix"
+              ? "PIX"
+              : quickPaymentMethod === "cash"
+                ? "Dinheiro"
+                : quickPaymentMethod === "debit"
+                  ? "Débito"
+                  : null,
         });
 
         toast.success("Transação registrada!");

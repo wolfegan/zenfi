@@ -1,5 +1,4 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -283,64 +282,12 @@ export default function Transactions() {
                   : null,
         };
 
+        // O saldo da conta é ajustado automaticamente dentro de create/update
+        // (via account_id), de forma atômica — nada de mexer no balance aqui.
         if (editingTx) {
-          // 1. Reverter saldo antigo da conta antiga
-          const oldAmount = editingTx.amount;
-          const oldType = editingTx.type;
-          const oldAccMatch = editingTx.description?.match(
-            /\[Conta:\s*([^\]]+)\]/,
-          );
-          const oldAccName = oldAccMatch ? oldAccMatch[1] : null;
-          const oldAcc = accounts.find((a: any) => a.name === oldAccName);
-
-          if (oldAcc) {
-            const revertedBalance =
-              oldType === "income"
-                ? oldAcc.balance - oldAmount
-                : oldAcc.balance + oldAmount;
-            await supabase
-              .from("accounts")
-              .update({ balance: revertedBalance })
-              .eq("id", oldAcc.id);
-          }
-
-          // 2. Aplicar novo saldo na conta selecionada
-          if (selectedAcc) {
-            const { data: latestAcc } = await supabase
-              .from("accounts")
-              .select("balance")
-              .eq("id", selectedAcc.id)
-              .single();
-
-            const currentBalance = latestAcc
-              ? latestAcc.balance
-              : selectedAcc.balance;
-            const newBalance =
-              form.type === "income"
-                ? currentBalance + amount
-                : currentBalance - amount;
-
-            await supabase
-              .from("accounts")
-              .update({ balance: newBalance })
-              .eq("id", selectedAcc.id);
-          }
-
           await update(editingTx.id, txData);
           toast.success("Transação atualizada!");
         } else {
-          // Nova Transação: aplicar saldo na conta
-          if (selectedAcc) {
-            const newBalance =
-              form.type === "income"
-                ? selectedAcc.balance + amount
-                : selectedAcc.balance - amount;
-            await supabase
-              .from("accounts")
-              .update({ balance: newBalance })
-              .eq("id", selectedAcc.id);
-          }
-
           await create(txData);
           toast.success("Transação adicionada!");
         }
@@ -1039,34 +986,9 @@ export default function Transactions() {
                       setDeleteId(null);
                       return;
                     }
-                    if (txToDelete) {
-                      const amount = txToDelete.amount;
-                      const type = txToDelete.type;
-                      const acc =
-                        accounts.find(
-                          (a: any) => a.id === txToDelete.account_id,
-                        ) ||
-                        (() => {
-                          const accMatch = txToDelete.description?.match(
-                            /\[Conta:\s*([^\]]+)\]/,
-                          );
-                          const accName = accMatch ? accMatch[1] : null;
-                          return accounts.find((a: any) => a.name === accName);
-                        })();
-
-                      if (acc) {
-                        const newBalance =
-                          type === "income"
-                            ? acc.balance - amount
-                            : acc.balance + amount;
-                        await supabase
-                          .from("accounts")
-                          .update({ balance: newBalance })
-                          .eq("id", acc.id);
-                        refetchAccounts();
-                      }
-                    }
+                    // remove() reverte o saldo da conta automaticamente
                     await remove(deleteId);
+                    refetchAccounts();
                   }
                   toast.success("Transação excluída!");
                 }

@@ -12,6 +12,7 @@ import {
   splitInstallments,
   buildInstallmentRows,
   installmentLabel,
+  applyRotativo,
 } from "./credit-card.ts";
 import { debtNextDue, debtProgress, debtInstallmentLabel } from "./debt.ts";
 
@@ -112,6 +113,95 @@ test("installmentLabel", () => {
   assert.equal(installmentLabel(3, 12), "3/12");
   assert.equal(installmentLabel(1, 1), null);
   assert.equal(installmentLabel(null, 12), null);
+});
+
+// ─── rotativo ───────────────────────────────────────────────────────────────
+
+test("applyRotativo — sem juros (taxa 0): faturas independentes, nada rola", () => {
+  const { patches, carryoverTail } = applyRotativo(
+    [
+      { month: "2026-01", total_amount: 500, paid_amount: 0, due_date: "2026-01-10" },
+      { month: "2026-02", total_amount: 300, paid_amount: 0, due_date: "2026-02-10" },
+    ],
+    0,
+    "2026-03-01",
+  );
+  assert.equal(carryoverTail, 0);
+  assert.equal(patches[0].rolled_forward, false);
+  assert.equal(patches[0].outstanding, 500);
+  assert.equal(patches[1].rollover_amount, 0);
+  assert.equal(patches[1].outstanding, 300);
+});
+
+test("applyRotativo — fatura vencida e não paga rola com juros para a próxima", () => {
+  const { patches } = applyRotativo(
+    [
+      // vencida em 10/01, hoje é 20/02, nada pago → rola
+      { month: "2026-01", total_amount: 1000, paid_amount: 0, due_date: "2026-01-10" },
+      { month: "2026-02", total_amount: 200, paid_amount: 0, due_date: "2026-02-25" },
+    ],
+    10, // 10% a.m.
+    "2026-02-20",
+  );
+  assert.equal(patches[0].rolled_forward, true);
+  assert.equal(patches[0].outstanding, 0);
+  // 1000 + 10% = 1100 vai para fevereiro
+  assert.equal(patches[1].rollover_amount, 1100);
+  assert.equal(patches[1].rolled_forward, false); // fev ainda não venceu
+  assert.equal(patches[1].effectiveTotal, 1300);
+  assert.equal(patches[1].outstanding, 1300);
+});
+
+test("applyRotativo — pagamento parcial: só o saldo rola", () => {
+  const { patches } = applyRotativo(
+    [
+      { month: "2026-01", total_amount: 1000, paid_amount: 600, due_date: "2026-01-10" },
+      { month: "2026-02", total_amount: 0, paid_amount: 0, due_date: "2026-02-25" },
+    ],
+    10,
+    "2026-02-20",
+  );
+  // saldo 400 + 10% = 440
+  assert.equal(patches[1].rollover_amount, 440);
+});
+
+test("applyRotativo — última fatura vencida e não paga vira carryoverTail", () => {
+  const { patches, carryoverTail } = applyRotativo(
+    [
+      { month: "2026-01", total_amount: 500, paid_amount: 0, due_date: "2026-01-10" },
+    ],
+    10,
+    "2026-02-20",
+  );
+  assert.equal(patches[0].rolled_forward, true);
+  assert.equal(carryoverTail, 550); // 500 + 10%
+});
+
+test("applyRotativo — compounding mês a mês em duas faturas vencidas", () => {
+  const { patches, carryoverTail } = applyRotativo(
+    [
+      { month: "2026-01", total_amount: 1000, paid_amount: 0, due_date: "2026-01-10" },
+      { month: "2026-02", total_amount: 0, paid_amount: 0, due_date: "2026-02-10" },
+    ],
+    10,
+    "2026-03-20",
+  );
+  // jan: 1000 → 1100 rola pra fev
+  // fev: 0 + 1100 = 1100, vencida → 1100 * 1.1 = 1210 vira tail
+  assert.equal(patches[0].rolled_forward, true);
+  assert.equal(patches[1].rollover_amount, 1100);
+  assert.equal(patches[1].rolled_forward, true);
+  assert.equal(carryoverTail, 1210);
+});
+
+test("applyRotativo é idempotente (rodar de novo dá o mesmo resultado)", () => {
+  const bills = [
+    { month: "2026-01", total_amount: 1000, paid_amount: 200, due_date: "2026-01-10" },
+    { month: "2026-02", total_amount: 300, paid_amount: 0, due_date: "2026-02-25" },
+  ];
+  const a = applyRotativo(bills, 8, "2026-02-15");
+  const b = applyRotativo(bills, 8, "2026-02-15");
+  assert.deepEqual(a, b);
 });
 
 // ─── debt.ts ────────────────────────────────────────────────────────────────

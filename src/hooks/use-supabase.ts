@@ -23,6 +23,8 @@ import {
   billDatesForMonth,
   buildInstallmentRows,
   currentBillMonth,
+  addMonthsYm,
+  applyRotativo,
 } from "@/lib/credit-card";
 import { useRealtimeTick } from "@/hooks/use-realtime";
 import { useCallback, useEffect, useState } from "react";
@@ -151,8 +153,10 @@ export async function recalcCreditCardBills(userId: string, creditCardId: string
     if (!card) return;
     const closingDay = card.closing_day || 5;
     const dueDay = card.due_day || 10;
+    const interestRate = Number(card.interest_rate ?? 0);
+    const today = new Date().toISOString().split("T")[0];
 
-    // soma por mês de fatura (rótulo = mês de vencimento)
+    // soma das compras por mês de fatura (rótulo = mês de vencimento)
     const totals = new Map<string, number>();
     for (const t of txs ?? []) {
       const bm = billMonthForDate(t.date, closingDay, dueDay);
@@ -162,31 +166,65 @@ export async function recalcCreditCardBills(userId: string, creditCardId: string
     const existingByMonth = new Map<string, CreditCardBill>();
     for (const b of existing ?? []) existingByMonth.set(b.month, b);
 
-    // upsert das faturas que têm transações
-    for (const [month, total] of totals) {
-      const rounded = Math.round(total * 100) / 100;
+    // universo de meses = compras ∪ faturas já existentes
+    const months = new Set<string>([
+      ...totals.keys(),
+      ...existingByMonth.keys(),
+    ]);
+
+    const rotativoBills = [...months].map((month) => {
       const prev = existingByMonth.get(month);
+      const dueDate =
+        prev?.due_date ??
+        billDatesForMonth(month, closingDay, dueDay).dueDate;
+      return {
+        month,
+        total_amount: Math.round((totals.get(month) ?? 0) * 100) / 100,
+        paid_amount: Number(prev?.paid_amount ?? 0),
+        due_date: dueDate,
+      };
+    });
+
+    const { patches, carryoverTail } = applyRotativo(
+      rotativoBills,
+      interestRate,
+      today,
+    );
+
+    // aplica cada patch nas faturas existentes / cria as que faltam
+    for (const p of patches) {
+      const prev = existingByMonth.get(p.month);
+      const purchases = totals.get(p.month) ?? 0;
+      const roundedPurchases = Math.round(purchases * 100) / 100;
+      const paid = Number(prev?.paid_amount ?? 0);
+      const isPaid =
+        !p.rolled_forward &&
+        p.effectiveTotal > 0 &&
+        paid >= p.effectiveTotal - 0.005;
+
       if (prev) {
-        if (Math.abs(Number(prev.total_amount) - rounded) > 0.005) {
-          await supabase
-            .from("credit_card_bills")
-            .update({
-              total_amount: rounded,
-              is_paid: Number(prev.paid_amount) >= rounded - 0.005 && rounded > 0,
-            })
-            .eq("id", prev.id);
-        }
+        await supabase
+          .from("credit_card_bills")
+          .update({
+            total_amount: roundedPurchases,
+            rollover_amount: p.rollover_amount,
+            rolled_forward: p.rolled_forward,
+            is_paid: isPaid,
+          })
+          .eq("id", prev.id);
       } else {
         const { closingDate, dueDate } = billDatesForMonth(
-          month,
+          p.month,
           closingDay,
           dueDay,
         );
         await supabase.from("credit_card_bills").insert({
           user_id: userId,
           credit_card_id: creditCardId,
-          month,
-          total_amount: rounded,
+          month: p.month,
+          total_amount: roundedPurchases,
+          rollover_amount: p.rollover_amount,
+          rolled_forward: p.rolled_forward,
           is_paid: false,
           paid_amount: 0,
           due_date: dueDate,
@@ -195,9 +233,50 @@ export async function recalcCreditCardBills(userId: string, creditCardId: string
       }
     }
 
-    // remove faturas que ficaram sem transações e sem pagamento registrado
+    // saldo que sobrou do rotativo → fatura nova no ciclo em aberto
+    if (carryoverTail > 0.005) {
+      const lastMonth = [...months].sort().pop()!;
+      const tailMonth = [
+        addMonthsYm(lastMonth, 1),
+        currentBillMonth(closingDay, dueDay),
+      ].sort().pop()!;
+      const prevTail = existingByMonth.get(tailMonth);
+      if (prevTail) {
+        await supabase
+          .from("credit_card_bills")
+          .update({ rollover_amount: carryoverTail, rolled_forward: false })
+          .eq("id", prevTail.id);
+      } else {
+        const { closingDate, dueDate } = billDatesForMonth(
+          tailMonth,
+          closingDay,
+          dueDay,
+        );
+        await supabase.from("credit_card_bills").insert({
+          user_id: userId,
+          credit_card_id: creditCardId,
+          month: tailMonth,
+          total_amount: 0,
+          rollover_amount: carryoverTail,
+          rolled_forward: false,
+          is_paid: false,
+          paid_amount: 0,
+          due_date: dueDate,
+          closing_date: closingDate,
+        });
+      }
+    }
+
+    // remove faturas vazias (sem compras, sem rotativo, sem pagamento)
     for (const b of existing ?? []) {
-      if (!totals.has(b.month) && Number(b.paid_amount) === 0) {
+      const stillHasPurchases = (totals.get(b.month) ?? 0) > 0.005;
+      const patch = patches.find((p) => p.month === b.month);
+      const keepsRollover = (patch?.rollover_amount ?? 0) > 0.005;
+      if (
+        !stillHasPurchases &&
+        !keepsRollover &&
+        Number(b.paid_amount ?? 0) === 0
+      ) {
         await supabase.from("credit_card_bills").delete().eq("id", b.id);
       }
     }
@@ -214,6 +293,31 @@ export async function syncCreditCardBill(
   userId: string,
 ) {
   await recalcCreditCardBills(userId, creditCardId);
+}
+
+// =============================================================================
+// Saldo de conta (centralizado)
+// =============================================================================
+
+/** Efeito de uma transação no saldo da conta: receita soma, despesa subtrai. */
+function txBalanceDelta(tx: {
+  type: "income" | "expense";
+  amount: number;
+}): number {
+  return tx.type === "income" ? Number(tx.amount) : -Number(tx.amount);
+}
+
+/** Ajuste atômico do saldo (via RPC increment_account_balance). */
+export async function adjustAccountBalance(
+  accountId: string | null | undefined,
+  delta: number,
+) {
+  if (!accountId || Math.abs(delta) < 0.005) return;
+  const { error } = await supabase.rpc("increment_account_balance", {
+    p_account_id: accountId,
+    p_delta: delta,
+  });
+  if (error) console.error("Erro ao ajustar saldo da conta:", error);
 }
 
 // =============================================================================
@@ -281,6 +385,11 @@ export function useTransactions() {
         setData((prev) => [result, ...prev]);
         if (result.is_credit_card && result.credit_card_id) {
           await recalcCreditCardBills(userId, result.credit_card_id);
+        } else if (result.account_id) {
+          await adjustAccountBalance(
+            result.account_id,
+            txBalanceDelta(result),
+          );
         }
       }
       return result;
@@ -356,10 +465,22 @@ export function useTransactions() {
 
       await supabase.from("transactions").update(updates).eq("id", id);
 
+      const updatedTx = { ...oldTx, ...updates };
+
+      // saldo de conta: reverte o efeito antigo e aplica o novo
+      if (oldTx && !oldTx.is_credit_card && oldTx.account_id) {
+        await adjustAccountBalance(oldTx.account_id, -txBalanceDelta(oldTx));
+      }
+      if (updatedTx && !updatedTx.is_credit_card && updatedTx.account_id) {
+        await adjustAccountBalance(
+          updatedTx.account_id,
+          txBalanceDelta(updatedTx),
+        );
+      }
+
       const cardsToRecalc = new Set<string>();
       if (oldTx?.is_credit_card && oldTx.credit_card_id)
         cardsToRecalc.add(oldTx.credit_card_id);
-      const updatedTx = { ...oldTx, ...updates };
       if (updatedTx?.is_credit_card && updatedTx.credit_card_id)
         cardsToRecalc.add(updatedTx.credit_card_id);
       for (const cardId of cardsToRecalc) {
@@ -388,6 +509,8 @@ export function useTransactions() {
 
       if (oldTx?.is_credit_card && oldTx.credit_card_id) {
         await recalcCreditCardBills(userId, oldTx.credit_card_id);
+      } else if (oldTx && !oldTx.is_credit_card && oldTx.account_id) {
+        await adjustAccountBalance(oldTx.account_id, -txBalanceDelta(oldTx));
       }
     },
     [userId],
@@ -627,7 +750,7 @@ export function useFinancialHealthScore() {
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-    const [txRes, budgetRes, ccRes, invRes] = await Promise.all([
+    const [txRes, budgetRes, ccRes, billRes, invRes] = await Promise.all([
       supabase.from("transactions").select("*").eq("user_id", userId),
       supabase
         .from("monthly_budgets")
@@ -635,12 +758,14 @@ export function useFinancialHealthScore() {
         .eq("user_id", userId)
         .eq("month", currentMonth),
       supabase.from("credit_cards").select("*").eq("user_id", userId),
+      supabase.from("credit_card_bills").select("*").eq("user_id", userId),
       supabase.from("investments").select("*").eq("user_id", userId),
     ]);
 
     const txs = txRes.data ?? [];
     const budgets = budgetRes.data ?? [];
     const creditCards = ccRes.data ?? [];
+    const bills = billRes.data ?? [];
     const investments = invRes.data ?? [];
 
     const monthTx = txs.filter((t) => t.date.startsWith(currentMonth));
@@ -682,15 +807,16 @@ export function useFinancialHealthScore() {
       budgetScore = (totalAdherence / budgets.length) * 100;
     }
 
-    // Credit score
+    // Credit score — usa o limite REALMENTE comprometido (faturas em aberto +
+    // rotativo − pago), não só o gasto do mês.
     let creditScore = 100;
     if (creditCards.length > 0) {
       let totalUtil = 0;
       for (const card of creditCards) {
-        const cardTotal = monthTx
-          .filter((t) => t.credit_card_id === card.id)
-          .reduce((s, t) => s + t.amount, 0);
-        const util = card.limit > 0 ? cardTotal / card.limit : 0;
+        const used = bills
+          .filter((b) => b.credit_card_id === card.id)
+          .reduce((s, b) => s + billOutstanding(b), 0);
+        const util = card.limit > 0 ? used / card.limit : 0;
         if (util > 0.5) totalUtil += Math.max(0, 1 - (util - 0.3) / 0.7);
         else if (util < 0.1) totalUtil += util / 0.1;
         else totalUtil += 1;
@@ -838,7 +964,8 @@ export function useBudgets() {
 
 // Valor em aberto de uma fatura (fatura + rotativo − já pago).
 export function billOutstanding(b: CreditCardBill): number {
-  if (b.is_paid) return 0;
+  // fatura quitada, ou saldo já levado ao rotativo do mês seguinte
+  if (b.is_paid || b.rolled_forward) return 0;
   return Math.max(
     0,
     Number(b.total_amount) + Number(b.rollover_amount ?? 0) - Number(b.paid_amount ?? 0),

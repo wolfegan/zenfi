@@ -132,3 +132,73 @@ export function installmentLabel(
   if (!number || !total || total <= 1) return null;
   return `${number}/${total}`;
 }
+
+// =============================================================================
+// Rotativo do cartão
+// =============================================================================
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+export interface RotativoBill {
+  month: string;
+  /** Apenas as compras do ciclo (sem rollover). */
+  total_amount: number;
+  paid_amount?: number;
+  due_date: string;
+}
+
+export interface RotativoPatch {
+  month: string;
+  rollover_amount: number;
+  rolled_forward: boolean;
+  /** Quanto ainda ocupa o limite (0 quando a fatura foi rolada). */
+  outstanding: number;
+  /** total_amount + rollover_amount. */
+  effectiveTotal: number;
+}
+
+/**
+ * Aplica o rotativo: percorre as faturas em ordem cronológica e, quando uma
+ * fatura JÁ VENCIDA não foi quitada, leva o saldo (+ juros do mês) para a
+ * próxima. `interestRate` em % ao mês; se 0, as faturas ficam independentes.
+ *
+ * É um "fold" puro — rodar de novo no mesmo dia dá o mesmo resultado.
+ * `carryoverTail` é o saldo que sobra depois da última fatura da lista
+ * (o chamador cria uma fatura nova para ele).
+ */
+export function applyRotativo(
+  bills: RotativoBill[],
+  interestRate: number,
+  today: string,
+): { patches: RotativoPatch[]; carryoverTail: number } {
+  const sorted = [...bills].sort((a, b) => a.month.localeCompare(b.month));
+  const patches: RotativoPatch[] = [];
+  let carry = 0;
+
+  for (const b of sorted) {
+    const rollover = carry;
+    const paid = Number(b.paid_amount ?? 0);
+    const effectiveTotal = r2(Number(b.total_amount) + rollover);
+    const rawOutstanding = Math.max(0, r2(effectiveTotal - paid));
+    const overdue = b.due_date < today;
+    const roll =
+      interestRate > 0 && overdue && rawOutstanding > 0.005;
+
+    if (roll) {
+      const interest = r2(rawOutstanding * (interestRate / 100));
+      carry = r2(rawOutstanding + interest);
+    } else {
+      carry = 0;
+    }
+
+    patches.push({
+      month: b.month,
+      rollover_amount: rollover,
+      rolled_forward: roll,
+      outstanding: roll ? 0 : rawOutstanding,
+      effectiveTotal,
+    });
+  }
+
+  return { patches, carryoverTail: carry };
+}

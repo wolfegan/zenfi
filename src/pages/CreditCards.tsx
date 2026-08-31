@@ -23,11 +23,11 @@ import {
   useCreditCards,
   useAccounts,
   useCategories,
+  useTransactions,
   computeCardStats,
 } from "@/hooks/use-supabase";
 import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
-import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import {
   CreditCard,
@@ -100,6 +100,7 @@ export default function CreditCardsPage() {
 
   const { data: realAccounts, refetch: refetchAccounts } = useAccounts();
   const { data: realCategories } = useCategories();
+  const { create: createTx } = useTransactions();
 
   const useDemo = !!user?.is_anonymous;
   const cards = useDemo
@@ -485,15 +486,18 @@ export default function CreditCardsPage() {
                         const outstanding = Math.max(0, billTotal - paidAmount);
                         const isPartial =
                           !bill.is_paid && paidAmount > 0.005;
+                        const isRolled = !!bill.rolled_forward;
 
                         return (
                           <div
                             key={bill.id}
-                            className="flex items-center justify-between px-5 py-2.5 group/bill"
+                            className={`flex items-center justify-between px-5 py-2.5 group/bill ${isRolled ? "opacity-60" : ""}`}
                           >
                             <div className="flex items-center gap-2">
                               <button
+                                disabled={isRolled}
                                 onClick={async () => {
+                                  if (isRolled) return;
                                   if (bill.is_paid) {
                                     if (!useDemo) {
                                       await toggleBillPaid(bill.id, false);
@@ -537,7 +541,7 @@ export default function CreditCardsPage() {
                                     Pago
                                   </span>
                                 )}
-                                {isPartial && (
+                                {isPartial && !isRolled && (
                                   <span className="text-[10px] text-warning ml-2 font-medium">
                                     Parcial ·{" "}
                                     {paidAmount.toLocaleString("pt-BR", {
@@ -547,21 +551,33 @@ export default function CreditCardsPage() {
                                     pagos
                                   </span>
                                 )}
-                                {bill.rollover_amount > 0 && (
+                                {isRolled && (
+                                  <span className="text-[10px] text-destructive ml-2 font-medium">
+                                    saldo no rotativo do mês seguinte
+                                  </span>
+                                )}
+                                {!isRolled && bill.rollover_amount > 0 && (
                                   <span className="text-[10px] text-destructive ml-2">
-                                    inclui rotativo
+                                    inclui rotativo{" "}
+                                    {Number(bill.rollover_amount).toLocaleString(
+                                      "pt-BR",
+                                      { style: "currency", currency: "BRL" },
+                                    )}
                                   </span>
                                 )}
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
                               <span
-                                className={`text-xs font-medium tabular-nums ${bill.is_paid ? "text-muted-foreground line-through" : ""}`}
+                                className={`text-xs font-medium tabular-nums ${bill.is_paid || isRolled ? "text-muted-foreground line-through" : ""}`}
                               >
-                                {(bill.is_paid ? billTotal : outstanding).toLocaleString(
-                                  "pt-BR",
-                                  { style: "currency", currency: "BRL" },
-                                )}
+                                {(bill.is_paid || isRolled
+                                  ? billTotal
+                                  : outstanding
+                                ).toLocaleString("pt-BR", {
+                                  style: "currency",
+                                  currency: "BRL",
+                                })}
                               </span>
                               <Button
                                 variant="ghost"
@@ -768,20 +784,11 @@ export default function CreditCardsPage() {
                   if (!useDemo) {
                     const selectedAcc = accounts.find(a => a.id === payBillAccountId);
                     if (selectedAcc) {
-                      // 1. Atualizar saldo da conta no Supabase
-                      const newBalance = selectedAcc.balance - payAmount;
-                      await supabase
-                        .from("accounts")
-                        .update({ balance: newBalance })
-                        .eq("id", selectedAcc.id);
-
-                      // 2. Resolver categoria da transação
                       const expenseCat = categories.find(
                         (c: any) =>
                           c.name.toLowerCase().includes("outros") ||
                           c.name.toLowerCase().includes("fatura")
                       ) || categories.find((c: any) => c.type === "expense");
-                      const categoryId = expenseCat ? expenseCat.id : null;
 
                       const card = cards.find(c => c.id === payingBill.credit_card_id);
                       const cardName = card ? card.name : "Cartão";
@@ -790,21 +797,21 @@ export default function CreditCardsPage() {
                         year: "numeric",
                       });
 
-                      // 3. Registrar a transação de despesa no extrato
-                      await supabase.from("transactions").insert({
-                        user_id: user?.id,
+                      // registra a despesa (o saldo da conta é debitado dentro do create)
+                      await createTx({
+                        category_id: expenseCat ? expenseCat.id : null,
                         type: "expense",
                         amount: payAmount,
                         description: `[Fatura] ${cardName} - ${monthLabel}`,
                         date: new Date().toISOString().split("T")[0],
-                        category_id: categoryId,
                         is_fixed: false,
                         is_credit_card: false,
+                        credit_card_id: null,
                         account_id: selectedAcc.id,
                         payment_method: "Pagamento de fatura",
-                      });
+                      } as any);
 
-                      // 4. Registrar pagamento (total ou parcial) na fatura
+                      // registra o pagamento (total ou parcial) na fatura
                       await payBill(payingBill.id, payAmount);
 
                       toast.success("Pagamento de fatura registrado!");

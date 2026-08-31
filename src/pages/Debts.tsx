@@ -28,14 +28,13 @@ import {
   useCreditCards,
   useCategories,
   useAllDebtPayments,
-  recalcCreditCardBills,
+  useTransactions,
 } from "@/hooks/use-supabase";
 import {
   debtNextDue,
   debtProgress,
   debtInstallmentLabel,
 } from "@/lib/debt";
-import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import {
   HandCoins,
@@ -130,6 +129,7 @@ export default function Debts() {
   const { data: realAccounts, refetch: refetchAccounts } = useAccounts();
   const { data: realCreditCards } = useCreditCards();
   const { data: realCategories } = useCategories();
+  const { create: createTx } = useTransactions();
   const { byDebt: paymentsByDebt, refetch: refetchPayments } =
     useAllDebtPayments();
 
@@ -359,33 +359,21 @@ export default function Debts() {
         discount > 0 ? ` (Desconto: ${formatCurrency(discount)})` : ""
       }`;
 
-      const { data: newTx } = await supabase
-        .from("transactions")
-        .insert({
-          user_id: user?.id,
-          type: "expense",
-          amount,
-          description: descBase,
-          date: payDate,
-          category_id: categoryId,
-          is_fixed: false,
-          is_credit_card: isCard,
-          credit_card_id: isCard ? payCreditCardId : null,
-          account_id: isCard ? null : payAccountId,
-          payment_method: methodLabel,
-        })
-        .select()
-        .single();
-
-      if (isCard && payCreditCardId) {
-        await recalcCreditCardBills(user?.id || "", payCreditCardId);
-      } else if (selectedAcc) {
-        await supabase
-          .from("accounts")
-          .update({ balance: selectedAcc.balance - amount })
-          .eq("id", selectedAcc.id);
-        refetchAccounts();
-      }
+      // create() cuida do débito na conta (account_id) ou do recálculo da
+      // fatura (is_credit_card) de forma centralizada.
+      const newTx = await createTx({
+        type: "expense",
+        amount,
+        description: descBase,
+        date: payDate,
+        category_id: categoryId,
+        is_fixed: false,
+        is_credit_card: isCard,
+        credit_card_id: isCard ? payCreditCardId : null,
+        account_id: isCard ? null : payAccountId,
+        payment_method: methodLabel,
+      } as any);
+      if (!isCard) refetchAccounts();
 
       await recordPayment(payingDebt.id, {
         amount,

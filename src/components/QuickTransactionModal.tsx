@@ -17,7 +17,6 @@ import {
 } from "@/hooks/use-supabase";
 import { useAuth } from "@/hooks/use-auth";
 import { parseBRLAmount, formatCurrencyInput, getCategoryIcon } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
 import { BankLogo } from "@/components/BankLogo";
 import { toast } from "sonner";
 import {
@@ -123,17 +122,7 @@ export function QuickTransactionModal({
         }
 
         const selectedAcc = accounts.find((a: any) => a.id === accountId);
-        if (!isCreditCard && selectedAcc) {
-          const newBalance =
-            type === "income"
-              ? selectedAcc.balance + numAmount
-              : selectedAcc.balance - numAmount;
-          await supabase
-            .from("accounts")
-            .update({ balance: newBalance })
-            .eq("id", selectedAcc.id);
-        }
-
+        // saldo ajustado automaticamente dentro de createTransaction (account_id)
         await createTransaction({
           category_id: categoryId,
           amount: numAmount,
