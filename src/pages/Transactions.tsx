@@ -33,6 +33,7 @@ import {
   useCategories,
   useCreditCards,
   useAccounts,
+  useMonthlySummary,
 } from "@/hooks/use-supabase";
 import { parseBRLAmount, formatCurrencyInput, getCategoryIcon } from "@/lib/utils";
 import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
@@ -50,6 +51,11 @@ import {
   Smartphone,
   Banknote,
   Building2,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  X,
+  Clock,
 } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
@@ -59,6 +65,36 @@ import { demoTransactions, demoCategories, demoCreditCards, demoAccounts } from 
 function currentMonth() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function shiftMonth(ym: string, delta: number) {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(ym: string) {
+  const s = new Date(ym + "-01T12:00:00").toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function dayGroupLabel(dateStr: string) {
+  const d = new Date(dateStr + "T12:00:00");
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+  if (diff === 0) return "Hoje";
+  if (diff === -1) return "Ontem";
+  if (diff === 1) return "Amanhã";
+  const s = d.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "short",
+  });
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 // ─── Payment method helpers ──────────────────────────────────────────────────
@@ -118,6 +154,7 @@ export default function Transactions() {
   const [deleteId, setDeleteId] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth());
   const [form, setForm] = useState({
     categoryId: "",
     amount: "",
@@ -125,18 +162,20 @@ export default function Transactions() {
     type: "expense" as "income" | "expense",
     description: "",
     isFixed: false,
+    isPending: false,
     paymentMethod: "pix" as string,
     creditCardId: "",
     accountId: "",
     installments: "1",
   });
 
-  const month = currentMonth();
+  const month = selectedMonth;
   const {
     data: realTransactions,
     loading: txsLoading,
     create,
     createInstallments,
+    confirmTransaction,
     update,
     remove,
     removeGroup,
@@ -144,6 +183,7 @@ export default function Transactions() {
   const { data: realCategories } = useCategories();
   const { data: realCreditCards } = useCreditCards();
   const { data: realAccounts, refetch: refetchAccounts } = useAccounts();
+  const { data: summary } = useMonthlySummary(selectedMonth);
 
   const filteredRealTransactions = useMemo(
     () => realTransactions.filter((t: any) => t.date.startsWith(month)),
@@ -193,6 +233,7 @@ export default function Transactions() {
       type: "expense",
       description: "",
       isFixed: false,
+      isPending: false,
       paymentMethod: "pix",
       creditCardId: "",
       accountId: "",
@@ -265,6 +306,8 @@ export default function Transactions() {
                 : form.paymentMethod === "debit"
                   ? "Débito"
                   : null,
+          status:
+            form.isPending && !isCreditCard ? "pending" : "confirmed",
         };
 
         // O saldo da conta é ajustado automaticamente dentro de create/update
@@ -291,14 +334,76 @@ export default function Transactions() {
     }
   };
 
-  const totalIncome = allTxs
+  const confirmedTxs = allTxs.filter(
+    (t: any) => (t.status ?? "confirmed") !== "pending",
+  );
+  const totalIncome = confirmedTxs
     .filter((t: any) => t.type === "income")
     .reduce((s: number, t: any) => s + t.amount, 0);
-  const totalExpense = allTxs
+  const totalExpense = confirmedTxs
     .filter((t: any) => t.type === "expense")
     .reduce((s: number, t: any) => s + t.amount, 0);
+  const pendingCount = allTxs.filter(
+    (t: any) => t.status === "pending",
+  ).length;
   const formatCurrency = (v: number) =>
     v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const accountById = (id: string) =>
+    accounts?.find((a: any) => a.id === id);
+
+  const openEdit = (tx: any) => {
+    if (useDemo) return;
+    setEditingTx(tx);
+    const methodMap: Record<string, string> = {
+      PIX: "pix",
+      Dinheiro: "cash",
+      Débito: "debit",
+    };
+    let pm = "pix";
+    if (tx.is_credit_card) pm = "credit_card";
+    else if (tx.payment_method && methodMap[tx.payment_method])
+      pm = methodMap[tx.payment_method];
+    else {
+      const m = tx.description?.match(PAYMENT_PREFIX_RE);
+      if (m) pm = methodMap[m[1]] || "pix";
+    }
+    const accMatch = tx.description?.match(/\[Conta:\s*([^\]]+)\]/);
+    const foundAcc =
+      accounts?.find((a: any) => a.id === tx.account_id) ||
+      accounts?.find(
+        (a: any) => a.name === (accMatch ? accMatch[1] : null),
+      );
+    setForm({
+      categoryId: tx.category_id,
+      amount: formatCurrencyInput(tx.amount),
+      date: tx.date,
+      type: tx.type,
+      description: stripPaymentPrefix(tx.description || ""),
+      isFixed: tx.is_fixed,
+      isPending: tx.status === "pending",
+      paymentMethod: pm,
+      creditCardId: tx.credit_card_id || "",
+      accountId: foundAcc ? foundAcc.id : "",
+      installments: "1",
+    });
+    setDialogOpen(true);
+  };
+
+  // agrupa as transações visíveis por dia (mais recente primeiro)
+  const groupedTxs: { date: string; items: any[] }[] = [];
+  {
+    const sorted = [...(txs || [])].sort((a: any, b: any) =>
+      b.date === a.date
+        ? (b.created_at ?? 0) - (a.created_at ?? 0)
+        : b.date.localeCompare(a.date),
+    );
+    for (const t of sorted) {
+      const g = groupedTxs.find((x) => x.date === t.date);
+      if (g) g.items.push(t);
+      else groupedTxs.push({ date: t.date, items: [t] });
+    }
+  }
 
   return (
     <DashboardLayout>
@@ -678,6 +783,24 @@ export default function Transactions() {
                       : "Receita fixa (recorrente)"}
                   </span>
                 </label>
+
+                {/* Pending / previsto toggle */}
+                {form.paymentMethod !== "credit_card" && !editingTx && (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.isPending}
+                      onChange={(e) =>
+                        setForm({ ...form, isPending: e.target.checked })
+                      }
+                      className="w-3.5 h-3.5 rounded border"
+                    />
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      Lançamento previsto (não mexe no saldo até confirmar)
+                    </span>
+                  </label>
+                )}
               </div>
 
               <DialogFooter className="gap-2">
@@ -702,6 +825,27 @@ export default function Transactions() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+        </div>
+
+        {/* Month navigation */}
+        <div className="flex items-center justify-center gap-4">
+          <button
+            onClick={() => setSelectedMonth(shiftMonth(selectedMonth, -1))}
+            className="w-8 h-8 rounded-lg border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+            aria-label="Mês anterior"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-sm font-semibold min-w-[150px] text-center tabular-nums">
+            {monthLabel(selectedMonth)}
+          </span>
+          <button
+            onClick={() => setSelectedMonth(shiftMonth(selectedMonth, 1))}
+            className="w-8 h-8 rounded-lg border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+            aria-label="Próximo mês"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Summary cards */}
@@ -743,6 +887,19 @@ export default function Transactions() {
           </motion.div>
         </div>
 
+        {pendingCount > 0 && (
+          <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 text-xs">
+            <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span className="text-muted-foreground">
+              {pendingCount} lançamento{pendingCount !== 1 ? "s" : ""}{" "}
+              previsto{pendingCount !== 1 ? "s" : ""} neste mês
+              {summary
+                ? ` · ${formatCurrency(summary.pendingIncome)} a receber, ${formatCurrency(summary.pendingExpenses)} a pagar`
+                : ""}
+            </span>
+          </div>
+        )}
+
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
@@ -754,190 +911,263 @@ export default function Transactions() {
           />
         </div>
 
-        {/* Transaction list */}
-        <div className="space-y-1.5">
-          <AnimatePresence mode="popLayout">
-            {txs && txs.length > 0 ? (
-              txs.map((tx: any, i: number) => {
-                const cat = findCategory(tx.category_id);
-                const payMethod = getPaymentMethod(tx);
-                const cleanDesc = stripPaymentPrefix(tx.description || "");
-                const badge = payMethod ? PAYMENT_BADGE[payMethod] : null;
-                return (
-                  <motion.div
-                    key={tx.id}
-                    layout
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ delay: i * 0.025, duration: 0.2 }}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl border bg-card hover:bg-card/80 transition-all duration-200 group card-hover"
-                  >
-                    <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                      style={{
-                        backgroundColor: cat?.color
-                          ? `${cat.color}18`
-                          : "oklch(0.93 0.006 248)",
-                      }}
-                    >
-                      {(() => {
-                        const Icon = getCategoryIcon(cat?.icon);
-                        return (
-                          <Icon
-                            className="w-4 h-4"
-                            style={{
-                              color: cat?.color || "var(--muted-foreground)",
-                            }}
-                          />
-                        );
-                      })()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm font-medium truncate">
-                          {cleanDesc || cat?.name || "Sem categoria"}
-                        </span>
-                        {tx.is_fixed && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-medium">
-                            Fixo
-                          </span>
-                        )}
-                        {tx.installments_total > 1 && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400 font-medium">
-                            {tx.installment_number}/{tx.installments_total}
-                          </span>
-                        )}
-                        {badge && (
-                          <span
-                            className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                            style={{
-                              backgroundColor: badge.color + "18",
-                              color: badge.color,
-                            }}
-                          >
-                            {badge.label}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-xs text-muted-foreground">
-                          {cat?.name}
-                        </span>
-                        <span className="text-xs text-border">·</span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(tx.date + "T12:00:00").toLocaleDateString(
-                            "pt-BR",
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                    <div
-                      className={`text-sm font-semibold tabular-nums ${tx.type === "income" ? "text-chart-2" : "text-foreground"}`}
-                    >
-                      {tx.type === "income" ? "+" : "-"}
-                      {tx.amount.toLocaleString("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      })}
-                    </div>
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 rounded-lg"
-                        onClick={() => {
-                          if (!useDemo) {
-                            setEditingTx(tx);
-                            const methodMap: Record<string, string> = {
-                              PIX: "pix",
-                              Dinheiro: "cash",
-                              Débito: "debit",
-                            };
-                            let pm = "pix";
-                            if (tx.is_credit_card) pm = "credit_card";
-                            else if (tx.payment_method && methodMap[tx.payment_method])
-                              pm = methodMap[tx.payment_method];
-                            else {
-                              const m =
-                                tx.description?.match(PAYMENT_PREFIX_RE);
-                              if (m) pm = methodMap[m[1]] || "pix";
-                            }
-                            const accMatch = tx.description?.match(
-                              /\[Conta:\s*([^\]]+)\]/,
-                            );
-                            const foundAcc =
-                              accounts.find((a: any) => a.id === tx.account_id) ||
-                              accounts.find(
-                                (a: any) => a.name === (accMatch ? accMatch[1] : null),
-                              );
-
-                            setForm({
-                              categoryId: tx.category_id,
-                              amount: formatCurrencyInput(tx.amount),
-                              date: tx.date,
-                              type: tx.type,
-                              description: stripPaymentPrefix(
-                                tx.description || "",
-                              ),
-                              isFixed: tx.is_fixed,
-                              paymentMethod: pm,
-                              creditCardId: tx.credit_card_id || "",
-                              accountId: foundAcc ? foundAcc.id : "",
-                              installments: "1",
-                            });
-                            setDialogOpen(true);
-                          }
-                        }}
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 rounded-lg text-destructive hover:text-destructive"
-                        onClick={() => {
-                          setDeleteId(tx.id);
-                          setDeleteDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </motion.div>
-                );
-              })
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-16"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-3">
-                  <Calendar className="w-5 h-5 text-muted-foreground" />
+        {/* Transaction list — agrupada por dia */}
+        {groupedTxs.length > 0 ? (
+          <div className="space-y-5">
+            {groupedTxs.map((group) => (
+              <div key={group.date} className="space-y-1.5">
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    {dayGroupLabel(group.date)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60">
+                    {new Date(group.date + "T12:00:00").toLocaleDateString(
+                      "pt-BR",
+                    )}
+                  </span>
+                  <div className="flex-1 h-px bg-border/60" />
+                  <span className="text-[10px] text-muted-foreground tabular-nums">
+                    {(() => {
+                      const net = group.items.reduce(
+                        (s: number, t: any) =>
+                          s + (t.type === "income" ? t.amount : -t.amount),
+                        0,
+                      );
+                      return `${net >= 0 ? "+" : "-"}${formatCurrency(Math.abs(net))}`;
+                    })()}
+                  </span>
                 </div>
-                <p className="text-sm font-medium mb-1">
-                  {search ? "Nenhum resultado" : "Sem transações"}
-                </p>
-                <p className="text-xs text-muted-foreground mb-4">
-                  {search
-                    ? "Tente outros termos de busca"
-                    : "Registre sua primeira transação"}
-                </p>
-                {!search && (
-                  <Button
-                    size="sm"
-                    className="text-xs rounded-lg"
-                    onClick={() => setDialogOpen(true)}
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1.5" />
-                    Adicionar transação
-                  </Button>
-                )}
-              </motion.div>
+
+                <AnimatePresence mode="popLayout">
+                  {group.items.map((tx: any, i: number) => {
+                    const cat = findCategory(tx.category_id);
+                    const payMethod = getPaymentMethod(tx);
+                    const cleanDesc = stripPaymentPrefix(tx.description || "");
+                    const acc = tx.account_id
+                      ? accountById(tx.account_id)
+                      : null;
+                    const isPending = tx.status === "pending";
+                    const card = tx.credit_card_id
+                      ? creditCards?.find(
+                          (c: any) => c.id === tx.credit_card_id,
+                        )
+                      : null;
+                    return (
+                      <motion.div
+                        key={tx.id}
+                        layout
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ delay: i * 0.02, duration: 0.18 }}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl border bg-card transition-all duration-200 group ${
+                          isPending
+                            ? "border-dashed border-amber-500/40 bg-amber-500/[0.03]"
+                            : "hover:bg-card/80 card-hover"
+                        }`}
+                      >
+                        <div
+                          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                          style={{
+                            backgroundColor: cat?.color
+                              ? `${cat.color}18`
+                              : "oklch(0.93 0.006 248)",
+                          }}
+                        >
+                          {(() => {
+                            const Icon = getCategoryIcon(cat?.icon);
+                            return (
+                              <Icon
+                                className="w-4 h-4"
+                                style={{
+                                  color:
+                                    cat?.color || "var(--muted-foreground)",
+                                }}
+                              />
+                            );
+                          })()}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={`text-sm font-medium truncate ${isPending ? "text-muted-foreground" : ""}`}
+                            >
+                              {cleanDesc || cat?.name || "Sem categoria"}
+                            </span>
+                            {tx.installments_total > 1 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400 font-medium">
+                                {tx.installment_number}/{tx.installments_total}
+                              </span>
+                            )}
+                            {tx.is_fixed && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-medium">
+                                Fixo
+                              </span>
+                            )}
+                            {isPending && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 font-medium flex items-center gap-0.5">
+                                <Clock className="w-2.5 h-2.5" /> Previsto
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground min-w-0">
+                            <span className="truncate">{cat?.name}</span>
+                            {(acc || card) && (
+                              <>
+                                <span className="text-border">·</span>
+                                <span className="flex items-center gap-1 shrink-0">
+                                  {card ? (
+                                    <>
+                                      <span
+                                        className="w-3 h-3 rounded-[3px] flex items-center justify-center"
+                                        style={{
+                                          backgroundColor:
+                                            card.color || "#8b5cf6",
+                                        }}
+                                      >
+                                        <BankLogo
+                                          bankKeyOrName={card.name}
+                                          className="w-2 h-2 text-white"
+                                        />
+                                      </span>
+                                      {card.name}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span
+                                        className="w-3 h-3 rounded-[3px] flex items-center justify-center"
+                                        style={{
+                                          backgroundColor:
+                                            acc?.color || "#6366f1",
+                                        }}
+                                      >
+                                        <BankLogo
+                                          bankKeyOrName={acc?.name || ""}
+                                          type={acc?.type}
+                                          className="w-2 h-2 text-white"
+                                        />
+                                      </span>
+                                      {acc?.name}
+                                    </>
+                                  )}
+                                </span>
+                              </>
+                            )}
+                            {!acc && !card && payMethod && (
+                              <>
+                                <span className="text-border">·</span>
+                                <span className="shrink-0">{payMethod}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <div
+                          className={`text-sm font-semibold tabular-nums shrink-0 ${
+                            isPending
+                              ? "text-muted-foreground"
+                              : tx.type === "income"
+                                ? "text-chart-2"
+                                : "text-foreground"
+                          }`}
+                        >
+                          {tx.type === "income" ? "+" : "-"}
+                          {tx.amount.toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </div>
+
+                        {isPending ? (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-lg text-chart-2 hover:text-chart-2 hover:bg-chart-2/10"
+                              title="Confirmar lançamento"
+                              onClick={async () => {
+                                if (useDemo) return;
+                                await confirmTransaction(tx.id);
+                                refetchAccounts();
+                                toast.success("Lançamento confirmado!");
+                              }}
+                            >
+                              <Check className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
+                              title="Excluir"
+                              onClick={() => {
+                                setDeleteId(tx.id);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-lg"
+                              onClick={() => openEdit(tx)}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-lg text-destructive hover:text-destructive"
+                              onClick={() => {
+                                setDeleteId(tx.id);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-16"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-3">
+              <Calendar className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium mb-1">
+              {search ? "Nenhum resultado" : "Sem transações neste mês"}
+            </p>
+            <p className="text-xs text-muted-foreground mb-4">
+              {search
+                ? "Tente outros termos de busca"
+                : "Registre sua primeira transação"}
+            </p>
+            {!search && (
+              <Button
+                size="sm"
+                className="text-xs rounded-lg"
+                onClick={() => setDialogOpen(true)}
+              >
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Adicionar transação
+              </Button>
             )}
-          </AnimatePresence>
-        </div>
+          </motion.div>
+        )}
+
       </div>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

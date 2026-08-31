@@ -565,6 +565,9 @@ export const demoMonthlySummary = () => {
     creditCardExpenses: expenses
       .filter((t) => t.is_credit_card)
       .reduce((s, t) => s + t.amount, 0),
+    pendingIncome: 0,
+    pendingExpenses: 0,
+    pendingCount: 0,
     balance: totalIncome - totalExpenses,
     savingsRate:
       totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome) * 100 : 0,

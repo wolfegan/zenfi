@@ -100,6 +100,7 @@ export interface Transaction {
   credit_card_id: string | null;
   account_id?: string | null;
   payment_method?: string | null;
+  status?: "confirmed" | "pending";
   installments_total?: number | null;
   installment_number?: number | null;
   purchase_group_id?: string | null;
@@ -238,6 +239,10 @@ export interface MonthlySummary {
   fixedExpenses: number;
   variableExpenses: number;
   creditCardExpenses: number;
+  /** Lançamentos previstos (status = 'pending') do mês. */
+  pendingIncome: number;
+  pendingExpenses: number;
+  pendingCount: number;
   balance: number;
   savingsRate: number;
   expensesByCategory: Array<{

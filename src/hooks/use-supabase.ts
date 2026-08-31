@@ -307,6 +307,16 @@ function txBalanceDelta(tx: {
   return tx.type === "income" ? Number(tx.amount) : -Number(tx.amount);
 }
 
+/** A transação mexe no saldo de conta? (não-cartão, com conta, e confirmada) */
+function txAffectsBalance(tx: any): boolean {
+  return (
+    !!tx &&
+    !tx.is_credit_card &&
+    !!tx.account_id &&
+    (tx.status ?? "confirmed") !== "pending"
+  );
+}
+
 /** Ajuste atômico do saldo (via RPC increment_account_balance). */
 export async function adjustAccountBalance(
   accountId: string | null | undefined,
@@ -385,7 +395,7 @@ export function useTransactions() {
         setData((prev) => [result, ...prev]);
         if (result.is_credit_card && result.credit_card_id) {
           await recalcCreditCardBills(userId, result.credit_card_id);
-        } else if (result.account_id) {
+        } else if (txAffectsBalance(result)) {
           await adjustAccountBalance(
             result.account_id,
             txBalanceDelta(result),
@@ -393,6 +403,33 @@ export function useTransactions() {
         }
       }
       return result;
+    },
+    [userId],
+  );
+
+  /** Confirma um lançamento previsto: aplica o efeito no saldo. */
+  const confirmTransaction = useCallback(
+    async (id: string) => {
+      if (!userId) return;
+      const { data: tx } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (!tx || tx.status === "confirmed") return;
+      await supabase
+        .from("transactions")
+        .update({ status: "confirmed" })
+        .eq("id", id);
+      const confirmed = { ...tx, status: "confirmed" };
+      if (txAffectsBalance(confirmed)) {
+        await adjustAccountBalance(tx.account_id, txBalanceDelta(tx));
+      }
+      setData((prev) =>
+        prev.map((t) =>
+          t.id === id ? { ...t, status: "confirmed" as const } : t,
+        ),
+      );
     },
     [userId],
   );
@@ -468,10 +505,10 @@ export function useTransactions() {
       const updatedTx = { ...oldTx, ...updates };
 
       // saldo de conta: reverte o efeito antigo e aplica o novo
-      if (oldTx && !oldTx.is_credit_card && oldTx.account_id) {
+      if (txAffectsBalance(oldTx)) {
         await adjustAccountBalance(oldTx.account_id, -txBalanceDelta(oldTx));
       }
-      if (updatedTx && !updatedTx.is_credit_card && updatedTx.account_id) {
+      if (txAffectsBalance(updatedTx)) {
         await adjustAccountBalance(
           updatedTx.account_id,
           txBalanceDelta(updatedTx),
@@ -509,7 +546,7 @@ export function useTransactions() {
 
       if (oldTx?.is_credit_card && oldTx.credit_card_id) {
         await recalcCreditCardBills(userId, oldTx.credit_card_id);
-      } else if (oldTx && !oldTx.is_credit_card && oldTx.account_id) {
+      } else if (txAffectsBalance(oldTx)) {
         await adjustAccountBalance(oldTx.account_id, -txBalanceDelta(oldTx));
       }
     },
@@ -544,6 +581,7 @@ export function useTransactions() {
     getByCreditCard,
     create,
     createInstallments,
+    confirmTransaction,
     removeGroup,
     update,
     remove,
@@ -586,7 +624,18 @@ export function useMonthlySummary(month: string) {
     const txs = txRes.data ?? [];
     const categories = catRes.data ?? [];
     const budgets = budgetRes.data ?? [];
-    const monthTx = txs.filter((t) => t.date.startsWith(month));
+    const allMonthTx = txs.filter((t) => t.date.startsWith(month));
+    const isPending = (t: any) => (t.status ?? "confirmed") === "pending";
+    // Os totais consideram só lançamentos confirmados; previstos vão à parte.
+    const monthTx = allMonthTx.filter((t) => !isPending(t));
+    const pendingTx = allMonthTx.filter(isPending);
+
+    const pendingIncome = pendingTx
+      .filter((t) => t.type === "income")
+      .reduce((s, t) => s + t.amount, 0);
+    const pendingExpenses = pendingTx
+      .filter((t) => t.type === "expense")
+      .reduce((s, t) => s + t.amount, 0);
 
     const totalIncome = monthTx
       .filter((t) => t.type === "income")
@@ -642,6 +691,9 @@ export function useMonthlySummary(month: string) {
       fixedExpenses,
       variableExpenses,
       creditCardExpenses,
+      pendingIncome,
+      pendingExpenses,
+      pendingCount: pendingTx.length,
       balance: totalIncome - totalExpenses,
       savingsRate:
         totalIncome > 0
@@ -694,7 +746,11 @@ export function useMonthlyEvolution(months: number) {
     }
 
     const result = monthLabels.map((month) => {
-      const monthTx = (txs ?? []).filter((t) => t.date.startsWith(month));
+      const monthTx = (txs ?? []).filter(
+        (t) =>
+          t.date.startsWith(month) &&
+          (t.status ?? "confirmed") !== "pending",
+      );
       const income = monthTx
         .filter((t) => t.type === "income")
         .reduce((s, t) => s + t.amount, 0);
@@ -768,7 +824,11 @@ export function useFinancialHealthScore() {
     const bills = billRes.data ?? [];
     const investments = invRes.data ?? [];
 
-    const monthTx = txs.filter((t) => t.date.startsWith(currentMonth));
+    const monthTx = txs.filter(
+      (t) =>
+        t.date.startsWith(currentMonth) &&
+        (t.status ?? "confirmed") !== "pending",
+    );
     const totalIncome = monthTx
       .filter((t) => t.type === "income")
       .reduce((s, t) => s + t.amount, 0);

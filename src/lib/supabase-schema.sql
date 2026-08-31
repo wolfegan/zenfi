@@ -93,6 +93,7 @@ CREATE TABLE transactions (
   credit_card_id UUID REFERENCES credit_cards(id) ON DELETE SET NULL,
   account_id UUID, -- FK adicionada após a criação da tabela accounts (ver abaixo)
   payment_method TEXT,
+  status TEXT NOT NULL DEFAULT 'confirmed' CHECK (status IN ('confirmed', 'pending')),
   installments_total INTEGER,
   installment_number INTEGER,
   purchase_group_id UUID,
@@ -105,6 +106,7 @@ CREATE INDEX idx_transactions_user_category ON transactions(user_id, category_id
 CREATE INDEX idx_transactions_credit_card ON transactions(credit_card_id);
 CREATE INDEX idx_transactions_account ON transactions(account_id);
 CREATE INDEX idx_transactions_purchase_group ON transactions(purchase_group_id);
+CREATE INDEX idx_transactions_user_status ON transactions(user_id, status);
 
 -- =============================================================================
 -- Monthly Budgets
