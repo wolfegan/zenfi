@@ -22,12 +22,11 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   useCreditCards,
   useAccounts,
-  useCategories,
-  useTransactions,
   computeCardStats,
 } from "@/hooks/use-supabase";
 import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
+import { PayBillModal } from "@/components/PayBillModal";
 import { motion } from "framer-motion";
 import {
   CreditCard,
@@ -40,6 +39,22 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { demoCreditCards } from "@/lib/demo-data";
+
+function daysUntil(dateStr: string): number {
+  const d = new Date(dateStr + "T00:00:00");
+  const t = new Date();
+  t.setHours(0, 0, 0, 0);
+  return Math.round((d.getTime() - t.getTime()) / 86400000);
+}
+
+function dueLabel(dueDate: string): string {
+  const n = daysUntil(dueDate);
+  if (n < -1) return `venceu há ${-n} dias`;
+  if (n === -1) return "venceu ontem";
+  if (n === 0) return "vence hoje";
+  if (n === 1) return "vence amanhã";
+  return `vence em ${n} dias`;
+}
 
 const colorOptions = [
   "#0a0a0a", // Preto C6 / Dark
@@ -75,8 +90,7 @@ export default function CreditCardsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [payBillOpen, setPayBillOpen] = useState(false);
   const [payingBill, setPayingBill] = useState<any>(null);
-  const [payBillAccountId, setPayBillAccountId] = useState("");
-  const [payBillAmount, setPayBillAmount] = useState("");
+  const [billTab, setBillTab] = useState<"open" | "closed">("open");
   const [form, setForm] = useState({
     name: "",
     limit: "",
@@ -98,9 +112,7 @@ export default function CreditCardsPage() {
     refetch: refetchCards,
   } = useCreditCards();
 
-  const { data: realAccounts, refetch: refetchAccounts } = useAccounts();
-  const { data: realCategories } = useCategories();
-  const { create: createTx } = useTransactions();
+  const { refetch: refetchAccounts } = useAccounts();
 
   const useDemo = !!user?.is_anonymous;
   const cards = useDemo
@@ -109,8 +121,6 @@ export default function CreditCardsPage() {
         ...computeCardStats(c, c.bills ?? []),
       }))
     : realCards;
-  const accounts = useDemo ? [] : realAccounts;
-  const categories = useDemo ? [] : realCategories;
 
   if (isLoading) return null;
   if (!isAuthenticated) {
@@ -470,9 +480,49 @@ export default function CreditCardsPage() {
                       </p>
                     </div>
                   </div>
-                  {(card as any).bills?.length > 0 && (
-                    <div className="border-t divide-y">
-                      {(card as any).bills.map((bill: any) => {
+                  {(card as any).bills?.length > 0 &&
+                    (() => {
+                      const todayStr = new Date()
+                        .toISOString()
+                        .split("T")[0];
+                      const allBills = (card as any).bills as any[];
+                      const openBills = allBills.filter(
+                        (b) => (b.closing_date ?? "9999") >= todayStr,
+                      );
+                      const closedBills = allBills.filter(
+                        (b) => (b.closing_date ?? "9999") < todayStr,
+                      );
+                      const shown =
+                        billTab === "closed" ? closedBills : openBills;
+                      return (
+                        <div className="border-t">
+                          <div className="flex items-center gap-1 px-5 pt-2.5 -mb-px">
+                            {(
+                              [
+                                ["open", `Abertas (${openBills.length})`],
+                                ["closed", `Fechadas (${closedBills.length})`],
+                              ] as const
+                            ).map(([val, label]) => (
+                              <button
+                                key={val}
+                                onClick={() => setBillTab(val)}
+                                className={`text-[11px] px-2.5 py-1.5 border-b-2 transition-colors ${
+                                  billTab === val
+                                    ? "border-foreground text-foreground font-medium"
+                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                          {shown.length === 0 ? (
+                            <p className="text-[10px] text-muted-foreground px-5 py-3">
+                              Nenhuma fatura {billTab === "closed" ? "fechada" : "aberta"}.
+                            </p>
+                          ) : (
+                          <div className="divide-y border-t">
+                      {shown.map((bill: any) => {
                         const monthLabel = new Date(
                           bill.month + "-01T12:00:00",
                         ).toLocaleDateString("pt-BR", {
@@ -508,14 +558,6 @@ export default function CreditCardsPage() {
                                     }
                                   } else {
                                     setPayingBill(bill);
-                                    setPayBillAmount(
-                                      formatCurrencyInput(outstanding),
-                                    );
-                                    if (accounts.length > 0) {
-                                      setPayBillAccountId(accounts[0].id);
-                                    } else {
-                                      setPayBillAccountId("");
-                                    }
                                     setPayBillOpen(true);
                                   }
                                 }}
@@ -533,11 +575,26 @@ export default function CreditCardsPage() {
                                 )}
                               </button>
                               <div>
-                                <span className="text-xs font-medium">
-                                  {monthLabel}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium">
+                                    {monthLabel}
+                                  </span>
+                                  {!bill.is_paid && !isRolled && (
+                                    <span
+                                      className={`text-[10px] font-medium ${
+                                        daysUntil(bill.due_date) < 0
+                                          ? "text-destructive"
+                                          : daysUntil(bill.due_date) <= 3
+                                            ? "text-warning"
+                                            : "text-muted-foreground"
+                                      }`}
+                                    >
+                                      {dueLabel(bill.due_date)}
+                                    </span>
+                                  )}
+                                </div>
                                 {bill.is_paid && (
-                                  <span className="text-[10px] text-success ml-2 font-medium">
+                                  <span className="text-[10px] text-success ml-0 font-medium">
                                     Pago
                                   </span>
                                 )}
@@ -602,8 +659,11 @@ export default function CreditCardsPage() {
                           </div>
                         );
                       })}
-                    </div>
-                  )}
+                          </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                 </motion.div>
               );
             })}
@@ -669,173 +729,21 @@ export default function CreditCardsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={payBillOpen} onOpenChange={setPayBillOpen}>
-        <DialogContent className="sm:max-w-[340px] rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">
-              Pagar Fatura de Cartão
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Selecione de qual conta o dinheiro deve ser debitado.
-            </DialogDescription>
-          </DialogHeader>
-
-          {payingBill && (
-            <div className="space-y-4 py-2">
-              <div className="bg-secondary/30 rounded-xl px-3 py-2 text-xs space-y-1">
-                <div className="flex items-center justify-between">
-                  <span>Cartão</span>
-                  <span className="font-semibold text-foreground">
-                    {cards.find(c => c.id === payingBill.credit_card_id)?.name || "Cartão"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Mês da Fatura</span>
-                  <span className="text-muted-foreground">
-                    {new Date(payingBill.month + "-01T12:00:00").toLocaleDateString("pt-BR", {
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between font-semibold border-t pt-1.5 mt-1.5">
-                  <span>Em aberto</span>
-                  <span className="text-destructive">
-                    {Math.max(
-                      0,
-                      Number(payingBill.total_amount) +
-                        Number(payingBill.rollover_amount ?? 0) -
-                        Number(payingBill.paid_amount ?? 0),
-                    ).toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block">
-                  Valor a pagar *
-                </label>
-                <BRLCurrencyInput
-                  value={payBillAmount}
-                  onChangeValue={setPayBillAmount}
-                  placeholder="R$ 0,00"
-                  className="h-9 text-xs rounded-lg"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Pague o total ou um valor parcial (o restante continua
-                  ocupando o limite).
-                </p>
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block">
-                  Conta Bancária *
-                </label>
-                {accounts.length > 0 ? (
-                  <Select
-                    value={payBillAccountId}
-                    onValueChange={setPayBillAccountId}
-                  >
-                    <SelectTrigger className="text-xs h-9 rounded-lg">
-                      <SelectValue placeholder="Selecione a conta" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((acc: any) => (
-                        <SelectItem key={acc.id} value={acc.id}>
-                          {acc.name} (Saldo: {acc.balance.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-[10px] text-destructive font-medium">
-                    Nenhuma conta bancária cadastrada para débito. Cadastre uma conta primeiro.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs rounded-lg"
-              onClick={() => {
-                setPayBillOpen(false);
-                setPayingBill(null);
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              size="sm"
-              className="text-xs rounded-lg"
-              disabled={!payBillAccountId || parseBRLAmount(payBillAmount) <= 0}
-              onClick={async () => {
-                if (!payingBill || !payBillAccountId) return;
-                const payAmount = parseBRLAmount(payBillAmount);
-                if (payAmount <= 0) return;
-
-                try {
-                  if (!useDemo) {
-                    const selectedAcc = accounts.find(a => a.id === payBillAccountId);
-                    if (selectedAcc) {
-                      const expenseCat = categories.find(
-                        (c: any) =>
-                          c.name.toLowerCase().includes("outros") ||
-                          c.name.toLowerCase().includes("fatura")
-                      ) || categories.find((c: any) => c.type === "expense");
-
-                      const card = cards.find(c => c.id === payingBill.credit_card_id);
-                      const cardName = card ? card.name : "Cartão";
-                      const monthLabel = new Date(payingBill.month + "-01T12:00:00").toLocaleDateString("pt-BR", {
-                        month: "long",
-                        year: "numeric",
-                      });
-
-                      // registra a despesa (o saldo da conta é debitado dentro do create)
-                      await createTx({
-                        category_id: expenseCat ? expenseCat.id : null,
-                        type: "expense",
-                        amount: payAmount,
-                        description: `[Fatura] ${cardName} - ${monthLabel}`,
-                        date: new Date().toISOString().split("T")[0],
-                        is_fixed: false,
-                        is_credit_card: false,
-                        credit_card_id: null,
-                        account_id: selectedAcc.id,
-                        payment_method: "Pagamento de fatura",
-                      } as any);
-
-                      // registra o pagamento (total ou parcial) na fatura
-                      await payBill(payingBill.id, payAmount);
-
-                      toast.success("Pagamento de fatura registrado!");
-                    }
-                  } else {
-                    toast.info("Modo demonstração não altera dados.");
-                  }
-                  
-                  // Atualizar dados locais na tela
-                  await refetchCards();
-                  await refetchAccounts();
-                  setPayBillOpen(false);
-                  setPayingBill(null);
-                } catch (e: any) {
-                  console.error("Erro ao pagar fatura", e);
-                  toast.error("Erro ao processar pagamento: " + (e?.message || e));
-                }
-              }}
-            >
-              Confirmar Pagamento
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PayBillModal
+        open={payBillOpen}
+        onOpenChange={(o) => {
+          setPayBillOpen(o);
+          if (!o) setPayingBill(null);
+        }}
+        bill={payingBill}
+        cardName={
+          cards.find((c: any) => c.id === payingBill?.credit_card_id)?.name
+        }
+        onPaid={() => {
+          refetchCards();
+          refetchAccounts();
+        }}
+      />
     </DashboardLayout>
   );
 }

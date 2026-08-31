@@ -50,6 +50,7 @@ import {
   FileText,
 } from "lucide-react";
 import { OFXImportModal } from "@/components/OFXImportModal";
+import { PayBillModal } from "@/components/PayBillModal";
 import {
   PieChart,
   Pie,
@@ -78,6 +79,13 @@ import {
 } from "@/lib/demo-data";
 import { toast } from "sonner";
 import { OnboardingModal } from "@/components/OnboardingModal";
+
+function cardDaysUntil(dateStr: string): number {
+  const d = new Date(dateStr + "T00:00:00");
+  const t = new Date();
+  t.setHours(0, 0, 0, 0);
+  return Math.round((d.getTime() - t.getTime()) / 86400000);
+}
 
 function LoadingSkeleton() {
   return (
@@ -453,6 +461,8 @@ export default function Dashboard() {
   };
 
   const [ofxOpen, setOfxOpen] = useState(false);
+  const [payBillOpen, setPayBillOpen] = useState(false);
+  const [payingBill, setPayingBill] = useState<any>(null);
   const useDemo = !!user?.is_anonymous;
 
   const summary = useDemo ? demoMonthlySummary() : (realSummary ?? undefined);
@@ -1056,33 +1066,64 @@ export default function Dashboard() {
               </div>
               {realCreditCards && realCreditCards.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {realCreditCards.map((card: any) => (
-                    <div key={card.id} className="p-4 rounded-xl border border-border/60 bg-background flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs" style={{ backgroundColor: card.color }}>
-                          <BankLogo bankKeyOrName={card.name} className="w-4.5 h-4.5 text-white" />
+                  {realCreditCards.map((card: any) => {
+                    const bill = card.currentBill;
+                    const billOpen = bill
+                      ? Math.max(
+                          0,
+                          Number(bill.total_amount) +
+                            Number(bill.rollover_amount ?? 0) -
+                            Number(bill.paid_amount ?? 0),
+                        )
+                      : 0;
+                    const dias = bill ? cardDaysUntil(bill.due_date) : null;
+                    const dueTxt =
+                      dias == null
+                        ? `Vence dia ${card.due_day}`
+                        : dias < 0
+                          ? `Venceu há ${-dias}d`
+                          : dias === 0
+                            ? "Vence hoje"
+                            : dias === 1
+                              ? "Vence amanhã"
+                              : `Vence em ${dias} dias`;
+                    return (
+                    <div key={card.id} className="p-4 rounded-xl border border-border/60 bg-background">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs" style={{ backgroundColor: card.color }}>
+                            <BankLogo bankKeyOrName={card.name} className="w-4.5 h-4.5 text-white" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold truncate">{card.name}</p>
+                            <p className={`text-[10px] ${dias != null && dias <= 3 ? "text-warning font-medium" : "text-muted-foreground"}`}>
+                              {dueTxt}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs font-bold">{card.name}</p>
-                          <p className="text-[10px] text-muted-foreground">Vence dia {card.due_day}</p>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs font-bold text-purple-600 dark:text-purple-400 tabular-nums">
+                            {formatCurrency(billOpen)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            Disp.: {formatCurrency(card.available ?? Math.max(0, card.limit - (card.used ?? 0)))}
+                          </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs font-bold text-purple-600 dark:text-purple-400 tabular-nums">
-                          {formatCurrency(
-                            card.currentBill
-                              ? Number(card.currentBill.total_amount) +
-                                  Number(card.currentBill.rollover_amount ?? 0) -
-                                  Number(card.currentBill.paid_amount ?? 0)
-                              : 0,
-                          )}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">
-                          Disponível: {formatCurrency(card.available ?? Math.max(0, card.limit - (card.used ?? 0)))}
-                        </p>
-                      </div>
+                      {billOpen > 0 && !bill?.is_paid && (
+                        <button
+                          onClick={() => {
+                            setPayingBill(bill);
+                            setPayBillOpen(true);
+                          }}
+                          className="mt-3 w-full text-[11px] font-semibold py-1.5 rounded-lg border border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 transition-colors"
+                        >
+                          Pagar fatura
+                        </button>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-6 text-xs text-muted-foreground">
@@ -1109,6 +1150,25 @@ export default function Dashboard() {
           refetchSummary();
           refetchHealth();
           refetchEvolution();
+          refetchAccounts();
+        }}
+      />
+
+      <PayBillModal
+        open={payBillOpen}
+        onOpenChange={(o) => {
+          setPayBillOpen(o);
+          if (!o) setPayingBill(null);
+        }}
+        bill={payingBill}
+        cardName={
+          realCreditCards?.find(
+            (c: any) => c.id === payingBill?.credit_card_id,
+          )?.name
+        }
+        onPaid={() => {
+          refetchSummary();
+          refetchHealth();
           refetchAccounts();
         }}
       />
