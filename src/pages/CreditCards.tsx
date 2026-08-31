@@ -19,7 +19,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
-import { useCreditCards, useAccounts, useCategories } from "@/hooks/use-supabase";
+import {
+  useCreditCards,
+  useAccounts,
+  useCategories,
+  computeCardStats,
+} from "@/hooks/use-supabase";
 import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
 import { supabase } from "@/lib/supabase";
@@ -68,21 +73,17 @@ export default function CreditCardsPage() {
   const [editingCard, setEditingCard] = useState<any>(null);
   const [deleteCardId, setDeleteCardId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [billDialogOpen, setBillDialogOpen] = useState(false);
   const [payBillOpen, setPayBillOpen] = useState(false);
   const [payingBill, setPayingBill] = useState<any>(null);
   const [payBillAccountId, setPayBillAccountId] = useState("");
-  const [billForm, setBillForm] = useState({
-    cardId: "",
-    month: new Date().toISOString().split("T")[0].substring(0, 7),
-    initialAmount: "0",
-  });
+  const [payBillAmount, setPayBillAmount] = useState("");
   const [form, setForm] = useState({
     name: "",
     limit: "",
     closingDay: "5",
     dueDay: "10",
     color: "#0a0a0a",
+    interestRate: "",
   });
 
   const {
@@ -92,7 +93,7 @@ export default function CreditCardsPage() {
     update,
     remove,
     toggleBillPaid,
-    createBill,
+    payBill,
     deleteBill,
     refetch: refetchCards,
   } = useCreditCards();
@@ -101,7 +102,12 @@ export default function CreditCardsPage() {
   const { data: realCategories } = useCategories();
 
   const useDemo = !!user?.is_anonymous;
-  const cards = useDemo ? demoCreditCards : realCards;
+  const cards = useDemo
+    ? demoCreditCards.map((c: any) => ({
+        ...c,
+        ...computeCardStats(c, c.bills ?? []),
+      }))
+    : realCards;
   const accounts = useDemo ? [] : realAccounts;
   const categories = useDemo ? [] : realCategories;
 
@@ -118,6 +124,7 @@ export default function CreditCardsPage() {
       closingDay: "5",
       dueDay: "10",
       color: "#0a0a0a",
+      interestRate: "",
     });
     setEditingCard(null);
   };
@@ -241,6 +248,21 @@ export default function CreditCardsPage() {
                   </div>
                 </div>
                 <div>
+                  <label className="text-xs text-muted-foreground mb-1.5 block">
+                    Juros do rotativo (% ao mês){" "}
+                    <span className="text-muted-foreground/60">— opcional</span>
+                  </label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={form.interestRate}
+                    onChange={(e) =>
+                      setForm({ ...form, interestRate: e.target.value })
+                    }
+                    placeholder="Ex: 12,5"
+                  />
+                </div>
+                <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs text-muted-foreground block">
                       Cor do Cartão
@@ -319,6 +341,10 @@ export default function CreditCardsPage() {
                           closing_day: parseInt(form.closingDay),
                           due_day: parseInt(form.dueDay),
                           color: form.color,
+                          interest_rate:
+                            parseFloat(
+                              form.interestRate.replace(",", "."),
+                            ) || 0,
                         };
                         if (editingCard) {
                           await update(editingCard.id, data);
@@ -343,13 +369,10 @@ export default function CreditCardsPage() {
         {cards && cards.length > 0 ? (
           <div className="grid lg:grid-cols-2 gap-4">
             {cards.map((card: any, i: number) => {
-              const spending =
-                (card as any).bills?.reduce?.(
-                  (s: number, b: any) => s + (b.is_paid ? 0 : b.total_amount),
-                  0,
-                ) || 0;
-              const utilization =
-                card.limit > 0 ? (spending / card.limit) * 100 : 0;
+              const used = card.used ?? 0;
+              const available = card.available ?? Math.max(0, card.limit - used);
+              const utilization = card.utilization ?? 0;
+              const spending = used;
               return (
                 <motion.div
                   key={card.id}
@@ -382,25 +405,6 @@ export default function CreditCardsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
-                          title="Adicionar Fatura Antecipada"
-                          onClick={() => {
-                            setBillForm({
-                              cardId: card.id,
-                              month: new Date()
-                                .toISOString()
-                                .split("T")[0]
-                                .substring(0, 7),
-                              initialAmount: "0",
-                            });
-                            setBillDialogOpen(true);
-                          }}
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-foreground"
                           onClick={() => {
                             setEditingCard(card);
@@ -410,6 +414,7 @@ export default function CreditCardsPage() {
                               closingDay: card.closing_day.toString(),
                               dueDay: card.due_day.toString(),
                               color: card.color,
+                              interestRate: String(card.interest_rate ?? ""),
                             });
                             setDialogOpen(true);
                           }}
@@ -451,9 +456,18 @@ export default function CreditCardsPage() {
                         style={{ width: `${Math.min(utilization, 100)}%` }}
                       />
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1.5">
-                      {utilization.toFixed(0)}% utilizado
-                    </p>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <p className="text-[10px] text-muted-foreground">
+                        {utilization.toFixed(0)}% utilizado
+                      </p>
+                      <p className="text-[10px] font-medium text-success">
+                        Disponível:{" "}
+                        {available.toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </p>
+                    </div>
                   </div>
                   {(card as any).bills?.length > 0 && (
                     <div className="border-t divide-y">
@@ -464,6 +478,13 @@ export default function CreditCardsPage() {
                           month: "long",
                           year: "numeric",
                         });
+                        const paidAmount = Number(bill.paid_amount ?? 0);
+                        const billTotal =
+                          Number(bill.total_amount) +
+                          Number(bill.rollover_amount ?? 0);
+                        const outstanding = Math.max(0, billTotal - paidAmount);
+                        const isPartial =
+                          !bill.is_paid && paidAmount > 0.005;
 
                         return (
                           <div
@@ -483,6 +504,9 @@ export default function CreditCardsPage() {
                                     }
                                   } else {
                                     setPayingBill(bill);
+                                    setPayBillAmount(
+                                      formatCurrencyInput(outstanding),
+                                    );
                                     if (accounts.length > 0) {
                                       setPayBillAccountId(accounts[0].id);
                                     } else {
@@ -513,14 +537,31 @@ export default function CreditCardsPage() {
                                     Pago
                                   </span>
                                 )}
+                                {isPartial && (
+                                  <span className="text-[10px] text-warning ml-2 font-medium">
+                                    Parcial ·{" "}
+                                    {paidAmount.toLocaleString("pt-BR", {
+                                      style: "currency",
+                                      currency: "BRL",
+                                    })}{" "}
+                                    pagos
+                                  </span>
+                                )}
+                                {bill.rollover_amount > 0 && (
+                                  <span className="text-[10px] text-destructive ml-2">
+                                    inclui rotativo
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
-                              <span className="text-xs font-medium tabular-nums">
-                                {bill.total_amount.toLocaleString("pt-BR", {
-                                  style: "currency",
-                                  currency: "BRL",
-                                })}
+                              <span
+                                className={`text-xs font-medium tabular-nums ${bill.is_paid ? "text-muted-foreground line-through" : ""}`}
+                              >
+                                {(bill.is_paid ? billTotal : outstanding).toLocaleString(
+                                  "pt-BR",
+                                  { style: "currency", currency: "BRL" },
+                                )}
                               </span>
                               <Button
                                 variant="ghost"
@@ -612,103 +653,6 @@ export default function CreditCardsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={billDialogOpen} onOpenChange={setBillDialogOpen}>
-        <DialogContent className="sm:max-w-[340px] rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">
-              Nova Fatura Antecipada
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Cadastre faturas futuras para lançar e prever gastos nos próximos
-              meses.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">
-                Mês da Fatura *
-              </label>
-              <Input
-                type="month"
-                value={billForm.month}
-                onChange={(e) =>
-                  setBillForm({ ...billForm, month: e.target.value })
-                }
-                className="h-9 text-xs rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">
-                Valor Inicial / Estimado (R$)
-              </label>
-              <BRLCurrencyInput
-                value={billForm.initialAmount}
-                onChangeValue={(val) =>
-                  setBillForm({ ...billForm, initialAmount: val })
-                }
-                placeholder="R$ 0,00"
-                className="h-9 text-xs rounded-lg"
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs rounded-lg"
-              onClick={() => {
-                setBillDialogOpen(false);
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              size="sm"
-              className="text-xs rounded-lg"
-              onClick={async () => {
-                if (!billForm.month) return;
-                const amount = parseBRLAmount(billForm.initialAmount);
-                if (!useDemo) {
-                  const card = cards.find((c) => c.id === billForm.cardId);
-                  if (!card) return;
-
-                  const closingDay = card.closing_day || 5;
-                  const dueDay = card.due_day || 10;
-
-                  const [targetYear, targetMonth] = billForm.month
-                    .split("-")
-                    .map(Number);
-                  const dueDate = `${targetYear}-${String(targetMonth).padStart(2, "0")}-${String(dueDay).padStart(2, "0")}`;
-
-                  let closingMonth = targetMonth - 1;
-                  let closingYear = targetYear;
-                  if (closingMonth < 1) {
-                    closingMonth = 12;
-                    closingYear -= 1;
-                  }
-                  const closingDate = `${closingYear}-${String(closingMonth).padStart(2, "0")}-${String(closingDay).padStart(2, "0")}`;
-
-                  await createBill({
-                    credit_card_id: billForm.cardId,
-                    month: billForm.month,
-                    total_amount: amount,
-                    is_paid: false,
-                    due_date: dueDate,
-                    closing_date: closingDate,
-                  });
-                  toast.success("Fatura criada com sucesso!");
-                } else {
-                  toast.info("Modo demonstração não altera dados.");
-                }
-                setBillDialogOpen(false);
-              }}
-            >
-              Criar Fatura
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={payBillOpen} onOpenChange={setPayBillOpen}>
         <DialogContent className="sm:max-w-[340px] rounded-2xl">
           <DialogHeader>
@@ -739,14 +683,35 @@ export default function CreditCardsPage() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between font-semibold border-t pt-1.5 mt-1.5">
-                  <span>Valor Total</span>
+                  <span>Em aberto</span>
                   <span className="text-destructive">
-                    {payingBill.total_amount.toLocaleString("pt-BR", {
+                    {Math.max(
+                      0,
+                      Number(payingBill.total_amount) +
+                        Number(payingBill.rollover_amount ?? 0) -
+                        Number(payingBill.paid_amount ?? 0),
+                    ).toLocaleString("pt-BR", {
                       style: "currency",
                       currency: "BRL",
                     })}
                   </span>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1.5 block">
+                  Valor a pagar *
+                </label>
+                <BRLCurrencyInput
+                  value={payBillAmount}
+                  onChangeValue={setPayBillAmount}
+                  placeholder="R$ 0,00"
+                  className="h-9 text-xs rounded-lg"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Pague o total ou um valor parcial (o restante continua
+                  ocupando o limite).
+                </p>
               </div>
 
               <div>
@@ -793,16 +758,18 @@ export default function CreditCardsPage() {
             <Button
               size="sm"
               className="text-xs rounded-lg"
-              disabled={!payBillAccountId}
+              disabled={!payBillAccountId || parseBRLAmount(payBillAmount) <= 0}
               onClick={async () => {
                 if (!payingBill || !payBillAccountId) return;
-                
+                const payAmount = parseBRLAmount(payBillAmount);
+                if (payAmount <= 0) return;
+
                 try {
                   if (!useDemo) {
                     const selectedAcc = accounts.find(a => a.id === payBillAccountId);
                     if (selectedAcc) {
                       // 1. Atualizar saldo da conta no Supabase
-                      const newBalance = selectedAcc.balance - payingBill.total_amount;
+                      const newBalance = selectedAcc.balance - payAmount;
                       await supabase
                         .from("accounts")
                         .update({ balance: newBalance })
@@ -827,18 +794,20 @@ export default function CreditCardsPage() {
                       await supabase.from("transactions").insert({
                         user_id: user?.id,
                         type: "expense",
-                        amount: payingBill.total_amount,
-                        description: `[Conta: ${selectedAcc.name}] [Fatura] ${cardName} - ${monthLabel}`,
+                        amount: payAmount,
+                        description: `[Fatura] ${cardName} - ${monthLabel}`,
                         date: new Date().toISOString().split("T")[0],
                         category_id: categoryId,
                         is_fixed: false,
                         is_credit_card: false,
+                        account_id: selectedAcc.id,
+                        payment_method: "Pagamento de fatura",
                       });
 
-                      // 4. Marcar fatura como paga
-                      await toggleBillPaid(payingBill.id, true);
-                      
-                      toast.success("Fatura paga com sucesso!");
+                      // 4. Registrar pagamento (total ou parcial) na fatura
+                      await payBill(payingBill.id, payAmount);
+
+                      toast.success("Pagamento de fatura registrado!");
                     }
                   } else {
                     toast.info("Modo demonstração não altera dados.");

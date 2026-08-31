@@ -36,6 +36,15 @@ interface QuickTransactionModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function numAmountFor(amountStr: string, n: number): string {
+  const val = parseBRLAmount(amountStr);
+  if (val <= 0 || n <= 0) return "";
+  return (val / n).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
 export function QuickTransactionModal({
   open,
   onOpenChange,
@@ -44,7 +53,7 @@ export function QuickTransactionModal({
   const { data: realCategories } = useCategories();
   const { data: realAccounts, refetch: refetchAccounts } = useAccounts();
   const { data: realCreditCards } = useCreditCards();
-  const { create: createTransaction } = useTransactions();
+  const { create: createTransaction, createInstallments } = useTransactions();
 
   const useDemo = !!user?.is_anonymous;
   const categories = useDemo ? demoCategories : (realCategories || []);
@@ -58,6 +67,7 @@ export function QuickTransactionModal({
   const [paymentMethod, setPaymentMethod] = useState("pix");
   const [creditCardId, setCreditCardId] = useState("");
   const [accountId, setAccountId] = useState("");
+  const [installments, setInstallments] = useState("1");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -68,6 +78,7 @@ export function QuickTransactionModal({
     setPaymentMethod("pix");
     setCreditCardId("");
     setAccountId("");
+    setInstallments("1");
     setDate(new Date().toISOString().split("T")[0]);
   };
 
@@ -88,19 +99,39 @@ export function QuickTransactionModal({
     try {
       if (user && !user.is_anonymous) {
         const isCreditCard = type === "expense" && paymentMethod === "credit_card";
+        const nInstallments = Math.max(1, parseInt(installments) || 1);
 
-        if (!isCreditCard && accountId) {
-          const selectedAcc = accounts.find((a: any) => a.id === accountId);
-          if (selectedAcc) {
-            const newBalance =
-              type === "income"
-                ? selectedAcc.balance + numAmount
-                : selectedAcc.balance - numAmount;
-            await supabase
-              .from("accounts")
-              .update({ balance: newBalance })
-              .eq("id", selectedAcc.id);
+        if (isCreditCard && nInstallments > 1) {
+          if (!creditCardId) {
+            toast.error("Selecione o cartão da compra parcelada.");
+            setSubmitting(false);
+            return;
           }
+          await createInstallments({
+            creditCardId,
+            categoryId,
+            total: numAmount,
+            count: nInstallments,
+            purchaseDate: date,
+            description: description.trim() || null,
+          });
+          toast.success(`Compra parcelada em ${nInstallments}x registrada!`);
+          resetForm();
+          onOpenChange(false);
+          setSubmitting(false);
+          return;
+        }
+
+        const selectedAcc = accounts.find((a: any) => a.id === accountId);
+        if (!isCreditCard && selectedAcc) {
+          const newBalance =
+            type === "income"
+              ? selectedAcc.balance + numAmount
+              : selectedAcc.balance - numAmount;
+          await supabase
+            .from("accounts")
+            .update({ balance: newBalance })
+            .eq("id", selectedAcc.id);
         }
 
         await createTransaction({
@@ -112,6 +143,16 @@ export function QuickTransactionModal({
           is_fixed: false,
           is_credit_card: isCreditCard,
           credit_card_id: isCreditCard && creditCardId ? creditCardId : null,
+          account_id: !isCreditCard && selectedAcc ? selectedAcc.id : null,
+          payment_method: isCreditCard
+            ? "Cartão"
+            : paymentMethod === "pix"
+              ? "PIX"
+              : paymentMethod === "cash"
+                ? "Dinheiro"
+                : paymentMethod === "debit"
+                  ? "Débito"
+                  : null,
         });
 
         toast.success("Transação registrada com sucesso!");
@@ -319,6 +360,28 @@ export function QuickTransactionModal({
                   Nenhum cartão cadastrado.
                 </p>
               )}
+
+              <div className="mt-2">
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                  Parcelas
+                </label>
+                <select
+                  value={installments}
+                  onChange={(e) => setInstallments(e.target.value)}
+                  className="w-full text-xs h-9 px-2.5 rounded-xl border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  {Array.from({ length: 24 }, (_, i) => i + 1).map((n) => {
+                    const per = numAmountFor(amount, n);
+                    return (
+                      <option key={n} value={String(n)}>
+                        {n === 1
+                          ? "À vista (1x)"
+                          : `${n}x${per ? ` de ${per}` : ""}`}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
             </div>
           )}
 

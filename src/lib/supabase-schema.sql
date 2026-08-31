@@ -48,6 +48,7 @@ CREATE TABLE credit_cards (
   closing_day INTEGER NOT NULL,
   due_day INTEGER NOT NULL,
   color TEXT NOT NULL DEFAULT '#666666',
+  interest_rate NUMERIC(6,3) NOT NULL DEFAULT 0,
   created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT
 );
 
@@ -63,6 +64,10 @@ CREATE TABLE credit_card_bills (
   month TEXT NOT NULL,
   total_amount NUMERIC(12,2) NOT NULL,
   is_paid BOOLEAN NOT NULL DEFAULT false,
+  paid_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  paid_at TEXT,
+  rollover_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  minimum_payment NUMERIC(12,2) NOT NULL DEFAULT 0,
   due_date TEXT NOT NULL,
   closing_date TEXT NOT NULL,
   created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT
@@ -85,6 +90,11 @@ CREATE TABLE transactions (
   is_fixed BOOLEAN NOT NULL DEFAULT false,
   is_credit_card BOOLEAN NOT NULL DEFAULT false,
   credit_card_id UUID REFERENCES credit_cards(id) ON DELETE SET NULL,
+  account_id UUID, -- FK adicionada após a criação da tabela accounts (ver abaixo)
+  payment_method TEXT,
+  installments_total INTEGER,
+  installment_number INTEGER,
+  purchase_group_id UUID,
   created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT
 );
 
@@ -92,6 +102,8 @@ CREATE INDEX idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX idx_transactions_user_date ON transactions(user_id, date);
 CREATE INDEX idx_transactions_user_category ON transactions(user_id, category_id);
 CREATE INDEX idx_transactions_credit_card ON transactions(credit_card_id);
+CREATE INDEX idx_transactions_account ON transactions(account_id);
+CREATE INDEX idx_transactions_purchase_group ON transactions(purchase_group_id);
 
 -- =============================================================================
 -- Monthly Budgets
@@ -119,6 +131,13 @@ CREATE TABLE debts (
   total_amount NUMERIC(12,2) NOT NULL,
   remaining_amount NUMERIC(12,2) NOT NULL,
   monthly_payment NUMERIC(12,2) NOT NULL,
+  original_amount NUMERIC(12,2),
+  interest_rate NUMERIC(6,3),
+  installments_total INTEGER,
+  installments_paid INTEGER NOT NULL DEFAULT 0,
+  day_due INTEGER,
+  category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+  credit_card_id UUID REFERENCES credit_cards(id) ON DELETE SET NULL,
   due_date TEXT NOT NULL,
   start_date TEXT NOT NULL,
   is_paid BOOLEAN NOT NULL DEFAULT false,
@@ -126,6 +145,26 @@ CREATE TABLE debts (
 );
 
 CREATE INDEX idx_debts_user_id ON debts(user_id);
+CREATE INDEX idx_debts_credit_card ON debts(credit_card_id);
+
+-- =============================================================================
+-- Debt Payments (histórico de pagamentos de dívidas/crediários)
+-- =============================================================================
+CREATE TABLE debt_payments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  debt_id UUID NOT NULL REFERENCES debts(id) ON DELETE CASCADE,
+  amount NUMERIC(12,2) NOT NULL,
+  discount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  paid_at TEXT NOT NULL,
+  method TEXT,
+  source_name TEXT,
+  transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+  created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT
+);
+
+CREATE INDEX idx_debt_payments_debt ON debt_payments(debt_id);
+CREATE INDEX idx_debt_payments_user ON debt_payments(user_id);
 
 -- =============================================================================
 -- Investments
@@ -158,6 +197,11 @@ CREATE TABLE accounts (
 
 CREATE INDEX idx_accounts_user_id ON accounts(user_id);
 
+-- FK de transactions.account_id (accounts precisa existir primeiro)
+ALTER TABLE transactions
+  ADD CONSTRAINT transactions_account_id_fkey
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL;
+
 -- =============================================================================
 -- Goals
 -- =============================================================================
@@ -187,6 +231,7 @@ ALTER TABLE monthly_budgets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE credit_cards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE credit_card_bills ENABLE ROW LEVEL SECURITY;
 ALTER TABLE debts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE debt_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE investments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
@@ -226,6 +271,11 @@ CREATE POLICY "Users can view own debts" ON debts FOR SELECT USING (auth.uid() =
 CREATE POLICY "Users can insert own debts" ON debts FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own debts" ON debts FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own debts" ON debts FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can view own debt_payments" ON debt_payments FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own debt_payments" ON debt_payments FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own debt_payments" ON debt_payments FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own debt_payments" ON debt_payments FOR DELETE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can view own investments" ON investments FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own investments" ON investments FOR INSERT WITH CHECK (auth.uid() = user_id);

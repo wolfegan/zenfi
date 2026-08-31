@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useDebtNotifications } from "@/hooks/use-debt-notifications";
+import { debtNextDue } from "@/lib/debt";
 import { parseBRLAmount } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import {
@@ -513,10 +514,12 @@ export default function Dashboard() {
     (s: number, a: any) => s + a.balance,
     0,
   );
-  const totalDebtsRemaining = debts
-    .filter((d: any) => !d.is_paid)
+  // Para o patrimônio, dívidas que são pagas via fatura de cartão não entram
+  // de novo (o valor já aparece no cartão) — evita contagem dupla.
+  const totalDebtsStandalone = debts
+    .filter((d: any) => !d.is_paid && !d.credit_card_id)
     .reduce((s: number, d: any) => s + d.remaining_amount, 0);
-  const netWorth = totalAccountsBalance - totalDebtsRemaining;
+  const netWorth = totalAccountsBalance - totalDebtsStandalone;
 
   const formatCurrency = (v: number) => {
     if (hideBalance) return "R$ ••••••";
@@ -633,20 +636,12 @@ export default function Dashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           {(() => {
             const activeDebts = debts.filter((d: any) => !d.is_paid);
-            const overdue = activeDebts.filter((d: any) => {
-              const due = new Date(
-                d.due_date + (d.due_date.includes("T") ? "" : "T00:00:00"),
-              );
-              return due < now;
-            });
+            const overdue = activeDebts.filter(
+              (d: any) => debtNextDue(d, now).overdue,
+            );
             const dueSoon = activeDebts.filter((d: any) => {
-              const due = new Date(
-                d.due_date + (d.due_date.includes("T") ? "" : "T00:00:00"),
-              );
-              const daysUntil = Math.ceil(
-                (due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-              );
-              return daysUntil >= 0 && daysUntil <= 7 && !overdue.includes(d);
+              const { daysUntil, overdue: isOver } = debtNextDue(d, now);
+              return daysUntil >= 0 && daysUntil <= 7 && !isOver;
             });
 
             if (!activeDebts.length) return null;
@@ -713,14 +708,7 @@ export default function Dashboard() {
                         </p>
                         <div className="mt-1.5 space-y-1">
                           {dueSoon.slice(0, 3).map((d: any) => {
-                            const due = new Date(
-                              d.due_date +
-                                (d.due_date.includes("T") ? "" : "T00:00:00"),
-                            );
-                            const daysUntil = Math.ceil(
-                              (due.getTime() - now.getTime()) /
-                                (1000 * 60 * 60 * 24),
-                            );
+                            const daysUntil = debtNextDue(d, now).daysUntil;
                             const dayLabel =
                               daysUntil === 0
                                 ? "hoje"
@@ -1104,9 +1092,17 @@ export default function Dashboard() {
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-bold text-purple-600 dark:text-purple-400 tabular-nums">
-                          {formatCurrency(card.current_bill || 0)}
+                          {formatCurrency(
+                            card.currentBill
+                              ? Number(card.currentBill.total_amount) +
+                                  Number(card.currentBill.rollover_amount ?? 0) -
+                                  Number(card.currentBill.paid_amount ?? 0)
+                              : 0,
+                          )}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">Limite: {formatCurrency(card.limit)}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          Disponível: {formatCurrency(card.available ?? Math.max(0, card.limit - (card.used ?? 0)))}
+                        </p>
                       </div>
                     </div>
                   ))}

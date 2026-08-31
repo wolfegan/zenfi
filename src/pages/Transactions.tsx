@@ -123,6 +123,7 @@ export default function Transactions() {
     paymentMethod: "pix" as string,
     creditCardId: "",
     accountId: "",
+    installments: "1",
   });
 
   const month = currentMonth();
@@ -130,8 +131,10 @@ export default function Transactions() {
     data: realTransactions,
     loading: txsLoading,
     create,
+    createInstallments,
     update,
     remove,
+    removeGroup,
   } = useTransactions();
   const { data: realCategories } = useCategories();
   const { data: realCreditCards } = useCreditCards();
@@ -188,6 +191,7 @@ export default function Transactions() {
       paymentMethod: "pix",
       creditCardId: "",
       accountId: "",
+      installments: "1",
     });
     setEditingTx(null);
   };
@@ -208,8 +212,30 @@ export default function Transactions() {
       return;
     }
 
+    const nInstallments = Math.max(1, parseInt(form.installments) || 1);
+    if (isCreditCard && nInstallments > 1 && !form.creditCardId) {
+      toast.error("Selecione o cartão da compra parcelada.");
+      return;
+    }
+
     try {
       if (!useDemo) {
+        // Compra parcelada no cartão → gera N transações (uma por fatura)
+        if (isCreditCard && nInstallments > 1 && !editingTx) {
+          await createInstallments({
+            creditCardId: form.creditCardId,
+            categoryId: form.categoryId,
+            total: amount,
+            count: nInstallments,
+            purchaseDate: form.date,
+            description: form.description.trim() || null,
+            isFixed: form.isFixed,
+          });
+          toast.success(`Compra parcelada em ${nInstallments}x adicionada!`);
+          setDialogOpen(false);
+          resetForm();
+          return;
+        }
         let descriptionValue = form.description.trim();
         const selectedAcc = accounts.find((a: any) => a.id === form.accountId);
 
@@ -245,6 +271,16 @@ export default function Transactions() {
           is_credit_card: isCreditCard,
           credit_card_id:
             isCreditCard && form.creditCardId ? form.creditCardId : null,
+          account_id: !isCreditCard && selectedAcc ? selectedAcc.id : null,
+          payment_method: isCreditCard
+            ? "Cartão"
+            : form.paymentMethod === "pix"
+              ? "PIX"
+              : form.paymentMethod === "cash"
+                ? "Dinheiro"
+                : form.paymentMethod === "debit"
+                  ? "Débito"
+                  : null,
         };
 
         if (editingTx) {
@@ -511,6 +547,49 @@ export default function Transactions() {
                             Cadastrar cartão
                           </a>
                         </p>
+                      )}
+
+                      {form.type === "expense" && !editingTx && (
+                        <div className="mt-3">
+                          <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                            Parcelas
+                          </label>
+                          <Select
+                            value={form.installments}
+                            onValueChange={(v) =>
+                              setForm({ ...form, installments: v })
+                            }
+                          >
+                            <SelectTrigger className="text-xs h-9 rounded-lg">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 24 }, (_, i) => i + 1).map(
+                                (n) => {
+                                  const val = parseBRLAmount(form.amount);
+                                  const per = val > 0 ? val / n : 0;
+                                  return (
+                                    <SelectItem
+                                      key={n}
+                                      value={String(n)}
+                                      className="text-xs"
+                                    >
+                                      {n === 1
+                                        ? "À vista (1x)"
+                                        : `${n}x${per > 0 ? ` de ${per.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}` : ""}`}
+                                    </SelectItem>
+                                  );
+                                },
+                              )}
+                            </SelectContent>
+                          </Select>
+                          {parseInt(form.installments) > 1 && (
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              Serão criadas {form.installments} transações, uma
+                              em cada fatura.
+                            </p>
+                          )}
+                        </div>
                       )}
                     </motion.div>
                   )}
@@ -792,6 +871,11 @@ export default function Transactions() {
                             Fixo
                           </span>
                         )}
+                        {tx.installments_total > 1 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400 font-medium">
+                            {tx.installment_number}/{tx.installments_total}
+                          </span>
+                        )}
                         {badge && (
                           <span
                             className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
@@ -869,6 +953,7 @@ export default function Transactions() {
                               paymentMethod: pm,
                               creditCardId: tx.credit_card_id || "",
                               accountId: foundAcc ? foundAcc.id : "",
+                              installments: "1",
                             });
                             setDialogOpen(true);
                           }
@@ -946,14 +1031,28 @@ export default function Transactions() {
                     const txToDelete = realTransactions.find(
                       (t: any) => t.id === deleteId,
                     );
+                    if (txToDelete?.purchase_group_id) {
+                      // Compra parcelada: remove todas as parcelas de uma vez
+                      await removeGroup(txToDelete.purchase_group_id);
+                      toast.success("Compra parcelada removida (todas as parcelas).");
+                      setDeleteDialogOpen(false);
+                      setDeleteId(null);
+                      return;
+                    }
                     if (txToDelete) {
                       const amount = txToDelete.amount;
                       const type = txToDelete.type;
-                      const accMatch = txToDelete.description?.match(
-                        /\[Conta:\s*([^\]]+)\]/,
-                      );
-                      const accName = accMatch ? accMatch[1] : null;
-                      const acc = accounts.find((a: any) => a.name === accName);
+                      const acc =
+                        accounts.find(
+                          (a: any) => a.id === txToDelete.account_id,
+                        ) ||
+                        (() => {
+                          const accMatch = txToDelete.description?.match(
+                            /\[Conta:\s*([^\]]+)\]/,
+                          );
+                          const accName = accMatch ? accMatch[1] : null;
+                          return accounts.find((a: any) => a.name === accName);
+                        })();
 
                       if (acc) {
                         const newBalance =

@@ -40,6 +40,11 @@ export interface Database {
         Insert: Omit<Debt, "id" | "created_at">;
         Update: Partial<Omit<Debt, "id" | "created_at">>;
       };
+      debt_payments: {
+        Row: DebtPayment;
+        Insert: Omit<DebtPayment, "id" | "created_at">;
+        Update: Partial<Omit<DebtPayment, "id" | "created_at">>;
+      };
       investments: {
         Row: Investment;
         Insert: Omit<Investment, "id" | "created_at">;
@@ -93,6 +98,11 @@ export interface Transaction {
   is_fixed: boolean;
   is_credit_card: boolean;
   credit_card_id: string | null;
+  account_id?: string | null;
+  payment_method?: string | null;
+  installments_total?: number | null;
+  installment_number?: number | null;
+  purchase_group_id?: string | null;
   created_at: number;
 }
 
@@ -113,6 +123,7 @@ export interface CreditCard {
   closing_day: number;
   due_day: number;
   color: string;
+  interest_rate?: number;
   created_at: number;
 }
 
@@ -123,6 +134,10 @@ export interface CreditCardBill {
   month: string;
   total_amount: number;
   is_paid: boolean;
+  paid_amount?: number;
+  paid_at?: string | null;
+  rollover_amount?: number;
+  minimum_payment?: number;
   due_date: string;
   closing_date: string;
   created_at: number;
@@ -136,9 +151,29 @@ export interface Debt {
   total_amount: number;
   remaining_amount: number;
   monthly_payment: number;
+  original_amount?: number | null;
+  interest_rate?: number | null;
+  installments_total?: number | null;
+  installments_paid?: number;
+  day_due?: number | null;
+  category_id?: string | null;
+  credit_card_id?: string | null;
   due_date: string;
   start_date: string;
   is_paid: boolean;
+  created_at: number;
+}
+
+export interface DebtPayment {
+  id: string;
+  user_id: string;
+  debt_id: string;
+  amount: number;
+  discount: number;
+  paid_at: string;
+  method: string | null;
+  source_name: string | null;
+  transaction_id: string | null;
   created_at: number;
 }
 
@@ -186,6 +221,14 @@ export interface Goal {
 // Helper types for frontend use
 export interface CreditCardWithBills extends CreditCard {
   bills: CreditCardBill[];
+  /** Soma de (fatura + rotativo − pago) de TODAS as faturas em aberto. */
+  used: number;
+  /** limit − used (nunca negativo). */
+  available: number;
+  /** % do limite comprometido. */
+  utilization: number;
+  /** Fatura do ciclo em aberto atual, se existir. */
+  currentBill: CreditCardBill | null;
 }
 
 export interface MonthlySummary {
@@ -239,6 +282,11 @@ export interface DebtsSummary {
   totalRemaining: number;
   totalPaid: number;
   totalMonthly: number;
+  /** Restante de dívidas que estão sendo pagas via fatura de cartão
+   *  (já contabilizadas no cartão — não somar de novo no patrimônio). */
+  totalRemainingOnCard: number;
+  /** Restante que NÃO está no cartão (o que de fato reduz o patrimônio). */
+  totalRemainingStandalone: number;
   activeCount: number;
   paidCount: number;
   count: number;

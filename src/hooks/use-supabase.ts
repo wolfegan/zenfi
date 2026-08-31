@@ -6,6 +6,7 @@ import type {
   CreditCard,
   CreditCardBill,
   Debt,
+  DebtPayment,
   Investment,
   Account,
   Goal,
@@ -17,6 +18,12 @@ import type {
   GoalsSummary,
   InvestmentsSummary,
 } from "@/lib/supabase-types";
+import {
+  billMonthForDate,
+  billDatesForMonth,
+  buildInstallmentRows,
+  currentBillMonth,
+} from "@/lib/credit-card";
 import { useCallback, useEffect, useState } from "react";
 
 // =============================================================================
@@ -114,80 +121,97 @@ export function useCategoriesByType(type: "income" | "expense") {
   return data.filter((c) => c.type === type);
 }
 
-// Helper para calcular o mês da fatura com base no dia de fechamento do cartão
-function getBillMonthForDate(dateStr: string, closingDay: number): string {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  let targetMonth = month;
-  let targetYear = year;
-
-  if (day > closingDay) {
-    targetMonth += 1;
-    if (targetMonth > 12) {
-      targetMonth = 1;
-      targetYear += 1;
-    }
-  }
-  return `${targetYear}-${String(targetMonth).padStart(2, "0")}`;
-}
-
-// Sincroniza o valor de uma transação na fatura do cartão
-export async function syncCreditCardBill(
-  creditCardId: string,
-  dateStr: string,
-  amountChange: number,
-  userId: string,
-) {
+// =============================================================================
+// Recálculo idempotente das faturas de um cartão.
+//
+// Em vez de acumular (fatura += valor), recomputa CADA fatura a partir da soma
+// das transações daquele ciclo. Isso elimina o "drift" causado por edições,
+// exclusões e condições de corrida do modelo anterior (syncCreditCardBill).
+// Preserva paid_amount / is_paid / paid_at das faturas existentes.
+// =============================================================================
+export async function recalcCreditCardBills(userId: string, creditCardId: string) {
+  if (!userId || !creditCardId) return;
   try {
-    const { data: card } = await supabase
-      .from("credit_cards")
-      .select("*")
-      .eq("id", creditCardId)
-      .single();
+    const [{ data: card }, { data: txs }, { data: existing }] =
+      await Promise.all([
+        supabase.from("credit_cards").select("*").eq("id", creditCardId).single(),
+        supabase
+          .from("transactions")
+          .select("id, amount, date")
+          .eq("credit_card_id", creditCardId)
+          .eq("is_credit_card", true),
+        supabase
+          .from("credit_card_bills")
+          .select("*")
+          .eq("credit_card_id", creditCardId),
+      ]);
 
     if (!card) return;
-
     const closingDay = card.closing_day || 5;
     const dueDay = card.due_day || 10;
-    const billMonth = getBillMonthForDate(dateStr, closingDay);
 
-    const { data: bill } = await supabase
-      .from("credit_card_bills")
-      .select("*")
-      .eq("credit_card_id", creditCardId)
-      .eq("month", billMonth)
-      .maybeSingle();
+    // soma por mês de fatura (rótulo = mês de vencimento)
+    const totals = new Map<string, number>();
+    for (const t of txs ?? []) {
+      const bm = billMonthForDate(t.date, closingDay, dueDay);
+      totals.set(bm, (totals.get(bm) ?? 0) + Number(t.amount));
+    }
 
-    if (bill) {
-      const newAmount = Math.max(0, Number(bill.total_amount) + amountChange);
-      await supabase
-        .from("credit_card_bills")
-        .update({ total_amount: newAmount })
-        .eq("id", bill.id);
-    } else if (amountChange > 0) {
-      const [targetYear, targetMonth] = billMonth.split("-").map(Number);
-      const dueDate = `${targetYear}-${String(targetMonth).padStart(2, "0")}-${String(dueDay).padStart(2, "0")}`;
+    const existingByMonth = new Map<string, CreditCardBill>();
+    for (const b of existing ?? []) existingByMonth.set(b.month, b);
 
-      let closingMonth = targetMonth - 1;
-      let closingYear = targetYear;
-      if (closingMonth < 1) {
-        closingMonth = 12;
-        closingYear -= 1;
+    // upsert das faturas que têm transações
+    for (const [month, total] of totals) {
+      const rounded = Math.round(total * 100) / 100;
+      const prev = existingByMonth.get(month);
+      if (prev) {
+        if (Math.abs(Number(prev.total_amount) - rounded) > 0.005) {
+          await supabase
+            .from("credit_card_bills")
+            .update({
+              total_amount: rounded,
+              is_paid: Number(prev.paid_amount) >= rounded - 0.005 && rounded > 0,
+            })
+            .eq("id", prev.id);
+        }
+      } else {
+        const { closingDate, dueDate } = billDatesForMonth(
+          month,
+          closingDay,
+          dueDay,
+        );
+        await supabase.from("credit_card_bills").insert({
+          user_id: userId,
+          credit_card_id: creditCardId,
+          month,
+          total_amount: rounded,
+          is_paid: false,
+          paid_amount: 0,
+          due_date: dueDate,
+          closing_date: closingDate,
+        });
       }
-      const closingDate = `${closingYear}-${String(closingMonth).padStart(2, "0")}-${String(closingDay).padStart(2, "0")}`;
+    }
 
-      await supabase.from("credit_card_bills").insert({
-        user_id: userId,
-        credit_card_id: creditCardId,
-        month: billMonth,
-        total_amount: amountChange,
-        is_paid: false,
-        due_date: dueDate,
-        closing_date: closingDate,
-      });
+    // remove faturas que ficaram sem transações e sem pagamento registrado
+    for (const b of existing ?? []) {
+      if (!totals.has(b.month) && Number(b.paid_amount) === 0) {
+        await supabase.from("credit_card_bills").delete().eq("id", b.id);
+      }
     }
   } catch (err) {
-    console.error("Error syncing credit card bill:", err);
+    console.error("Erro ao recalcular faturas do cartão:", err);
   }
+}
+
+/** @deprecated use recalcCreditCardBills — mantido para compatibilidade. */
+export async function syncCreditCardBill(
+  creditCardId: string,
+  _dateStr: string,
+  _amountChange: number,
+  userId: string,
+) {
+  await recalcCreditCardBills(userId, creditCardId);
 }
 
 // =============================================================================
@@ -253,15 +277,63 @@ export function useTransactions() {
       if (result) {
         setData((prev) => [result, ...prev]);
         if (result.is_credit_card && result.credit_card_id) {
-          await syncCreditCardBill(
-            result.credit_card_id,
-            result.date,
-            result.amount,
-            userId,
-          );
+          await recalcCreditCardBills(userId, result.credit_card_id);
         }
       }
       return result;
+    },
+    [userId],
+  );
+
+  /**
+   * Cria uma compra parcelada no cartão: gera N linhas de transação
+   * (uma por parcela) compartilhando o mesmo purchase_group_id.
+   * A parcela 1 cai na data da compra; as demais, mês a mês.
+   */
+  const createInstallments = useCallback(
+    async (params: {
+      creditCardId: string;
+      categoryId: string;
+      total: number;
+      count: number;
+      purchaseDate: string;
+      description?: string | null;
+      isFixed?: boolean;
+    }) => {
+      if (!userId) return null;
+      const groupId = crypto.randomUUID();
+      const rows = buildInstallmentRows({
+        purchaseDate: params.purchaseDate,
+        total: params.total,
+        count: params.count,
+      });
+      const baseDesc = (params.description || "").trim();
+      const payload = rows.map((r) => ({
+        user_id: userId,
+        category_id: params.categoryId,
+        amount: r.amount,
+        date: r.date,
+        type: "expense" as const,
+        description: baseDesc
+          ? `${baseDesc} (${r.installment_number}/${params.count})`
+          : `Parcela ${r.installment_number}/${params.count}`,
+        is_fixed: params.isFixed ?? false,
+        is_credit_card: true,
+        credit_card_id: params.creditCardId,
+        payment_method: "Cartão",
+        installments_total: params.count,
+        installment_number: r.installment_number,
+        purchase_group_id: groupId,
+      }));
+      const { data: inserted } = await supabase
+        .from("transactions")
+        .insert(payload)
+        .select();
+      if (inserted?.length) {
+        setData((prev) => [...inserted, ...prev]);
+        await recalcCreditCardBills(userId, params.creditCardId);
+      }
+      return groupId;
     },
     [userId],
   );
@@ -279,25 +351,16 @@ export function useTransactions() {
         .eq("id", id)
         .single();
 
-      if (oldTx && oldTx.is_credit_card && oldTx.credit_card_id) {
-        await syncCreditCardBill(
-          oldTx.credit_card_id,
-          oldTx.date,
-          -oldTx.amount,
-          userId,
-        );
-      }
-
       await supabase.from("transactions").update(updates).eq("id", id);
 
+      const cardsToRecalc = new Set<string>();
+      if (oldTx?.is_credit_card && oldTx.credit_card_id)
+        cardsToRecalc.add(oldTx.credit_card_id);
       const updatedTx = { ...oldTx, ...updates };
-      if (updatedTx && updatedTx.is_credit_card && updatedTx.credit_card_id) {
-        await syncCreditCardBill(
-          updatedTx.credit_card_id,
-          updatedTx.date,
-          updatedTx.amount,
-          userId,
-        );
+      if (updatedTx?.is_credit_card && updatedTx.credit_card_id)
+        cardsToRecalc.add(updatedTx.credit_card_id);
+      for (const cardId of cardsToRecalc) {
+        await recalcCreditCardBills(userId, cardId);
       }
 
       setData((prev) =>
@@ -317,17 +380,33 @@ export function useTransactions() {
         .eq("id", id)
         .single();
 
-      if (oldTx && oldTx.is_credit_card && oldTx.credit_card_id) {
-        await syncCreditCardBill(
-          oldTx.credit_card_id,
-          oldTx.date,
-          -oldTx.amount,
-          userId,
-        );
-      }
-
       await supabase.from("transactions").delete().eq("id", id);
       setData((prev) => prev.filter((t) => t.id !== id));
+
+      if (oldTx?.is_credit_card && oldTx.credit_card_id) {
+        await recalcCreditCardBills(userId, oldTx.credit_card_id);
+      }
+    },
+    [userId],
+  );
+
+  /** Remove todas as parcelas de uma compra parcelada. */
+  const removeGroup = useCallback(
+    async (purchaseGroupId: string) => {
+      if (!userId) return;
+      const { data: rows } = await supabase
+        .from("transactions")
+        .select("credit_card_id")
+        .eq("purchase_group_id", purchaseGroupId);
+      await supabase
+        .from("transactions")
+        .delete()
+        .eq("purchase_group_id", purchaseGroupId);
+      setData((prev) =>
+        prev.filter((t) => t.purchase_group_id !== purchaseGroupId),
+      );
+      const cardId = rows?.[0]?.credit_card_id;
+      if (cardId) await recalcCreditCardBills(userId, cardId);
     },
     [userId],
   );
@@ -338,6 +417,8 @@ export function useTransactions() {
     getByMonth,
     getByCreditCard,
     create,
+    createInstallments,
+    removeGroup,
     update,
     remove,
     refetch: fetch,
@@ -738,6 +819,28 @@ export function useBudgets() {
 // Credit Cards
 // =============================================================================
 
+// Valor em aberto de uma fatura (fatura + rotativo − já pago).
+export function billOutstanding(b: CreditCardBill): number {
+  if (b.is_paid) return 0;
+  return Math.max(
+    0,
+    Number(b.total_amount) + Number(b.rollover_amount ?? 0) - Number(b.paid_amount ?? 0),
+  );
+}
+
+export function computeCardStats(
+  card: CreditCard,
+  bills: CreditCardBill[],
+): Omit<CreditCardWithBills, keyof CreditCard | "bills"> {
+  const used = bills.reduce((s, b) => s + billOutstanding(b), 0);
+  const limit = Number(card.limit) || 0;
+  const available = Math.max(0, limit - used);
+  const utilization = limit > 0 ? (used / limit) * 100 : 0;
+  const curMonth = currentBillMonth(card.closing_day, card.due_day);
+  const currentBill = bills.find((b) => b.month === curMonth) ?? null;
+  return { used, available, utilization, currentBill };
+}
+
 export function useCreditCards() {
   const [data, setData] = useState<CreditCardWithBills[]>([]);
   const [loading, setLoading] = useState(true);
@@ -749,10 +852,10 @@ export function useCreditCards() {
       setLoading(false);
       return;
     }
-    const { data: cards } = await supabase
-      .from("credit_cards")
-      .select("*")
-      .eq("user_id", userId);
+    const [{ data: cards }, { data: allBills }] = await Promise.all([
+      supabase.from("credit_cards").select("*").eq("user_id", userId),
+      supabase.from("credit_card_bills").select("*").eq("user_id", userId),
+    ]);
 
     if (!cards) {
       setData([]);
@@ -760,17 +863,12 @@ export function useCreditCards() {
       return;
     }
 
-    const cardsWithBills: CreditCardWithBills[] = await Promise.all(
-      cards.map(async (card) => {
-        const { data: bills } = await supabase
-          .from("credit_card_bills")
-          .select("*")
-          .eq("credit_card_id", card.id)
-          .order("created_at", { ascending: false })
-          .limit(3);
-        return { ...card, bills: bills ?? [] };
-      }),
-    );
+    const cardsWithBills: CreditCardWithBills[] = cards.map((card) => {
+      const bills = (allBills ?? [])
+        .filter((b) => b.credit_card_id === card.id)
+        .sort((a, b) => b.month.localeCompare(a.month));
+      return { ...card, bills, ...computeCardStats(card, bills) };
+    });
 
     setData(cardsWithBills);
     setLoading(false);
@@ -828,11 +926,37 @@ export function useCreditCards() {
   );
 
   const toggleBillPaid = useCallback(async (id: string, isPaid: boolean) => {
+    const bill = data
+      .flatMap((c) => c.bills)
+      .find((b) => b.id === id);
+    const total = bill
+      ? Number(bill.total_amount) + Number(bill.rollover_amount ?? 0)
+      : 0;
     await supabase
       .from("credit_card_bills")
-      .update({ is_paid: isPaid })
+      .update({
+        is_paid: isPaid,
+        paid_amount: isPaid ? total : 0,
+        paid_at: isPaid ? new Date().toISOString().split("T")[0] : null,
+      })
       .eq("id", id);
-  }, []);
+  }, [data]);
+
+  /** Registra um pagamento (total ou parcial) de fatura. */
+  const payBill = useCallback(async (id: string, amount: number) => {
+    const bill = data.flatMap((c) => c.bills).find((b) => b.id === id);
+    if (!bill) return;
+    const total = Number(bill.total_amount) + Number(bill.rollover_amount ?? 0);
+    const newPaid = Math.min(total, Number(bill.paid_amount ?? 0) + amount);
+    await supabase
+      .from("credit_card_bills")
+      .update({
+        paid_amount: newPaid,
+        is_paid: newPaid >= total - 0.005,
+        paid_at: new Date().toISOString().split("T")[0],
+      })
+      .eq("id", id);
+  }, [data]);
 
   const deleteBill = useCallback(async (id: string) => {
     await supabase.from("credit_card_bills").delete().eq("id", id);
@@ -846,6 +970,7 @@ export function useCreditCards() {
     remove,
     createBill,
     toggleBillPaid,
+    payBill,
     deleteBill,
     refetch: fetch,
   };
@@ -941,6 +1066,35 @@ export function useInvestments() {
 // Debts
 // =============================================================================
 
+export function summarizeDebts(debts: Debt[]): DebtsSummary {
+  const totalOwed = debts.reduce((s, d) => s + Number(d.total_amount), 0);
+  const totalRemaining = debts.reduce(
+    (s, d) => s + Number(d.remaining_amount),
+    0,
+  );
+  const totalMonthly = debts
+    .filter((d) => !d.is_paid)
+    .reduce((s, d) => s + Number(d.monthly_payment), 0);
+  const onCard = debts.filter((d) => !d.is_paid && d.credit_card_id);
+  const totalRemainingOnCard = onCard.reduce(
+    (s, d) => s + Number(d.remaining_amount),
+    0,
+  );
+  return {
+    totalOwed,
+    totalRemaining,
+    totalPaid: totalOwed - totalRemaining,
+    totalMonthly,
+    totalRemainingOnCard,
+    totalRemainingStandalone: debts
+      .filter((d) => !d.is_paid && !d.credit_card_id)
+      .reduce((s, d) => s + Number(d.remaining_amount), 0),
+    activeCount: debts.filter((d) => !d.is_paid).length,
+    paidCount: debts.filter((d) => d.is_paid).length,
+    count: debts.length,
+  };
+}
+
 export function useDebts() {
   const [data, setData] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -976,28 +1130,14 @@ export function useDebts() {
     return result ?? [];
   }, [userId]);
 
-  const getSummary = useCallback(async (): Promise<DebtsSummary | null> => {
-    if (!userId) return null;
-    const { data: debts } = await supabase
-      .from("debts")
-      .select("*")
-      .eq("user_id", userId);
-    if (!debts) return null;
-    const totalOwed = debts.reduce((s, d) => s + d.total_amount, 0);
-    const totalRemaining = debts.reduce((s, d) => s + d.remaining_amount, 0);
-    const totalMonthly = debts.reduce((s, d) => s + d.monthly_payment, 0);
-    const activeCount = debts.filter((d) => !d.is_paid).length;
-    const paidCount = debts.filter((d) => d.is_paid).length;
-    return {
-      totalOwed,
-      totalRemaining,
-      totalPaid: totalOwed - totalRemaining,
-      totalMonthly,
-      activeCount,
-      paidCount,
-      count: debts.length,
-    };
-  }, [userId]);
+  // Deriva o resumo dos dados já carregados (sem novo fetch).
+  const getSummary = useCallback(
+    async (): Promise<DebtsSummary | null> => {
+      if (!userId) return null;
+      return summarizeDebts(data);
+    },
+    [userId, data],
+  );
 
   const create = useCallback(
     async (debt: Omit<Debt, "id" | "user_id" | "is_paid" | "created_at">) => {
@@ -1026,43 +1166,82 @@ export function useDebts() {
     [],
   );
 
-  const markAsPaid = useCallback(async (id: string) => {
-    await supabase
-      .from("debts")
-      .update({ is_paid: true, remaining_amount: 0 })
-      .eq("id", id);
-    setData((prev) =>
-      prev.map((d) =>
-        d.id === id ? { ...d, is_paid: true, remaining_amount: 0 } : d,
-      ),
-    );
-  }, []);
+  const markAsPaid = useCallback(
+    async (id: string) => {
+      const debt = data.find((d) => d.id === id);
+      const patch: Partial<Debt> = {
+        is_paid: true,
+        remaining_amount: 0,
+        installments_paid: debt?.installments_total ?? debt?.installments_paid ?? 0,
+      };
+      await supabase.from("debts").update(patch).eq("id", id);
+      setData((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, ...patch } : d)),
+      );
+    },
+    [data],
+  );
 
   const payInstallment = useCallback(
     async (id: string, amount: number) => {
       const debt = data.find((d) => d.id === id);
       if (!debt) return;
-      const newRemaining = Math.max(0, debt.remaining_amount - amount);
-      await supabase
-        .from("debts")
-        .update({
-          remaining_amount: newRemaining,
-          is_paid: newRemaining <= 0,
-        })
-        .eq("id", id);
+      const newRemaining = Math.max(0, Number(debt.remaining_amount) - amount);
+      const paid = newRemaining <= 0.005;
+      const donePaid = (debt.installments_paid ?? 0) + 1;
+      const patch: Partial<Debt> = {
+        remaining_amount: newRemaining,
+        is_paid: paid,
+        installments_paid: paid
+          ? debt.installments_total ?? donePaid
+          : Math.min(donePaid, debt.installments_total ?? donePaid),
+      };
+      await supabase.from("debts").update(patch).eq("id", id);
       setData((prev) =>
-        prev.map((d) =>
-          d.id === id
-            ? {
-                ...d,
-                remaining_amount: newRemaining,
-                is_paid: newRemaining <= 0,
-              }
-            : d,
-        ),
+        prev.map((d) => (d.id === id ? { ...d, ...patch } : d)),
       );
     },
     [data],
+  );
+
+  /**
+   * Registra um pagamento na tabela debt_payments e abate o saldo da dívida.
+   * `deduction` = valor pago + desconto (o que sai do saldo devedor).
+   */
+  const recordPayment = useCallback(
+    async (
+      debtId: string,
+      p: {
+        amount: number;
+        discount?: number;
+        paidAt?: string;
+        method?: string | null;
+        sourceName?: string | null;
+        transactionId?: string | null;
+      },
+    ) => {
+      if (!userId) return;
+      const discount = p.discount ?? 0;
+      await supabase.from("debt_payments").insert({
+        user_id: userId,
+        debt_id: debtId,
+        amount: p.amount,
+        discount,
+        paid_at: p.paidAt ?? new Date().toISOString().split("T")[0],
+        method: p.method ?? null,
+        source_name: p.sourceName ?? null,
+        transaction_id: p.transactionId ?? null,
+      });
+      const debt = data.find((d) => d.id === debtId);
+      if (!debt) return;
+      const deduction = p.amount + discount;
+      if (deduction >= Number(debt.remaining_amount) - 0.005) {
+        await markAsPaid(debtId);
+      } else {
+        await payInstallment(debtId, deduction);
+      }
+    },
+    [userId, data, markAsPaid, payInstallment],
   );
 
   const remove = useCallback(async (id: string) => {
@@ -1075,13 +1254,77 @@ export function useDebts() {
     loading,
     getActive,
     getSummary,
+    summary: summarizeDebts(data),
     create,
     update,
     markAsPaid,
     payInstallment,
+    recordPayment,
     remove,
     refetch: fetch,
   };
+}
+
+// =============================================================================
+// Debt Payments (histórico)
+// =============================================================================
+
+export function useDebtPayments(debtId: string | null) {
+  const [data, setData] = useState<DebtPayment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    if (!debtId) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+    const { data: result } = await supabase
+      .from("debt_payments")
+      .select("*")
+      .eq("debt_id", debtId)
+      .order("paid_at", { ascending: true });
+    setData(result ?? []);
+    setLoading(false);
+  }, [debtId]);
+
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { data, loading, refetch: fetch };
+}
+
+/** Todos os pagamentos de dívida do usuário, agrupados por debt_id. */
+export function useAllDebtPayments() {
+  const [byDebt, setByDebt] = useState<Record<string, DebtPayment[]>>({});
+  const [loading, setLoading] = useState(true);
+  const userId = useUserId();
+
+  const fetch = useCallback(async () => {
+    if (!userId) {
+      setByDebt({});
+      setLoading(false);
+      return;
+    }
+    const { data: rows } = await supabase
+      .from("debt_payments")
+      .select("*")
+      .eq("user_id", userId)
+      .order("paid_at", { ascending: true });
+    const grouped: Record<string, DebtPayment[]> = {};
+    for (const r of rows ?? []) {
+      (grouped[r.debt_id] ??= []).push(r);
+    }
+    setByDebt(grouped);
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { byDebt, loading, refetch: fetch };
 }
 
 // =============================================================================
