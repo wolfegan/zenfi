@@ -24,6 +24,7 @@ import {
   buildInstallmentRows,
   currentBillMonth,
 } from "@/lib/credit-card";
+import { useRealtimeTick } from "@/hooks/use-realtime";
 import { useCallback, useEffect, useState } from "react";
 
 // =============================================================================
@@ -70,9 +71,10 @@ export function useCategories() {
     setLoading(false);
   }, [userId]);
 
+  const rt = useRealtimeTick("categories");
   useEffect(() => {
     fetch();
-  }, [fetch]);
+  }, [fetch, rt]);
 
   const create = useCallback(
     async (cat: Omit<Category, "id" | "user_id" | "created_at">) => {
@@ -222,6 +224,7 @@ export function useTransactions() {
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const userId = useUserId();
+  const rt = useRealtimeTick("transactions");
 
   const fetch = useCallback(async () => {
     if (!userId) {
@@ -240,7 +243,7 @@ export function useTransactions() {
 
   useEffect(() => {
     fetch();
-  }, [fetch]);
+  }, [fetch, rt]);
 
   const getByMonth = useCallback(
     async (month: string) => {
@@ -433,6 +436,11 @@ export function useMonthlySummary(month: string) {
   const [data, setData] = useState<MonthlySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const userId = useUserId();
+  const rt = useRealtimeTick(
+    "transactions",
+    "monthly_budgets",
+    "categories",
+  );
 
   const calc = useCallback(async () => {
     if (!userId) {
@@ -526,7 +534,7 @@ export function useMonthlySummary(month: string) {
 
   useEffect(() => {
     calc();
-  }, [calc]);
+  }, [calc, rt]);
 
   return { data, loading, refetch: calc };
 }
@@ -539,6 +547,7 @@ export function useMonthlyEvolution(months: number) {
   const [data, setData] = useState<MonthlyEvolution[]>([]);
   const [loading, setLoading] = useState(true);
   const userId = useUserId();
+  const rt = useRealtimeTick("transactions");
 
   const calc = useCallback(async () => {
     if (!userId) {
@@ -587,7 +596,7 @@ export function useMonthlyEvolution(months: number) {
 
   useEffect(() => {
     calc();
-  }, [calc]);
+  }, [calc, rt]);
 
   return { data, loading, refetch: calc };
 }
@@ -600,6 +609,13 @@ export function useFinancialHealthScore() {
   const [data, setData] = useState<HealthScore | null>(null);
   const [loading, setLoading] = useState(true);
   const userId = useUserId();
+  const rt = useRealtimeTick(
+    "transactions",
+    "monthly_budgets",
+    "credit_cards",
+    "credit_card_bills",
+    "investments",
+  );
 
   const calc = useCallback(async () => {
     if (!userId) {
@@ -728,7 +744,7 @@ export function useFinancialHealthScore() {
 
   useEffect(() => {
     calc();
-  }, [calc]);
+  }, [calc, rt]);
 
   return { data, loading, refetch: calc };
 }
@@ -741,6 +757,7 @@ export function useBudgets() {
   const [data, setData] = useState<MonthlyBudget[]>([]);
   const [loading, setLoading] = useState(true);
   const userId = useUserId();
+  const rt = useRealtimeTick("monthly_budgets");
 
   const fetch = useCallback(async () => {
     if (!userId) {
@@ -758,7 +775,7 @@ export function useBudgets() {
 
   useEffect(() => {
     fetch();
-  }, [fetch]);
+  }, [fetch, rt]);
 
   const getByMonth = useCallback(
     async (month: string) => {
@@ -845,6 +862,7 @@ export function useCreditCards() {
   const [data, setData] = useState<CreditCardWithBills[]>([]);
   const [loading, setLoading] = useState(true);
   const userId = useUserId();
+  const rt = useRealtimeTick("credit_cards", "credit_card_bills");
 
   const fetch = useCallback(async () => {
     if (!userId) {
@@ -876,7 +894,7 @@ export function useCreditCards() {
 
   useEffect(() => {
     fetch();
-  }, [fetch]);
+  }, [fetch, rt]);
 
   const create = useCallback(
     async (card: Omit<CreditCard, "id" | "user_id" | "created_at">) => {
@@ -984,6 +1002,7 @@ export function useInvestments() {
   const [data, setData] = useState<Investment[]>([]);
   const [loading, setLoading] = useState(true);
   const userId = useUserId();
+  const rt = useRealtimeTick("investments");
 
   const fetch = useCallback(async () => {
     if (!userId) {
@@ -1001,7 +1020,7 @@ export function useInvestments() {
 
   useEffect(() => {
     fetch();
-  }, [fetch]);
+  }, [fetch, rt]);
 
   const getSummary =
     useCallback(async (): Promise<InvestmentsSummary | null> => {
@@ -1099,6 +1118,7 @@ export function useDebts() {
   const [data, setData] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
   const userId = useUserId();
+  const rt = useRealtimeTick("debts");
 
   const fetch = useCallback(async () => {
     if (!userId) {
@@ -1117,7 +1137,7 @@ export function useDebts() {
 
   useEffect(() => {
     fetch();
-  }, [fetch]);
+  }, [fetch, rt]);
 
   const getActive = useCallback(async () => {
     if (!userId) return [];
@@ -1272,6 +1292,7 @@ export function useDebts() {
 export function useDebtPayments(debtId: string | null) {
   const [data, setData] = useState<DebtPayment[]>([]);
   const [loading, setLoading] = useState(true);
+  const rt = useRealtimeTick("debt_payments");
 
   const fetch = useCallback(async () => {
     if (!debtId) {
@@ -1290,7 +1311,7 @@ export function useDebtPayments(debtId: string | null) {
 
   useEffect(() => {
     fetch();
-  }, [fetch]);
+  }, [fetch, rt]);
 
   return { data, loading, refetch: fetch };
 }
@@ -1300,6 +1321,7 @@ export function useAllDebtPayments() {
   const [byDebt, setByDebt] = useState<Record<string, DebtPayment[]>>({});
   const [loading, setLoading] = useState(true);
   const userId = useUserId();
+  const rt = useRealtimeTick("debt_payments", "debts");
 
   const fetch = useCallback(async () => {
     if (!userId) {
@@ -1322,7 +1344,7 @@ export function useAllDebtPayments() {
 
   useEffect(() => {
     fetch();
-  }, [fetch]);
+  }, [fetch, rt]);
 
   return { byDebt, loading, refetch: fetch };
 }
@@ -1335,6 +1357,7 @@ export function useGoals() {
   const [data, setData] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const userId = useUserId();
+  const rt = useRealtimeTick("goals");
 
   const fetch = useCallback(async () => {
     if (!userId) {
@@ -1353,7 +1376,7 @@ export function useGoals() {
 
   useEffect(() => {
     fetch();
-  }, [fetch]);
+  }, [fetch, rt]);
 
   const getActive = useCallback(async () => {
     if (!userId) return [];
@@ -1492,6 +1515,7 @@ export function useAccounts() {
   const [data, setData] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const userId = useUserId();
+  const rt = useRealtimeTick("accounts");
 
   const fetch = useCallback(async () => {
     if (!userId) {
@@ -1510,7 +1534,7 @@ export function useAccounts() {
 
   useEffect(() => {
     fetch();
-  }, [fetch]);
+  }, [fetch, rt]);
 
   const getTotalBalance = useCallback(async () => {
     if (!userId) return 0;
