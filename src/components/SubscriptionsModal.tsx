@@ -49,7 +49,18 @@ export function SubscriptionsModal({
   open,
   onOpenChange,
 }: SubscriptionsModalProps) {
-  const { create: createTransaction } = useTransactions();
+  const { data: transactions, create: createTransaction } = useTransactions();
+  const now = new Date();
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  const isAlreadyLaunched = (item: SubscriptionItem) => {
+    return (transactions ?? []).some((t) => {
+      const isThisMonth = t.date && t.date.startsWith(currentMonthStr);
+      const matchesDesc = t.description?.toLowerCase().includes(item.name.toLowerCase());
+      return isThisMonth && matchesDesc;
+    });
+  };
+
   const [subscriptions, setSubscriptions] = useState<SubscriptionItem[]>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("zenfi_subscriptions");
@@ -223,63 +234,74 @@ export function SubscriptionsModal({
           </h4>
 
           <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-            {subscriptions.map((item) => (
-              <div
-                key={item.id}
-                className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
-                  item.active
-                    ? "bg-card border-border/60"
-                    : "bg-secondary/30 border-border/30 opacity-60"
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => handleToggleActive(item.id)}
-                    className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-colors ${
-                      item.active
-                        ? "bg-primary border-primary text-primary-foreground"
-                        : "border-border/80"
-                    }`}
-                  >
-                    {item.active && <CheckCircle2 className="w-3.5 h-3.5" />}
-                  </button>
+            {subscriptions.map((item) => {
+              const launched = isAlreadyLaunched(item);
 
-                  <div className="min-w-0">
-                    <span className="text-xs font-bold text-foreground truncate block">
-                      {item.name}
+              return (
+                <div
+                  key={item.id}
+                  className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                    item.active
+                      ? "bg-card border-border/60"
+                      : "bg-secondary/30 border-border/30 opacity-60"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleActive(item.id)}
+                      className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-colors ${
+                        item.active
+                          ? "bg-primary border-primary text-primary-foreground"
+                          : "border-border/80"
+                      }`}
+                    >
+                      {item.active && <CheckCircle2 className="w-3.5 h-3.5" />}
+                    </button>
+
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-foreground truncate block">
+                        {item.name}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground block">
+                        Vence todo dia {item.dueDay} · {item.category}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-bold font-mono text-rose-600 dark:text-rose-400">
+                      {item.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </span>
-                    <span className="text-[10px] text-muted-foreground block">
-                      Vence todo dia {item.dueDay} · {item.category}
-                    </span>
+
+                    {launched ? (
+                      <span className="px-2 py-1 text-[10px] font-bold rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Lançado no Mês
+                      </span>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRegisterAsTransaction(item)}
+                        className="h-7 px-2 text-[10px] font-semibold rounded-lg border-primary/30 text-primary hover:bg-primary/10"
+                        title="Lançar como despesa no mês"
+                      >
+                        Lançar Mês
+                      </Button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item.id)}
+                      className="p-1 rounded-lg text-muted-foreground hover:text-rose-500 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs font-bold font-mono text-rose-600 dark:text-rose-400">
-                    {item.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                  </span>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleRegisterAsTransaction(item)}
-                    className="h-7 px-2 text-[10px] font-semibold rounded-lg border-primary/30 text-primary hover:bg-primary/10"
-                    title="Lançar como despesa no mês"
-                  >
-                    Lançar Mês
-                  </Button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(item.id)}
-                    className="p-1 rounded-lg text-muted-foreground hover:text-rose-500 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </DialogContent>
