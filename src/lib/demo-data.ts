@@ -441,7 +441,7 @@ export const demoAccounts = [
     name: "Poupança",
     type: "savings" as const,
     balance: 12000,
-    color: "#2a7",
+    color: "#00aa5b",
     created_at: Date.now() - 86400000 * 180,
   },
   {
@@ -450,8 +450,26 @@ export const demoAccounts = [
     name: "Carteira",
     type: "cash" as const,
     balance: 350,
-    color: "#a72",
+    color: "#f97316",
     created_at: Date.now() - 86400000 * 60,
+  },
+  {
+    id: "acc-4",
+    user_id: "user-1",
+    name: "Caju Flex (VR/VA)",
+    type: "benefit_flex" as const,
+    balance: 850.0,
+    color: "#ff4b60",
+    created_at: Date.now() - 86400000 * 30,
+  },
+  {
+    id: "acc-5",
+    user_id: "user-1",
+    name: "Vale Transporte SPTrans",
+    type: "benefit_vt" as const,
+    balance: 185.2,
+    color: "#0077b6",
+    created_at: Date.now() - 86400000 * 30,
   },
 ];
 

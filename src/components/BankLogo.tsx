@@ -1,37 +1,64 @@
 import React from "react";
-import { Wallet, PiggyBank, Banknote, Building2, Landmark } from "lucide-react";
+import {
+  Wallet,
+  PiggyBank,
+  Banknote,
+  Building2,
+  Landmark,
+  Utensils,
+  ShoppingCart,
+  Bus,
+  Gift,
+  Fuel,
+  HeartPulse,
+} from "lucide-react";
 
 export interface BankPreset {
   id: string;
   name: string;
   color: string;
   keywords: string[];
+  type?: string;
+  category?: "bank" | "benefit";
 }
 
 export const POPULAR_BANKS: BankPreset[] = [
-  { id: "nubank", name: "Nubank", color: "#820ad1", keywords: ["nubank", "nu"] },
-  { id: "itau", name: "Itaú", color: "#ec7000", keywords: ["itau", "itaú"] },
-  { id: "bradesco", name: "Bradesco", color: "#cc092f", keywords: ["bradesco"] },
-  { id: "bb", name: "Banco do Brasil", color: "#005aa5", keywords: ["banco do brasil", "bb"] },
-  { id: "santander", name: "Santander", color: "#ec0000", keywords: ["santander"] },
-  { id: "caixa", name: "Caixa Econômica", color: "#003399", keywords: ["caixa"] },
-  { id: "inter", name: "Inter", color: "#ff5700", keywords: ["inter", "banco inter"] },
-  { id: "c6", name: "C6 Bank", color: "#18181b", keywords: ["c6", "c6bank", "c6 bank"] },
-  { id: "btg", name: "BTG Pactual", color: "#0f172a", keywords: ["btg", "btg pactual"] },
-  { id: "sicoob", name: "Sicoob", color: "#003641", keywords: ["sicoob"] },
-  { id: "sicredi", name: "Sicredi", color: "#00aa5b", keywords: ["sicredi"] },
-  { id: "mercadopago", name: "Mercado Pago", color: "#00a8e8", keywords: ["mercado pago", "mercadopago"] },
-  { id: "picpay", name: "PicPay", color: "#11c76f", keywords: ["picpay"] },
-  { id: "xp", name: "XP Investimentos", color: "#000000", keywords: ["xp", "xp investimentos"] },
-  { id: "pagbank", name: "PagBank", color: "#00a550", keywords: ["pagbank", "pagseguro"] },
-  { id: "neon", name: "Neon", color: "#00e5ff", keywords: ["neon"] },
+  { id: "nubank", name: "Nubank", color: "#820ad1", keywords: ["nubank", "nu"], category: "bank" },
+  { id: "itau", name: "Itaú", color: "#ec7000", keywords: ["itau", "itaú"], category: "bank" },
+  { id: "bradesco", name: "Bradesco", color: "#cc092f", keywords: ["bradesco"], category: "bank" },
+  { id: "bb", name: "Banco do Brasil", color: "#005aa5", keywords: ["banco do brasil", "bb"], category: "bank" },
+  { id: "santander", name: "Santander", color: "#ec0000", keywords: ["santander"], category: "bank" },
+  { id: "caixa", name: "Caixa Econômica", color: "#003399", keywords: ["caixa"], category: "bank" },
+  { id: "inter", name: "Inter", color: "#ff5700", keywords: ["inter", "banco inter"], category: "bank" },
+  { id: "c6", name: "C6 Bank", color: "#18181b", keywords: ["c6", "c6bank", "c6 bank"], category: "bank" },
+  { id: "btg", name: "BTG Pactual", color: "#0f172a", keywords: ["btg", "btg pactual"], category: "bank" },
+  { id: "sicoob", name: "Sicoob", color: "#003641", keywords: ["sicoob"], category: "bank" },
+  { id: "sicredi", name: "Sicredi", color: "#00aa5b", keywords: ["sicredi"], category: "bank" },
+  { id: "mercadopago", name: "Mercado Pago", color: "#00a8e8", keywords: ["mercado pago", "mercadopago"], category: "bank" },
+  { id: "picpay", name: "PicPay", color: "#11c76f", keywords: ["picpay"], category: "bank" },
+  { id: "xp", name: "XP Investimentos", color: "#000000", keywords: ["xp", "xp investimentos"], category: "bank" },
+  { id: "pagbank", name: "PagBank", color: "#00a550", keywords: ["pagbank", "pagseguro"], category: "bank" },
+  { id: "neon", name: "Neon", color: "#00e5ff", keywords: ["neon"], category: "bank" },
+];
+
+export const POPULAR_BENEFITS: BankPreset[] = [
+  { id: "caju", name: "Caju Flex", color: "#ff4b60", keywords: ["caju"], type: "benefit_flex", category: "benefit" },
+  { id: "flash", name: "Flash Benefícios", color: "#ff5000", keywords: ["flash"], type: "benefit_flex", category: "benefit" },
+  { id: "swile", name: "Swile", color: "#6c42f5", keywords: ["swile"], type: "benefit_flex", category: "benefit" },
+  { id: "alelo", name: "Alelo (VR/VA)", color: "#008a00", keywords: ["alelo"], type: "benefit_vr", category: "benefit" },
+  { id: "pluxee", name: "Pluxee / Sodexo", color: "#0070c0", keywords: ["pluxee", "sodexo"], type: "benefit_vr", category: "benefit" },
+  { id: "ticket", name: "Ticket Restaurante", color: "#e2001a", keywords: ["ticket"], type: "benefit_vr", category: "benefit" },
+  { id: "vr", name: "VR Benefícios", color: "#00a859", keywords: ["vr beneficios", "vr"], type: "benefit_vr", category: "benefit" },
+  { id: "vt", name: "Bilhete Único / VT", color: "#0077b6", keywords: ["vt", "transporte", "sptrans", "top", "riocard"], type: "benefit_vt", category: "benefit" },
+  { id: "combustivel", name: "Vale Combustível", color: "#d97706", keywords: ["combustivel", "gasolina", "posto"], type: "benefit_fuel", category: "benefit" },
 ];
 
 export function findBankPreset(nameOrKey: string): BankPreset | null {
   if (!nameOrKey) return null;
   const clean = nameOrKey.toLowerCase().trim();
+  const allPresets = [...POPULAR_BANKS, ...POPULAR_BENEFITS];
   return (
-    POPULAR_BANKS.find(
+    allPresets.find(
       (b) => b.id === clean || b.keywords.some((k) => clean.includes(k))
     ) || null
   );
@@ -270,9 +297,32 @@ export function BankLogo({
         </svg>
       );
 
+    case "caju":
+    case "flash":
+    case "swile":
+      return <Gift className={className} size={size} />;
+
+    case "alelo":
+    case "pluxee":
+    case "ticket":
+    case "vr":
+      return <Utensils className={className} size={size} />;
+
+    case "vt":
+      return <Bus className={className} size={size} />;
+
+    case "combustivel":
+      return <Fuel className={className} size={size} />;
+
     default:
       if (type === "savings") return <PiggyBank className={className} size={size} />;
       if (type === "cash") return <Banknote className={className} size={size} />;
+      if (type === "benefit_vr") return <Utensils className={className} size={size} />;
+      if (type === "benefit_va") return <ShoppingCart className={className} size={size} />;
+      if (type === "benefit_vt") return <Bus className={className} size={size} />;
+      if (type === "benefit_flex") return <Gift className={className} size={size} />;
+      if (type === "benefit_fuel") return <Fuel className={className} size={size} />;
+      if (type === "benefit_health") return <HeartPulse className={className} size={size} />;
       if (type === "other") return <Building2 className={className} size={size} />;
       return <Wallet className={className} size={size} />;
   }
