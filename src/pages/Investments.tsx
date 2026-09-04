@@ -33,6 +33,7 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { demoInvestments, demoInvestmentsSummary } from "@/lib/demo-data";
+import { PrivacyValue } from "@/components/PrivacyValue";
 
 const investmentTypes = [
   { value: "stocks", label: "Ações" },
@@ -261,19 +262,23 @@ export default function Investments() {
                 Total Investido
               </p>
               <p className="text-lg font-light tabular-nums">
-                {summaryData.totalInvested.toLocaleString("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                })}
+                <PrivacyValue>
+                  {summaryData.totalInvested.toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency: "BRL",
+                  })}
+                </PrivacyValue>
               </p>
             </div>
             <div className="p-5 rounded-sm border bg-card">
               <p className="text-xs text-muted-foreground mb-1">Valor Atual</p>
               <p className="text-lg font-light tabular-nums">
-                {summaryData.totalCurrentValue.toLocaleString("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                })}
+                <PrivacyValue>
+                  {summaryData.totalCurrentValue.toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency: "BRL",
+                  })}
+                </PrivacyValue>
               </p>
             </div>
             <div className="p-5 rounded-sm border bg-card">
@@ -330,10 +335,12 @@ export default function Investments() {
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-muted-foreground">
                         Investido:{" "}
-                        {inv.amount.toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })}
+                        <PrivacyValue>
+                          {inv.amount.toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </PrivacyValue>
                       </span>
                       {inv.monthly_contribution > 0 && (
                         <>
@@ -342,10 +349,12 @@ export default function Investments() {
                           </span>
                           <span className="text-xs text-muted-foreground">
                             +
-                            {inv.monthly_contribution.toLocaleString("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            })}
+                            <PrivacyValue>
+                              {inv.monthly_contribution.toLocaleString("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              })}
+                            </PrivacyValue>
                             /mês
                           </span>
                         </>
@@ -354,10 +363,12 @@ export default function Investments() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm tabular-nums">
-                      {inv.current_value.toLocaleString("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      })}
+                      <PrivacyValue>
+                        {inv.current_value.toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </PrivacyValue>
                     </p>
                     <p
                       className={`text-xs tabular-nums ${returnPct >= 0 ? "text-success" : "text-destructive"}`}

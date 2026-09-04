@@ -18,6 +18,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { DashboardLayout, openCalculator, openSimulator, openCalendar, openSubscriptions } from "@/components/DashboardLayout";
+import { usePrivacy } from "@/lib/privacy";
+import { PrivacyValue } from "@/components/PrivacyValue";
 import { BurnRateCard } from "@/components/BurnRateCard";
 import { MonthComparisonCard } from "@/components/MonthComparisonCard";
 import {
@@ -398,20 +400,7 @@ export default function Dashboard() {
   );
   const [quickSubmitting, setQuickSubmitting] = useState(false);
 
-  const [hideBalance, setHideBalance] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("zenfi_hide_balance") === "true";
-    }
-    return false;
-  });
-
-  const toggleHideBalance = () => {
-    setHideBalance((prev) => {
-      const next = !prev;
-      localStorage.setItem("zenfi_hide_balance", String(next));
-      return next;
-    });
-  };
+  const { hideBalance, toggleHideBalance } = usePrivacy();
 
   const handleQuickSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -535,8 +524,11 @@ export default function Dashboard() {
   const netWorth = totalAccountsBalance - totalDebtsStandalone;
 
   const formatCurrency = (v: number) => {
-    if (hideBalance) return "R$ ••••••";
-    return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    return (
+      <PrivacyValue>
+        {v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+      </PrivacyValue>
+    );
   };
 
   // Future Month Projection calculations
@@ -768,10 +760,12 @@ export default function Dashboard() {
                                 {d.creditor}
                               </span>
                               <span className="tabular-nums text-destructive font-medium ml-2 shrink-0">
-                                {d.remaining_amount.toLocaleString("pt-BR", {
-                                  style: "currency",
-                                  currency: "BRL",
-                                })}
+                                <PrivacyValue>
+                                  {d.remaining_amount.toLocaleString("pt-BR", {
+                                    style: "currency",
+                                    currency: "BRL",
+                                  })}
+                                </PrivacyValue>
                               </span>
                             </div>
                           ))}
@@ -808,10 +802,12 @@ export default function Dashboard() {
                                   {d.creditor} · {dayLabel}
                                 </span>
                                 <span className="tabular-nums font-medium ml-2 shrink-0">
-                                  {d.remaining_amount.toLocaleString("pt-BR", {
-                                    style: "currency",
-                                    currency: "BRL",
-                                  })}
+                                  <PrivacyValue>
+                                    {d.remaining_amount.toLocaleString("pt-BR", {
+                                      style: "currency",
+                                      currency: "BRL",
+                                    })}
+                                  </PrivacyValue>
                                 </span>
                               </div>
                             );

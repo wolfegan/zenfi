@@ -61,6 +61,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { demoAccounts } from "@/lib/demo-data";
 import { toast } from "sonner";
+import { PrivacyValue } from "@/components/PrivacyValue";
 
 export const accountTypes = [
   { value: "checking", label: "Conta Corrente", icon: Wallet, category: "bank" },
@@ -209,8 +210,11 @@ export default function Accounts() {
     return true;
   });
 
-  const formatCurrency = (value: number) =>
-    value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const formatCurrency = (value: number) => (
+    <PrivacyValue>
+      {value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+    </PrivacyValue>
+  );
 
   return (
     <DashboardLayout>

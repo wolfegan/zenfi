@@ -50,6 +50,7 @@ import {
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { demoDebts, demoDebtsSummary } from "@/lib/demo-data";
+import { PrivacyValue } from "@/components/PrivacyValue";
 
 const MONTHS = [
   { value: "01", label: "Janeiro" },
@@ -145,6 +146,12 @@ export default function Debts() {
     navigate("/auth");
     return null;
   }
+
+  const formatCurrency = (val: number) => (
+    <PrivacyValue>
+      {(val || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+    </PrivacyValue>
+  );
 
   const resetForm = () => {
     setForm(emptyForm);

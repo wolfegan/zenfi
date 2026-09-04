@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useTheme } from "@/lib/theme";
+import { usePrivacy } from "@/lib/privacy";
 import {
   ArrowDownUp,
   CreditCard,
@@ -28,6 +29,8 @@ import {
   Calendar as CalendarIcon,
   RefreshCw,
   ArrowLeftRight,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -123,6 +126,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [transferModalOpen, setTransferModalOpen] = useState(false);
 
   const { isDark: darkMode, toggleTheme } = useTheme();
+  const { hideBalance, toggleHideBalance } = usePrivacy();
 
   // Global event listeners for tool modals
   useEffect(() => {
@@ -286,6 +290,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           Configurações
         </Link>
         <button
+          onClick={toggleHideBalance}
+          className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-200 w-full text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+        >
+          {hideBalance ? (
+            <EyeOff className="w-4 h-4 shrink-0 text-primary" />
+          ) : (
+            <Eye className="w-4 h-4 shrink-0" />
+          )}
+          {hideBalance ? "Mostrar saldos" : "Ocultar saldos"}
+        </button>
+        <button
           onClick={toggleTheme}
           className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-200 w-full text-muted-foreground hover:text-foreground hover:bg-secondary/60"
         >
@@ -418,6 +433,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               title="Simulador de Compras"
             >
               <Sparkles className="w-4 h-4" />
+            </button>
+            <button
+              onClick={toggleHideBalance}
+              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary transition-colors"
+              title={hideBalance ? "Mostrar saldos" : "Ocultar saldos"}
+            >
+              {hideBalance ? (
+                <EyeOff className="w-4 h-4 text-primary" />
+              ) : (
+                <Eye className="w-4 h-4 text-muted-foreground" />
+              )}
             </button>
             <button
               onClick={toggleTheme}

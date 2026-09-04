@@ -49,6 +49,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { demoCreditCards } from "@/lib/demo-data";
 import { currentBillMonth, addMonthsYm, billDatesForMonth } from "@/lib/credit-card";
+import { PrivacyValue } from "@/components/PrivacyValue";
 
 function daysUntil(dateStr: string): number {
   const d = new Date(dateStr + "T00:00:00");
@@ -752,15 +753,19 @@ export default function CreditCardsPage() {
                         Limite Utilizado
                       </span>
                       <span className="text-xs font-semibold tabular-nums">
-                        {spending.toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })}{" "}
+                        <PrivacyValue>
+                          {spending.toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </PrivacyValue>{" "}
                         /{" "}
-                        {card.limit.toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })}
+                        <PrivacyValue>
+                          {card.limit.toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </PrivacyValue>
                       </span>
                     </div>
 
@@ -779,10 +784,12 @@ export default function CreditCardsPage() {
                       </p>
                       <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
                         Disponível:{" "}
-                        {available.toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })}
+                        <PrivacyValue>
+                          {available.toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </PrivacyValue>
                       </p>
                     </div>
                   </div>
@@ -816,7 +823,16 @@ export default function CreditCardsPage() {
                                 {monthLabel}
                               </div>
                               <div className="text-xs font-semibold tabular-nums">
-                                {isPaid ? "Quitada" : `R$ ${outstanding.toFixed(2)}`}
+                                {isPaid ? (
+                                  "Quitada"
+                                ) : (
+                                  <PrivacyValue>
+                                    {outstanding.toLocaleString("pt-BR", {
+                                      style: "currency",
+                                      currency: "BRL",
+                                    })}
+                                  </PrivacyValue>
+                                )}
                               </div>
                             </div>
                           );
@@ -911,10 +927,12 @@ export default function CreditCardsPage() {
                                     bill.is_paid || isRolled ? "text-muted-foreground line-through" : ""
                                   }`}
                                 >
-                                  {(bill.is_paid || isRolled ? billTotal : outstanding).toLocaleString(
-                                    "pt-BR",
-                                    { style: "currency", currency: "BRL" }
-                                  )}
+                                  <PrivacyValue>
+                                    {(bill.is_paid || isRolled ? billTotal : outstanding).toLocaleString(
+                                      "pt-BR",
+                                      { style: "currency", currency: "BRL" }
+                                    )}
+                                  </PrivacyValue>
                                 </span>
                                 <Button
                                   variant="ghost"

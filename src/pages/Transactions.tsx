@@ -64,6 +64,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router";
 import { demoTransactions, demoCategories, demoCreditCards, demoAccounts } from "@/lib/demo-data";
 import { isBenefitType } from "@/pages/Accounts";
+import { PrivacyValue } from "@/components/PrivacyValue";
 
 function currentMonth() {
   const now = new Date();
@@ -223,6 +224,12 @@ export default function Transactions() {
     navigate("/auth");
     return null;
   }
+
+  const formatCurrency = (val: number) => (
+    <PrivacyValue>
+      {val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+    </PrivacyValue>
+  );
 
   const expenseCategories =
     categories?.filter((c: any) => c.type === "expense") || [];
@@ -435,8 +442,6 @@ export default function Transactions() {
   const pendingCount = allTxs.filter(
     (t: any) => t.status === "pending",
   ).length;
-  const formatCurrency = (v: number) =>
-    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   const accountById = (id: string) =>
     accounts?.find((a: any) => a.id === id);
@@ -1358,10 +1363,12 @@ export default function Transactions() {
                           }`}
                         >
                           {tx.type === "income" ? "+" : "-"}
-                          {tx.amount.toLocaleString("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          })}
+                          <PrivacyValue>
+                            {tx.amount.toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            })}
+                          </PrivacyValue>
                         </div>
 
                         {isPending ? (
