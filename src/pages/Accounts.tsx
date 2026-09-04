@@ -33,7 +33,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useAccounts } from "@/hooks/use-supabase";
 import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
-import { BankLogo, POPULAR_BANKS, POPULAR_BENEFITS } from "@/components/BankLogo";
+import { BankLogo, POPULAR_BANKS, POPULAR_BENEFITS, findBankPreset } from "@/components/BankLogo";
 import { motion } from "framer-motion";
 import { OFXImportModal } from "@/components/OFXImportModal";
 import {
@@ -75,14 +75,59 @@ export const accountTypes = [
   { value: "other", label: "Outro", icon: Building2, category: "bank" },
 ];
 
-function getAccountIcon(type: string) {
+export function isBenefitType(type: string, name: string = ""): boolean {
+  if (type?.startsWith("benefit_")) return true;
+  const cleanName = name.toLowerCase().trim();
+  const preset = findBankPreset(cleanName);
+  if (preset?.category === "benefit") return true;
+  const benefitKeywords = [
+    "vt",
+    "vr",
+    "va",
+    "vale",
+    "refeicao",
+    "refeição",
+    "alimentacao",
+    "alimentação",
+    "transporte",
+    "caju",
+    "flash",
+    "swile",
+    "alelo",
+    "sodexo",
+    "pluxee",
+    "ticket",
+    "flex",
+    "combustivel",
+    "combustível",
+  ];
+  return benefitKeywords.some((k) => cleanName.includes(k));
+}
+
+function getAccountIcon(type: string, name: string = "") {
+  if (isBenefitType(type, name)) {
+    const clean = name.toLowerCase();
+    if (clean.includes("vt") || clean.includes("transporte")) return Bus;
+    if (clean.includes("vr") || clean.includes("refeiç") || clean.includes("refeic")) return Utensils;
+    if (clean.includes("va") || clean.includes("alimenta")) return ShoppingCart;
+    if (clean.includes("combust")) return Fuel;
+    return Gift;
+  }
   return accountTypes.find((a) => a.value === type)?.icon || Landmark;
 }
-function getAccountLabel(type: string) {
-  return accountTypes.find((a) => a.value === type)?.label || type;
-}
-function isBenefitType(type: string) {
-  return type?.startsWith("benefit_");
+
+function getAccountLabel(type: string, name: string = "") {
+  const found = accountTypes.find((a) => a.value === type);
+  if (found && found.value !== "other") return found.label;
+  if (isBenefitType(type, name)) {
+    const clean = name.toLowerCase();
+    if (clean.includes("vt") || clean.includes("transporte")) return "Vale Transporte (VT)";
+    if (clean.includes("vr") || clean.includes("refeiç") || clean.includes("refeic")) return "Vale Refeição (VR)";
+    if (clean.includes("va") || clean.includes("alimenta")) return "Vale Alimentação (VA)";
+    if (clean.includes("combust")) return "Vale Combustível";
+    return "Cartão Benefício";
+  }
+  return found?.label || type;
 }
 
 export default function Accounts() {
@@ -152,15 +197,15 @@ export default function Accounts() {
 
   const totalBalance = accounts.reduce((s: number, a: any) => s + (a.balance || 0), 0);
   const bankBalance = accounts
-    .filter((a: any) => !isBenefitType(a.type))
+    .filter((a: any) => !isBenefitType(a.type, a.name))
     .reduce((s: number, a: any) => s + (a.balance || 0), 0);
   const benefitBalance = accounts
-    .filter((a: any) => isBenefitType(a.type))
+    .filter((a: any) => isBenefitType(a.type, a.name))
     .reduce((s: number, a: any) => s + (a.balance || 0), 0);
 
   const filteredAccounts = accounts.filter((a: any) => {
-    if (filterTab === "bank") return !isBenefitType(a.type);
-    if (filterTab === "benefit") return isBenefitType(a.type);
+    if (filterTab === "bank") return !isBenefitType(a.type, a.name);
+    if (filterTab === "benefit") return isBenefitType(a.type, a.name);
     return true;
   });
 
@@ -492,7 +537,7 @@ export default function Accounts() {
               {formatCurrency(bankBalance)}
             </p>
             <p className="text-[10px] text-muted-foreground mt-1">
-              {accounts.filter((a: any) => !isBenefitType(a.type)).length} conta(s) tradicional(is)
+              {accounts.filter((a: any) => !isBenefitType(a.type, a.name)).length} conta(s) tradicional(is)
             </p>
           </motion.div>
 
@@ -515,7 +560,7 @@ export default function Accounts() {
               {formatCurrency(benefitBalance)}
             </p>
             <p className="text-[10px] text-emerald-800/80 dark:text-emerald-400 mt-1">
-              {accounts.filter((a: any) => isBenefitType(a.type)).length} cartão(ões) de benefícios empresa
+              {accounts.filter((a: any) => isBenefitType(a.type, a.name)).length} cartão(ões) de benefícios empresa
             </p>
           </motion.div>
 
@@ -560,7 +605,7 @@ export default function Accounts() {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Bancárias ({accounts.filter((a: any) => !isBenefitType(a.type)).length})
+            Bancárias ({accounts.filter((a: any) => !isBenefitType(a.type, a.name)).length})
           </button>
           <button
             onClick={() => setFilterTab("benefit")}
@@ -571,7 +616,7 @@ export default function Accounts() {
             }`}
           >
             <Gift className="w-3.5 h-3.5 text-emerald-500" />
-            Cartões Benefícios ({accounts.filter((a: any) => isBenefitType(a.type)).length})
+            Cartões Benefícios ({accounts.filter((a: any) => isBenefitType(a.type, a.name)).length})
           </button>
         </div>
 
@@ -579,8 +624,8 @@ export default function Accounts() {
         {filteredAccounts.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredAccounts.map((acc: any, i: number) => {
-              const Icon = getAccountIcon(acc.type);
-              const isBenefit = isBenefitType(acc.type);
+              const Icon = getAccountIcon(acc.type, acc.name);
+              const isBenefit = isBenefitType(acc.type, acc.name);
 
               return (
                 <motion.div
@@ -608,7 +653,7 @@ export default function Accounts() {
                           </div>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <p className="text-xs text-muted-foreground font-medium">
-                              {getAccountLabel(acc.type)}
+                              {getAccountLabel(acc.type, acc.name)}
                             </p>
                             {isBenefit && (
                               <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30">

@@ -1735,11 +1735,26 @@ export function useAccounts() {
   const create = useCallback(
     async (acc: Omit<Account, "id" | "user_id" | "created_at">) => {
       if (!userId) return null;
-      const { data: result } = await supabase
+      let { data: result, error } = await supabase
         .from("accounts")
         .insert({ user_id: userId, ...acc })
         .select()
         .single();
+
+      // Se o banco Supabase tiver a constraint antiga CHECK (type IN ('checking', 'savings', 'cash', 'other'))
+      if (error && (error.code === "23514" || error.message?.includes("accounts_type_check"))) {
+        const fallbackAcc = { ...acc, type: "other" as const };
+        const { data: retryResult, error: retryError } = await supabase
+          .from("accounts")
+          .insert({ user_id: userId, ...fallbackAcc })
+          .select()
+          .single();
+        if (retryError) console.error("Erro ao criar conta com fallback:", retryError);
+        result = retryResult;
+      } else if (error) {
+        console.error("Erro ao criar conta:", error);
+      }
+
       if (result) setData((prev) => [result, ...prev]);
       return result;
     },
@@ -1751,7 +1766,19 @@ export function useAccounts() {
       id: string,
       updates: Partial<Omit<Account, "id" | "user_id" | "created_at">>,
     ) => {
-      await supabase.from("accounts").update(updates).eq("id", id);
+      let { error } = await supabase.from("accounts").update(updates).eq("id", id);
+
+      if (error && (error.code === "23514" || error.message?.includes("accounts_type_check"))) {
+        const fallbackUpdates = { ...updates, type: "other" as const };
+        const { error: retryError } = await supabase
+          .from("accounts")
+          .update(fallbackUpdates)
+          .eq("id", id);
+        if (retryError) console.error("Erro ao atualizar conta com fallback:", retryError);
+      } else if (error) {
+        console.error("Erro ao atualizar conta:", error);
+      }
+
       setData((prev) =>
         prev.map((a) => (a.id === id ? { ...a, ...updates } : a)),
       );
