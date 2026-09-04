@@ -290,14 +290,35 @@ function BudgetProgress({
   );
 }
 
-const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
-  const d = new Date();
-  d.setMonth(d.getMonth() - i);
-  return {
-    value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
-    label: d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
-  };
-});
+const generateMonthOptions = () => {
+  const options = [];
+  const now = new Date();
+
+  // 12 Future Months (+12 to +1)
+  for (let i = 12; i >= 1; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = `${d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })} (Projeção)`;
+    options.push({ value, label });
+  }
+
+  // Current Month
+  const currentVal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const currentLabel = `${now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })} (Atual)`;
+  options.push({ value: currentVal, label: currentLabel });
+
+  // 12 Past Months (-1 to -12)
+  for (let i = 1; i <= 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    options.push({ value, label });
+  }
+
+  return options;
+};
+
+const MONTH_OPTIONS = generateMonthOptions();
 
 export default function Dashboard() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -356,7 +377,7 @@ export default function Dashboard() {
   const { data: realDebts } = useDebts();
   const { data: realAccounts, refetch: refetchAccounts } = useAccounts();
   const { data: realGoals } = useGoals();
-  const { create: createTransaction } = useTransactions();
+  const { data: allTransactions, create: createTransaction } = useTransactions();
   const { data: realCreditCards } = useCreditCards();
 
   // Quick Transaction states
@@ -513,9 +534,80 @@ export default function Dashboard() {
     return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   };
 
+  // Future Month Projection calculations
+  const isFutureMonth = selectedMonth > defaultMonth;
+  const selectedMonthLabel = MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label || selectedMonth;
+
+  const projectedFixedIncome = (allTransactions ?? [])
+    .filter((t) => t.is_fixed && t.type === "income")
+    .reduce((s, t) => s + t.amount, 0);
+
+  const projectedFixedExpenses = (allTransactions ?? [])
+    .filter((t) => t.is_fixed && t.type === "expense")
+    .reduce((s, t) => s + t.amount, 0);
+
+  const projectedCardBills = (realCreditCards ?? []).reduce((sum, card) => {
+    const b = (card.bills ?? []).find((bill: any) => bill.month === selectedMonth);
+    if (!b) return sum;
+    const billTotal = Number(b.total_amount) + Number(b.rollover_amount ?? 0) - Number(b.paid_amount ?? 0);
+    return sum + Math.max(0, billTotal);
+  }, 0);
+
+  const displayIncome = (summary?.totalIncome ?? 0) > 0 ? summary!.totalIncome : projectedFixedIncome;
+  const displayExpenses = (summary?.totalExpenses ?? 0) > 0
+    ? summary!.totalExpenses
+    : (projectedFixedExpenses + projectedCardBills);
+  const displayBalance = displayIncome - displayExpenses;
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
+        {isFutureMonth && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl border border-primary/30 bg-primary/10 dark:bg-primary/15 p-5 space-y-3 shadow-xs"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-primary shrink-0" />
+                <h3 className="text-sm font-bold text-foreground">
+                  Projeção Financeira Futura — {selectedMonthLabel}
+                </h3>
+              </div>
+              <span className="w-fit px-2.5 py-1 text-[10px] font-bold rounded-full bg-primary/20 text-primary uppercase tracking-wide">
+                Modo Planejamento
+              </span>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Você está visualizando a estimativa financeira para <strong>{selectedMonthLabel}</strong>. 
+              Com base nos seus <strong>gastos fixos</strong> ({formatCurrency(projectedFixedExpenses)}) e <strong>faturas de cartão de crédito</strong> ({formatCurrency(projectedCardBills)}), 
+              seus compromissos previstos somam <strong className="text-foreground">{formatCurrency(projectedFixedExpenses + projectedCardBills)}</strong>.
+            </p>
+
+            <div className="grid sm:grid-cols-3 gap-3 pt-2">
+              <div className="p-3 rounded-xl bg-card border border-border/60">
+                <span className="text-[10px] font-semibold text-muted-foreground block uppercase tracking-wider">Receita Fixa Prevista</span>
+                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  {formatCurrency(projectedFixedIncome)}
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-card border border-border/60">
+                <span className="text-[10px] font-semibold text-muted-foreground block uppercase tracking-wider">Gastos Fixos + Faturas</span>
+                <span className="text-sm font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                  {formatCurrency(projectedFixedExpenses + projectedCardBills)}
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-card border border-border/60">
+                <span className="text-[10px] font-semibold text-muted-foreground block uppercase tracking-wider">Saldo Livre / Disponível</span>
+                <span className={`text-sm font-bold tabular-nums ${projectedFixedIncome - (projectedFixedExpenses + projectedCardBills) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                  {formatCurrency(projectedFixedIncome - (projectedFixedExpenses + projectedCardBills))}
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        )}
         {(user?.is_anonymous || useDemo) && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
