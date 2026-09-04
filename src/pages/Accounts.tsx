@@ -1,4 +1,4 @@
-import { DashboardLayout } from "@/components/DashboardLayout";
+import { DashboardLayout, openTransfer } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -44,6 +44,7 @@ import {
   Banknote,
   Building2,
   FileText,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -148,6 +149,16 @@ export default function Accounts() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={openTransfer}
+              className="text-xs h-9 font-semibold border-cyan-500/30 bg-cyan-500/10 text-cyan-900 dark:text-cyan-300 hover:bg-cyan-500/20"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5 mr-1.5 text-cyan-500" />
+              Transferir entre Contas
+            </Button>
+
             <Button
               size="sm"
               variant="outline"

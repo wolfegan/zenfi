@@ -26,6 +26,7 @@ import {
   Sparkles,
   Calendar as CalendarIcon,
   RefreshCw,
+  ArrowLeftRight,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -41,6 +42,7 @@ import { FinancialCalculatorModal } from "@/components/FinancialCalculatorModal"
 import { PurchaseSimulatorModal } from "@/components/PurchaseSimulatorModal";
 import { FinancialCalendarModal } from "@/components/FinancialCalendarModal";
 import { SubscriptionsModal } from "@/components/SubscriptionsModal";
+import { TransferModal } from "@/components/TransferModal";
 
 export function openCalculator() {
   window.dispatchEvent(new CustomEvent("zenfi:open-calculator"));
@@ -56,6 +58,10 @@ export function openCalendar() {
 
 export function openSubscriptions() {
   window.dispatchEvent(new CustomEvent("zenfi:open-subscriptions"));
+}
+
+export function openTransfer() {
+  window.dispatchEvent(new CustomEvent("zenfi:open-transfer"));
 }
 
 const navItems = [
@@ -113,6 +119,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [simulatorModalOpen, setSimulatorModalOpen] = useState(false);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [subsModalOpen, setSubsModalOpen] = useState(false);
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
 
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
@@ -135,17 +142,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const handleOpenSim = () => setSimulatorModalOpen(true);
     const handleOpenCal = () => setCalendarModalOpen(true);
     const handleOpenSub = () => setSubsModalOpen(true);
+    const handleOpenTrf = () => setTransferModalOpen(true);
 
     window.addEventListener("zenfi:open-calculator", handleOpenCalc);
     window.addEventListener("zenfi:open-simulator", handleOpenSim);
     window.addEventListener("zenfi:open-calendar", handleOpenCal);
     window.addEventListener("zenfi:open-subscriptions", handleOpenSub);
+    window.addEventListener("zenfi:open-transfer", handleOpenTrf);
 
     return () => {
       window.removeEventListener("zenfi:open-calculator", handleOpenCalc);
       window.removeEventListener("zenfi:open-simulator", handleOpenSim);
       window.removeEventListener("zenfi:open-calendar", handleOpenCal);
       window.removeEventListener("zenfi:open-subscriptions", handleOpenSub);
+      window.removeEventListener("zenfi:open-transfer", handleOpenTrf);
     };
   }, []);
 
@@ -216,6 +226,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             Ferramentas
           </span>
         </div>
+
+        <button
+          onClick={() => {
+            setSidebarOpen(false);
+            setTransferModalOpen(true);
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2 text-xs rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all font-medium"
+        >
+          <ArrowLeftRight className="w-4 h-4 text-cyan-500 shrink-0" />
+          <span>Transferência entre Contas</span>
+        </button>
 
         <button
           onClick={() => {
@@ -497,6 +518,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <PurchaseSimulatorModal open={simulatorModalOpen} onOpenChange={setSimulatorModalOpen} />
       <FinancialCalendarModal open={calendarModalOpen} onOpenChange={setCalendarModalOpen} />
       <SubscriptionsModal open={subsModalOpen} onOpenChange={setSubsModalOpen} />
+      <TransferModal open={transferModalOpen} onOpenChange={setTransferModalOpen} />
     </div>
   );
 }
