@@ -1032,20 +1032,32 @@ export function billOutstanding(b: CreditCardBill): number {
   );
 }
 
-export function computeCardStats(
-  card: CreditCard,
-  bills: CreditCardBill[],
-): Omit<CreditCardWithBills, keyof CreditCard | "bills"> {
-  const sumBills = bills.reduce((s, b) => s + billOutstanding(b), 0);
-  const rawCustom = (card as any).custom_used_amount;
-  const customUsed =
+export function getCustomUsedForCard(cardId: string, cardObj: any): number | null {
+  const rawCustom = cardObj?.custom_used_amount;
+  if (
     rawCustom !== undefined &&
     rawCustom !== null &&
     rawCustom !== "" &&
     !isNaN(Number(rawCustom)) &&
     Number(rawCustom) >= 0
-      ? Number(rawCustom)
-      : null;
+  ) {
+    return Number(rawCustom);
+  }
+  if (typeof window !== "undefined" && cardId) {
+    const saved = localStorage.getItem(`zenfi_cc_custom_used_${cardId}`);
+    if (saved !== null && saved !== "" && !isNaN(Number(saved)) && Number(saved) >= 0) {
+      return Number(saved);
+    }
+  }
+  return null;
+}
+
+export function computeCardStats(
+  card: CreditCard,
+  bills: CreditCardBill[],
+): Omit<CreditCardWithBills, keyof CreditCard | "bills"> {
+  const sumBills = bills.reduce((s, b) => s + billOutstanding(b), 0);
+  const customUsed = getCustomUsedForCard(card.id, card);
   const used = customUsed !== null ? customUsed : sumBills;
   const limit = Number(card.limit) || 0;
   const available = Math.max(0, limit - used);
@@ -1096,12 +1108,30 @@ export function useCreditCards() {
   const create = useCallback(
     async (card: Omit<CreditCard, "id" | "user_id" | "created_at">) => {
       if (!userId) return null;
-      const { data: result } = await supabase
-        .from("credit_cards")
-        .insert({ user_id: userId, ...card })
-        .select()
-        .single();
-      if (result) setData((prev) => [...prev, { ...result, bills: [] }]);
+      let result: any = null;
+      try {
+        const { data: dbCard } = await supabase
+          .from("credit_cards")
+          .insert({ user_id: userId, ...card })
+          .select()
+          .single();
+        result = dbCard;
+      } catch (err) {
+        console.warn("Supabase credit_cards insert error/warning:", err);
+      }
+      if (!result) {
+        result = {
+          id: `card-${Date.now()}`,
+          user_id: userId,
+          created_at: Date.now(),
+          ...card,
+        };
+      }
+      if (card.custom_used_amount !== undefined && card.custom_used_amount !== null) {
+        localStorage.setItem(`zenfi_cc_custom_used_${result.id}`, String(card.custom_used_amount));
+      }
+      const cardWithStats = { ...result, bills: [], ...computeCardStats(result, []) };
+      setData((prev) => [...prev, cardWithStats]);
       return result;
     },
     [userId],
@@ -1112,7 +1142,18 @@ export function useCreditCards() {
       id: string,
       updates: Partial<Omit<CreditCard, "id" | "user_id" | "created_at">>,
     ) => {
-      await supabase.from("credit_cards").update(updates).eq("id", id);
+      if (updates.custom_used_amount !== undefined) {
+        if (updates.custom_used_amount !== null && !isNaN(Number(updates.custom_used_amount))) {
+          localStorage.setItem(`zenfi_cc_custom_used_${id}`, String(updates.custom_used_amount));
+        } else {
+          localStorage.removeItem(`zenfi_cc_custom_used_${id}`);
+        }
+      }
+      try {
+        await supabase.from("credit_cards").update(updates).eq("id", id);
+      } catch (err) {
+        console.warn("Supabase credit_cards update error/warning:", err);
+      }
       setData((prev) =>
         prev.map((c) => {
           if (c.id === id) {

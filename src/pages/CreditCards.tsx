@@ -26,6 +26,7 @@ import {
   useCategories,
   useTransactions,
   computeCardStats,
+  getCustomUsedForCard,
 } from "@/hooks/use-supabase";
 import { parseBRLAmount, formatCurrencyInput } from "@/lib/utils";
 import { BRLCurrencyInput } from "@/components/ui/BRLCurrencyInput";
@@ -223,6 +224,11 @@ export default function CreditCardsPage() {
       let targetCardId = editingCard?.id;
 
       if (editingCard) {
+        if (customUsedVal !== null) {
+          localStorage.setItem(`zenfi_cc_custom_used_${editingCard.id}`, String(customUsedVal));
+        } else {
+          localStorage.removeItem(`zenfi_cc_custom_used_${editingCard.id}`);
+        }
         await update(editingCard.id, cardPayload);
         // Exclui lançamentos anteriores de faturas em aberto para sobrescrever com novos valores
         await supabase
@@ -237,6 +243,9 @@ export default function CreditCardsPage() {
         const newCard = await create(cardPayload);
         if (newCard) {
           targetCardId = newCard.id;
+          if (customUsedVal !== null) {
+            localStorage.setItem(`zenfi_cc_custom_used_${newCard.id}`, String(customUsedVal));
+          }
           toast.success("Cartão adicionado com sucesso!");
         }
       }
@@ -283,6 +292,11 @@ export default function CreditCardsPage() {
       });
 
       if (editingCard) {
+        if (customUsedVal !== null) {
+          localStorage.setItem(`zenfi_cc_custom_used_${editingCard.id}`, String(customUsedVal));
+        } else {
+          localStorage.removeItem(`zenfi_cc_custom_used_${editingCard.id}`);
+        }
         setDemoCardsState((prev) =>
           prev.map((c) =>
             c.id === editingCard.id
@@ -302,8 +316,12 @@ export default function CreditCardsPage() {
         );
         toast.success("Cartão atualizado com sucesso!");
       } else {
+        const newCardId = `demo-card-${Date.now()}`;
+        if (customUsedVal !== null) {
+          localStorage.setItem(`zenfi_cc_custom_used_${newCardId}`, String(customUsedVal));
+        }
         const newCardObj = {
-          id: `demo-card-${Date.now()}`,
+          id: newCardId,
           user_id: user?.id || "user-1",
           name: form.name,
           limit: limitVal,
@@ -695,14 +713,12 @@ export default function CreditCardsPage() {
                           size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-foreground"
                           onClick={() => {
+                            const curCustom = getCustomUsedForCard(card.id, card);
                             setEditingCard(card);
                             setForm({
                               name: card.name,
                               limit: formatCurrencyInput(card.limit),
-                              customUsedLimit:
-                                card.custom_used_amount != null && card.custom_used_amount !== undefined
-                                  ? formatCurrencyInput(Number(card.custom_used_amount))
-                                  : "",
+                              customUsedLimit: curCustom !== null ? formatCurrencyInput(curCustom) : "",
                               closingDay: card.closing_day.toString(),
                               dueDay: card.due_day.toString(),
                               color: card.color,
