@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
+import { useTheme } from "@/lib/theme";
 import {
   ArrowDownUp,
   CreditCard,
@@ -121,20 +122,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [subsModalOpen, setSubsModalOpen] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
 
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== "undefined") {
-      return document.documentElement.classList.contains("dark");
-    }
-    return false;
-  });
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
+  const { isDark: darkMode, toggleTheme } = useTheme();
 
   // Global event listeners for tool modals
   useEffect(() => {
@@ -298,7 +286,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           Configurações
         </Link>
         <button
-          onClick={() => setDarkMode(!darkMode)}
+          onClick={toggleTheme}
           className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-200 w-full text-muted-foreground hover:text-foreground hover:bg-secondary/60"
         >
           {darkMode ? (
@@ -432,7 +420,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <Sparkles className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setDarkMode(!darkMode)}
+              onClick={toggleTheme}
               className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary transition-colors"
             >
               {darkMode ? (

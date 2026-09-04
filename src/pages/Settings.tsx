@@ -1,6 +1,7 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTheme } from "@/lib/theme";
 import {
   Dialog,
   DialogContent,
@@ -50,12 +51,7 @@ export default function Settings() {
     }
   }, [user]);
 
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== "undefined") {
-      return document.documentElement.classList.contains("dark");
-    }
-    return false;
-  });
+  const { isDark: darkMode, toggleTheme: toggleDarkMode } = useTheme();
 
   if (isLoading) return null;
   if (!isAuthenticated) {
@@ -77,15 +73,7 @@ export default function Settings() {
     }
   };
 
-  const toggleDarkMode = () => {
-    const newMode = !darkMode;
-    setDarkMode(newMode);
-    if (newMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  };
+
 
   const handleResetAccount = async () => {
     if (!user?.id) return;
