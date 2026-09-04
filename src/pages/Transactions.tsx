@@ -46,6 +46,8 @@ import {
   Trash2,
   ArrowDown,
   ArrowUp,
+  ArrowLeftRight,
+  Gift,
   Search,
   CreditCard,
   Smartphone,
@@ -61,6 +63,7 @@ import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router";
 import { demoTransactions, demoCategories, demoCreditCards, demoAccounts } from "@/lib/demo-data";
+import { isBenefitType } from "@/pages/Accounts";
 
 function currentMonth() {
   const now = new Date();
@@ -98,10 +101,7 @@ function dayGroupLabel(dateStr: string) {
 }
 
 // ─── Payment method helpers ──────────────────────────────────────────────────
-// Transações novas guardam a forma de pagamento na coluna `payment_method` e a
-// conta em `account_id`. Os prefixos "[PIX]" / "[Conta: X]" só existem em
-// registros antigos — as funções abaixo mantêm compatibilidade com eles.
-const PAYMENT_PREFIX_RE = /^\[(PIX|Dinheiro|Débito)\]\s*/;
+const PAYMENT_PREFIX_RE = /^\[(PIX|Dinheiro|Débito|Benefício)\]\s*/;
 
 function getPaymentMethod(tx: any): string | null {
   if (tx.is_credit_card) return "Cartão";
@@ -123,9 +123,15 @@ function stripPaymentPrefix(desc: string): string {
 const EXPENSE_PAYMENT_OPTIONS = [
   {
     value: "credit_card",
-    label: "Cartão de Crédito",
+    label: "Cartão Crédito",
     icon: CreditCard,
     color: "#8b5cf6",
+  },
+  {
+    value: "benefit_card",
+    label: "Cartão Benefício",
+    icon: Gift,
+    color: "#10b981",
   },
   { value: "pix", label: "PIX", icon: Smartphone, color: "#22c55e" },
   { value: "cash", label: "Dinheiro", icon: Banknote, color: "#f97316" },
@@ -139,6 +145,7 @@ const INCOME_PAYMENT_OPTIONS = [
 
 const PAYMENT_BADGE: Record<string, { label: string; color: string }> = {
   Cartão: { label: "Cartão", color: "#8b5cf6" },
+  Benefício: { label: "Benefício", color: "#10b981" },
   PIX: { label: "PIX", color: "#22c55e" },
   Dinheiro: { label: "Dinheiro", color: "#f97316" },
   Débito: { label: "Débito", color: "#3b82f6" },
@@ -159,13 +166,14 @@ export default function Transactions() {
     categoryId: "",
     amount: "",
     date: new Date().toISOString().split("T")[0],
-    type: "expense" as "income" | "expense",
+    type: "expense" as "income" | "expense" | "transfer",
     description: "",
     isFixed: false,
     isPending: false,
     paymentMethod: "pix" as string,
     creditCardId: "",
     accountId: "",
+    toAccountId: "",
     installments: "1",
   });
 
@@ -195,7 +203,7 @@ export default function Transactions() {
   const allTxs = useDemo ? demoTransactions : filteredRealTransactions;
   const categories = useDemo ? demoCategories : realCategories;
   const creditCards = useDemo ? demoCreditCards : realCreditCards;
-  const accounts = useDemo ? demoAccounts : realAccounts;
+  const accounts = useDemo ? demoAccounts : (realAccounts || []);
 
   const txs = useMemo(() => {
     if (!search.trim()) return allTxs;
@@ -237,13 +245,96 @@ export default function Transactions() {
       paymentMethod: "pix",
       creditCardId: "",
       accountId: "",
+      toAccountId: "",
       installments: "1",
     });
     setEditingTx(null);
   };
 
   const handleSubmit = async () => {
-    if (!form.categoryId || !form.amount) return;
+    // ─── Lógica para Transferência entre Contas ───
+    if (form.type === "transfer") {
+      const amount = parseBRLAmount(form.amount);
+      if (amount <= 0) {
+        toast.error("Por favor insira um valor de transferência válido maior que zero.");
+        return;
+      }
+      if (!form.accountId || !form.toAccountId) {
+        toast.error("Selecione a conta de origem e a conta de destino.");
+        return;
+      }
+      if (form.accountId === form.toAccountId) {
+        toast.error("A conta de destino deve ser diferente da conta de origem.");
+        return;
+      }
+
+      const fromAcc = accounts.find((a: any) => a.id === form.accountId);
+      const toAcc = accounts.find((a: any) => a.id === form.toAccountId);
+      if (!fromAcc || !toAcc) {
+        toast.error("Conta não encontrada.");
+        return;
+      }
+
+      try {
+        if (!useDemo) {
+          const expenseCatId = expenseCategories[0]?.id || categories?.[0]?.id || "";
+          const incomeCatId = incomeCategories[0]?.id || categories?.[0]?.id || "";
+
+          // Registra saída na conta de origem (createTransaction já ajusta o saldo via adjustAccountBalance no banco)
+          await create({
+            account_id: fromAcc.id,
+            type: "expense",
+            amount,
+            date: form.date,
+            description: form.description.trim()
+              ? `Transferência p/ ${toAcc.name}: ${form.description.trim()}`
+              : `Transferência para ${toAcc.name}`,
+            category_id: expenseCatId,
+            payment_method: "pix",
+            is_fixed: false,
+            is_credit_card: false,
+            credit_card_id: null,
+          });
+
+          // Registra entrada na conta de destino (createTransaction já ajusta o saldo via adjustAccountBalance no banco)
+          await create({
+            account_id: toAcc.id,
+            type: "income",
+            amount,
+            date: form.date,
+            description: form.description.trim()
+              ? `Transferência rcbda de ${fromAcc.name}: ${form.description.trim()}`
+              : `Transferência recebida de ${fromAcc.name}`,
+            category_id: incomeCatId,
+            payment_method: "pix",
+            is_fixed: false,
+            is_credit_card: false,
+            credit_card_id: null,
+          });
+
+          await refetchAccounts();
+        } else {
+          fromAcc.balance = Number(fromAcc.balance) - amount;
+          toAcc.balance = Number(toAcc.balance) + amount;
+        }
+
+        toast.success(
+          `Transferência de ${amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} realizada de "${fromAcc.name}" para "${toAcc.name}"!`
+        );
+        setDialogOpen(false);
+        resetForm();
+      } catch (error) {
+        console.error("Transfer error:", error);
+        toast.error("Erro ao realizar transferência.");
+      }
+      return;
+    }
+
+    // ─── Lógica para Despesa ou Receita ───
+    if (!form.categoryId || !form.amount) {
+      toast.error("Preencha a categoria e o valor.");
+      return;
+    }
     const amount = parseBRLAmount(form.amount);
     if (amount <= 0) {
       toast.error("Por favor insira um valor válido maior que zero.");
@@ -253,7 +344,7 @@ export default function Transactions() {
     const isCreditCard = form.paymentMethod === "credit_card";
     if (!isCreditCard && !form.accountId) {
       toast.error(
-        "Por favor selecione qual conta está saindo ou entrando o dinheiro.",
+        "Por favor selecione qual conta ou cartão de benefício está saindo ou entrando o dinheiro.",
       );
       return;
     }
@@ -266,7 +357,6 @@ export default function Transactions() {
 
     try {
       if (!useDemo) {
-        // Compra parcelada no cartão → gera N transações (uma por fatura)
         if (isCreditCard && nInstallments > 1 && !editingTx) {
           await createInstallments({
             creditCardId: form.creditCardId,
@@ -283,7 +373,6 @@ export default function Transactions() {
           return;
         }
         const selectedAcc = accounts.find((a: any) => a.id === form.accountId);
-        // forma de pagamento e conta vão em colunas próprias — sem prefixo no texto
         const descriptionValue = stripPaymentPrefix(form.description.trim());
 
         const txData: any = {
@@ -299,19 +388,19 @@ export default function Transactions() {
           account_id: !isCreditCard && selectedAcc ? selectedAcc.id : null,
           payment_method: isCreditCard
             ? "Cartão"
-            : form.paymentMethod === "pix"
-              ? "PIX"
-              : form.paymentMethod === "cash"
-                ? "Dinheiro"
-                : form.paymentMethod === "debit"
-                  ? "Débito"
-                  : null,
+            : form.paymentMethod === "benefit_card"
+              ? "Benefício"
+              : form.paymentMethod === "pix"
+                ? "PIX"
+                : form.paymentMethod === "cash"
+                  ? "Dinheiro"
+                  : form.paymentMethod === "debit"
+                    ? "Débito"
+                    : null,
           status:
             form.isPending && !isCreditCard ? "pending" : "confirmed",
         };
 
-        // O saldo da conta é ajustado automaticamente dentro de create/update
-        // (via account_id), de forma atômica — nada de mexer no balance aqui.
         if (editingTx) {
           await update(editingTx.id, txData);
           toast.success("Transação atualizada!");
@@ -323,7 +412,7 @@ export default function Transactions() {
         refetchAccounts();
       } else {
         toast.info(
-          "Transações não alteram o banco de dados no modo demonstração.",
+          "Transação registrada no modo demonstração.",
         );
       }
       setDialogOpen(false);
@@ -385,6 +474,7 @@ export default function Transactions() {
       paymentMethod: pm,
       creditCardId: tx.credit_card_id || "",
       accountId: foundAcc ? foundAcc.id : "",
+      toAccountId: "",
       installments: "1",
     });
     setDialogOpen(true);
@@ -449,7 +539,7 @@ export default function Transactions() {
 
               <div className="space-y-4 py-2">
                 {/* Type toggle */}
-                <div className="flex gap-2 p-1 bg-secondary/50 rounded-xl">
+                <div className="flex gap-1.5 p-1 bg-secondary/50 rounded-xl">
                   <button
                     type="button"
                     onClick={() =>
@@ -462,7 +552,7 @@ export default function Transactions() {
                     }
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${form.type === "expense" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                   >
-                    <ArrowDown className="w-3.5 h-3.5" /> Despesa
+                    <ArrowDown className="w-3.5 h-3.5 text-rose-500" /> Despesa
                   </button>
                   <button
                     type="button"
@@ -476,330 +566,521 @@ export default function Transactions() {
                     }
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${form.type === "income" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                   >
-                    <ArrowUp className="w-3.5 h-3.5" /> Receita
+                    <ArrowUp className="w-3.5 h-3.5 text-emerald-500" /> Receita
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        type: "transfer",
+                      })
+                    }
+                    className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${form.type === "transfer" ? "bg-card shadow-sm text-cyan-600 font-semibold" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    <ArrowLeftRight className="w-3.5 h-3.5 text-cyan-500" /> Transferência
                   </button>
                 </div>
 
-                {/* Payment method */}
-                <div>
-                  <label className="text-xs text-muted-foreground mb-2 block font-medium">
-                    {form.type === "expense"
-                      ? "Forma de pagamento"
-                      : "Forma de recebimento"}
-                  </label>
-                  <div
-                    className={`grid gap-2 ${form.type === "expense" ? "grid-cols-4" : "grid-cols-2"}`}
-                  >
-                    {paymentOptions.map((opt) => {
-                      const Icon = opt.icon;
-                      const selected = form.paymentMethod === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() =>
-                            setForm({
-                              ...form,
-                              paymentMethod: opt.value,
-                              creditCardId: "",
-                            })
-                          }
-                          className={`flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-xl border text-center transition-all duration-200 ${
-                            selected
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-background hover:border-primary/40 hover:bg-secondary/60"
-                          }`}
-                        >
-                          <div
-                            className="w-7 h-7 rounded-lg flex items-center justify-center"
-                            style={{
-                              backgroundColor: selected
-                                ? opt.color + "22"
-                                : "transparent",
-                            }}
-                          >
-                            <Icon
-                              className="w-3.5 h-3.5"
-                              style={{
-                                color: selected ? opt.color : undefined,
-                              }}
-                            />
-                          </div>
-                          <span className="text-[10px] font-medium leading-tight">
-                            {opt.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Credit card selector */}
-                <AnimatePresence>
-                  {form.paymentMethod === "credit_card" && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
+                {form.type === "transfer" ? (
+                  /* Transfer form */
+                  <div className="space-y-4">
+                    {/* Conta Origem */}
+                    <div>
                       <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
-                        Selecionar Cartão
-                      </label>
-                      {creditCards && creditCards.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-2">
-                          {creditCards.map((card: any) => (
-                            <button
-                              key={card.id}
-                              type="button"
-                              onClick={() =>
-                                setForm({ ...form, creditCardId: card.id })
-                              }
-                              className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all duration-200 ${
-                                form.creditCardId === card.id
-                                  ? "border-primary bg-primary/10"
-                                  : "border-border bg-background hover:border-primary/40"
-                              }`}
-                            >
-                              <div
-                                className="w-6 h-6 rounded-lg shrink-0"
-                                style={{
-                                  backgroundColor: card.color || "#8b5cf6",
-                                }}
-                              />
-                              <span className="text-xs font-medium truncate">
-                                {card.name}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground p-3 bg-secondary/50 rounded-xl">
-                          Nenhum cartão cadastrado.{" "}
-                          <a
-                            href="/credit-cards"
-                            className="text-primary underline"
-                          >
-                            Cadastrar cartão
-                          </a>
-                        </p>
-                      )}
-
-                      {form.type === "expense" && !editingTx && (
-                        <div className="mt-3">
-                          <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
-                            Parcelas
-                          </label>
-                          <Select
-                            value={form.installments}
-                            onValueChange={(v) =>
-                              setForm({ ...form, installments: v })
-                            }
-                          >
-                            <SelectTrigger className="text-xs h-9 rounded-lg">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Array.from({ length: 24 }, (_, i) => i + 1).map(
-                                (n) => {
-                                  const val = parseBRLAmount(form.amount);
-                                  const per = val > 0 ? val / n : 0;
-                                  return (
-                                    <SelectItem
-                                      key={n}
-                                      value={String(n)}
-                                      className="text-xs"
-                                    >
-                                      {n === 1
-                                        ? "À vista (1x)"
-                                        : `${n}x${per > 0 ? ` de ${per.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}` : ""}`}
-                                    </SelectItem>
-                                  );
-                                },
-                              )}
-                            </SelectContent>
-                          </Select>
-                          {parseInt(form.installments) > 1 && (
-                            <p className="text-[10px] text-muted-foreground mt-1">
-                              Serão criadas {form.installments} transações, uma
-                              em cada fatura.
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Account selector */}
-                <AnimatePresence>
-                  {form.paymentMethod !== "credit_card" && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
-                        {form.type === "expense"
-                          ? "Pagar com a Conta"
-                          : "Receber na Conta"}{" "}
-                        <span className="text-destructive">*</span>
+                        Conta Origem <span className="text-destructive">*</span>
                       </label>
                       {accounts && accounts.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-2">
-                          {accounts.map((acc: any) => (
-                            <button
-                              key={acc.id}
-                              type="button"
-                              onClick={() =>
-                                setForm({ ...form, accountId: acc.id })
-                              }
-                              className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all duration-200 ${
-                                form.accountId === acc.id
-                                  ? "border-primary bg-primary/10"
-                                  : "border-border bg-background hover:border-primary/40"
-                              }`}
-                            >
-                              <div
-                                className="w-5.5 h-5.5 rounded-md shrink-0 flex items-center justify-center"
-                                style={{
-                                  backgroundColor: acc.color || "#6366f1",
-                                }}
+                        <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
+                          {accounts.map((acc: any) => {
+                            const isBenefit = isBenefitType(acc.type, acc.name);
+                            return (
+                              <button
+                                key={acc.id}
+                                type="button"
+                                onClick={() =>
+                                  setForm({
+                                    ...form,
+                                    accountId: acc.id,
+                                    toAccountId: form.toAccountId === acc.id ? "" : form.toAccountId,
+                                  })
+                                }
+                                className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all duration-200 ${
+                                  form.accountId === acc.id
+                                    ? "border-cyan-500 bg-cyan-500/10"
+                                    : "border-border bg-background hover:border-primary/40"
+                                }`}
                               >
-                                <BankLogo bankKeyOrName={acc.name} type={acc.type} className="w-3.5 h-3.5 text-white" />
-                              </div>
-                              <div className="flex flex-col min-w-0">
-                                <span className="text-xs font-semibold truncate leading-none mb-0.5">
-                                  {acc.name}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground leading-none">
-                                  Saldo: {formatCurrency(acc.balance)}
-                                </span>
-                              </div>
-                            </button>
-                          ))}
+                                <div
+                                  className="w-5.5 h-5.5 rounded-md shrink-0 flex items-center justify-center"
+                                  style={{
+                                    backgroundColor: acc.color || "#6366f1",
+                                  }}
+                                >
+                                  <BankLogo bankKeyOrName={acc.name} type={acc.type} className="w-3.5 h-3.5 text-white" />
+                                </div>
+                                <div className="flex flex-col min-w-0 flex-1">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs font-semibold truncate leading-none">
+                                      {acc.name}
+                                    </span>
+                                    {isBenefit && (
+                                      <span className="text-[9px] px-1 bg-emerald-500/15 text-emerald-600 rounded font-medium shrink-0">
+                                        Benefício
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-muted-foreground leading-none mt-0.5">
+                                    Saldo: {formatCurrency(acc.balance)}
+                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })}
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground p-3 bg-secondary/50 rounded-xl">
-                          Nenhuma conta cadastrada.{" "}
-                          <a
-                            href="/accounts"
-                            className="text-primary underline"
-                          >
-                            Cadastrar conta
-                          </a>
+                          Nenhuma conta cadastrada.
                         </p>
                       )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    </div>
 
-                {/* Amount */}
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
-                    Valor <span className="text-destructive">*</span>
-                  </label>
-                  <BRLCurrencyInput
-                    value={form.amount}
-                    onChangeValue={(val) => setForm({ ...form, amount: val })}
-                    placeholder="R$ 0,00"
-                    className="h-9 rounded-lg"
-                  />
-                </div>
+                    {/* Conta Destino */}
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                        Conta Destino <span className="text-destructive">*</span>
+                      </label>
+                      {accounts && accounts.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
+                          {accounts
+                            .filter((acc: any) => acc.id !== form.accountId)
+                            .map((acc: any) => {
+                              const isBenefit = isBenefitType(acc.type, acc.name);
+                              return (
+                                <button
+                                  key={acc.id}
+                                  type="button"
+                                  onClick={() =>
+                                    setForm({ ...form, toAccountId: acc.id })
+                                  }
+                                  className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all duration-200 ${
+                                    form.toAccountId === acc.id
+                                      ? "border-emerald-500 bg-emerald-500/10"
+                                      : "border-border bg-background hover:border-primary/40"
+                                  }`}
+                                >
+                                  <div
+                                    className="w-5.5 h-5.5 rounded-md shrink-0 flex items-center justify-center"
+                                    style={{
+                                      backgroundColor: acc.color || "#6366f1",
+                                    }}
+                                  >
+                                    <BankLogo bankKeyOrName={acc.name} type={acc.type} className="w-3.5 h-3.5 text-white" />
+                                  </div>
+                                  <div className="flex flex-col min-w-0 flex-1">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-xs font-semibold truncate leading-none">
+                                        {acc.name}
+                                      </span>
+                                      {isBenefit && (
+                                        <span className="text-[9px] px-1 bg-emerald-500/15 text-emerald-600 rounded font-medium shrink-0">
+                                          Benefício
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground leading-none mt-0.5">
+                                      Saldo: {formatCurrency(acc.balance)}
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground p-3 bg-secondary/50 rounded-xl">
+                          Nenhuma conta de destino.
+                        </p>
+                      )}
+                    </div>
 
-                {/* Category */}
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
-                    Categoria
-                  </label>
-                  <Select
-                    value={form.categoryId}
-                    onValueChange={(v) => setForm({ ...form, categoryId: v })}
-                  >
-                    <SelectTrigger className="text-xs h-9 rounded-lg">
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(form.type === "expense"
-                        ? expenseCategories
-                        : incomeCategories
-                      ).map((cat: any) => (
-                        <SelectItem
-                          key={cat.id}
-                          value={cat.id}
-                          className="text-xs"
+                    {/* Valor */}
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                        Valor <span className="text-destructive">*</span>
+                      </label>
+                      <BRLCurrencyInput
+                        value={form.amount}
+                        onChangeValue={(val) => setForm({ ...form, amount: val })}
+                        placeholder="R$ 0,00"
+                        className="h-9 rounded-lg"
+                      />
+                    </div>
+
+                    {/* Data */}
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                        Data
+                      </label>
+                      <Input
+                        type="date"
+                        value={form.date}
+                        onChange={(e) => setForm({ ...form, date: e.target.value })}
+                        className="h-9 rounded-lg"
+                      />
+                    </div>
+
+                    {/* Description / Observação */}
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                        Observação (opcional)
+                      </label>
+                      <Input
+                        placeholder="Ex: Transferência de economia, ajuste..."
+                        value={form.description}
+                        onChange={(e) =>
+                          setForm({ ...form, description: e.target.value })
+                        }
+                        className="h-9 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* Expense or Income Form */
+                  <>
+                    {/* Payment method */}
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-2 block font-medium">
+                        {form.type === "expense"
+                          ? "Forma de pagamento"
+                          : "Forma de recebimento"}
+                      </label>
+                      <div
+                        className={`grid gap-1.5 ${
+                          form.type === "expense" ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2"
+                        }`}
+                      >
+                        {paymentOptions.map((opt) => {
+                          const Icon = opt.icon;
+                          const selected = form.paymentMethod === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() =>
+                                setForm({
+                                  ...form,
+                                  paymentMethod: opt.value,
+                                  creditCardId: "",
+                                })
+                              }
+                              className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border text-center transition-all duration-200 ${
+                                selected
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border bg-background hover:border-primary/40 hover:bg-secondary/60"
+                              }`}
+                            >
+                              <div
+                                className="w-6 h-6 rounded-lg flex items-center justify-center"
+                                style={{
+                                  backgroundColor: selected
+                                    ? opt.color + "22"
+                                    : "transparent",
+                                }}
+                              >
+                                <Icon
+                                  className="w-3.5 h-3.5"
+                                  style={{
+                                    color: selected ? opt.color : undefined,
+                                  }}
+                                />
+                              </div>
+                              <span className="text-[10px] font-medium leading-tight">
+                                {opt.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Credit card selector */}
+                    <AnimatePresence>
+                      {form.paymentMethod === "credit_card" && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
                         >
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                          <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                            Selecionar Cartão
+                          </label>
+                          {creditCards && creditCards.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-2">
+                              {creditCards.map((card: any) => (
+                                <button
+                                  key={card.id}
+                                  type="button"
+                                  onClick={() =>
+                                    setForm({ ...form, creditCardId: card.id })
+                                  }
+                                  className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all duration-200 ${
+                                    form.creditCardId === card.id
+                                      ? "border-primary bg-primary/10"
+                                      : "border-border bg-background hover:border-primary/40"
+                                  }`}
+                                >
+                                  <div
+                                    className="w-6 h-6 rounded-lg shrink-0"
+                                    style={{
+                                      backgroundColor: card.color || "#8b5cf6",
+                                    }}
+                                  />
+                                  <span className="text-xs font-medium truncate">
+                                    {card.name}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground p-3 bg-secondary/50 rounded-xl">
+                              Nenhum cartão cadastrado.{" "}
+                              <a
+                                href="/credit-cards"
+                                className="text-primary underline"
+                              >
+                                Cadastrar cartão
+                              </a>
+                            </p>
+                          )}
 
-                {/* Date */}
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
-                    Data
-                  </label>
-                  <Input
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => setForm({ ...form, date: e.target.value })}
-                    className="h-9 rounded-lg"
-                  />
-                </div>
+                          {form.type === "expense" && !editingTx && (
+                            <div className="mt-3">
+                              <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                                Parcelas
+                              </label>
+                              <Select
+                                value={form.installments}
+                                onValueChange={(v) =>
+                                  setForm({ ...form, installments: v })
+                                }
+                              >
+                                <SelectTrigger className="text-xs h-9 rounded-lg">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 24 }, (_, i) => i + 1).map(
+                                    (n) => {
+                                      const val = parseBRLAmount(form.amount);
+                                      const per = val > 0 ? val / n : 0;
+                                      return (
+                                        <SelectItem
+                                          key={n}
+                                          value={String(n)}
+                                          className="text-xs"
+                                        >
+                                          {n === 1
+                                            ? "À vista (1x)"
+                                            : `${n}x${per > 0 ? ` de ${per.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}` : ""}`}
+                                        </SelectItem>
+                                      );
+                                    },
+                                  )}
+                                </SelectContent>
+                              </Select>
+                              {parseInt(form.installments) > 1 && (
+                                <p className="text-[10px] text-muted-foreground mt-1">
+                                  Serão criadas {form.installments} transações, uma
+                                  em cada fatura.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
-                {/* Description */}
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
-                    Descrição (opcional)
-                  </label>
-                  <Input
-                    placeholder="Ex: Supermercado, salário março..."
-                    value={form.description}
-                    onChange={(e) =>
-                      setForm({ ...form, description: e.target.value })
-                    }
-                    className="h-9 rounded-lg"
-                  />
-                </div>
+                    {/* Account selector */}
+                    <AnimatePresence>
+                      {form.paymentMethod !== "credit_card" && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                            {form.type === "expense"
+                              ? "Pagar com a Conta / Cartão Benefício"
+                              : "Receber na Conta"}{" "}
+                            <span className="text-destructive">*</span>
+                          </label>
+                          {accounts && accounts.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1">
+                              {accounts.map((acc: any) => {
+                                const isBenefit = isBenefitType(acc.type, acc.name);
+                                return (
+                                  <button
+                                    key={acc.id}
+                                    type="button"
+                                    onClick={() =>
+                                      setForm({ ...form, accountId: acc.id })
+                                    }
+                                    className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all duration-200 ${
+                                      form.accountId === acc.id
+                                        ? "border-primary bg-primary/10"
+                                        : "border-border bg-background hover:border-primary/40"
+                                    }`}
+                                  >
+                                    <div
+                                      className="w-5.5 h-5.5 rounded-md shrink-0 flex items-center justify-center"
+                                      style={{
+                                        backgroundColor: acc.color || "#6366f1",
+                                      }}
+                                    >
+                                      <BankLogo bankKeyOrName={acc.name} type={acc.type} className="w-3.5 h-3.5 text-white" />
+                                    </div>
+                                    <div className="flex flex-col min-w-0 flex-1">
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-xs font-semibold truncate leading-none">
+                                          {acc.name}
+                                        </span>
+                                        {isBenefit && (
+                                          <span className="text-[9px] px-1 bg-emerald-500/15 text-emerald-600 rounded font-medium shrink-0">
+                                            Benefício
+                                          </span>
+                                        )}
+                                      </div>
+                                      <span className="text-[10px] text-muted-foreground leading-none mt-0.5">
+                                        Saldo: {formatCurrency(acc.balance)}
+                                      </span>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground p-3 bg-secondary/50 rounded-xl">
+                              Nenhuma conta cadastrada.{" "}
+                              <a
+                                href="/accounts"
+                                className="text-primary underline"
+                              >
+                                Cadastrar conta
+                              </a>
+                            </p>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
-                {/* Fixed toggle */}
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.isFixed}
-                    onChange={(e) =>
-                      setForm({ ...form, isFixed: e.target.checked })
-                    }
-                    className="w-3.5 h-3.5 rounded border"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    {form.type === "expense"
-                      ? "Gasto fixo (recorrente)"
-                      : "Receita fixa (recorrente)"}
-                  </span>
-                </label>
+                    {/* Amount */}
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                        Valor <span className="text-destructive">*</span>
+                      </label>
+                      <BRLCurrencyInput
+                        value={form.amount}
+                        onChangeValue={(val) => setForm({ ...form, amount: val })}
+                        placeholder="R$ 0,00"
+                        className="h-9 rounded-lg"
+                      />
+                    </div>
 
-                {/* Pending / previsto toggle */}
-                {form.paymentMethod !== "credit_card" && !editingTx && (
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form.isPending}
-                      onChange={(e) =>
-                        setForm({ ...form, isPending: e.target.checked })
-                      }
-                      className="w-3.5 h-3.5 rounded border"
-                    />
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      Lançamento previsto (não mexe no saldo até confirmar)
-                    </span>
-                  </label>
+                    {/* Category */}
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                        Categoria
+                      </label>
+                      <Select
+                        value={form.categoryId}
+                        onValueChange={(v) => setForm({ ...form, categoryId: v })}
+                      >
+                        <SelectTrigger className="text-xs h-9 rounded-lg">
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(form.type === "expense"
+                            ? expenseCategories
+                            : incomeCategories
+                          ).map((cat: any) => (
+                            <SelectItem
+                              key={cat.id}
+                              value={cat.id}
+                              className="text-xs"
+                            >
+                              {cat.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Date */}
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                        Data
+                      </label>
+                      <Input
+                        type="date"
+                        value={form.date}
+                        onChange={(e) => setForm({ ...form, date: e.target.value })}
+                        className="h-9 rounded-lg"
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                        Descrição (opcional)
+                      </label>
+                      <Input
+                        placeholder="Ex: Supermercado, almoço VR..."
+                        value={form.description}
+                        onChange={(e) =>
+                          setForm({ ...form, description: e.target.value })
+                        }
+                        className="h-9 rounded-lg"
+                      />
+                    </div>
+
+                    {/* Fixed toggle */}
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.isFixed}
+                        onChange={(e) =>
+                          setForm({ ...form, isFixed: e.target.checked })
+                        }
+                        className="w-3.5 h-3.5 rounded border"
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {form.type === "expense"
+                          ? "Gasto fixo (recorrente)"
+                          : "Receita fixa (recorrente)"}
+                      </span>
+                    </label>
+
+                    {/* Pending / previsto toggle */}
+                    {form.paymentMethod !== "credit_card" && !editingTx && (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={form.isPending}
+                          onChange={(e) =>
+                            setForm({ ...form, isPending: e.target.checked })
+                          }
+                          className="w-3.5 h-3.5 rounded border"
+                        />
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Lançamento previsto (não mexe no saldo até confirmar)
+                        </span>
+                      </label>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -820,7 +1101,11 @@ export default function Transactions() {
                   className="text-xs rounded-lg"
                   onClick={handleSubmit}
                 >
-                  {editingTx ? "Salvar" : "Adicionar"}
+                  {editingTx
+                    ? "Salvar Alterações"
+                    : form.type === "transfer"
+                      ? "Confirmar Transferência"
+                      : "Adicionar"}
                 </Button>
               </DialogFooter>
             </DialogContent>
