@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/lib/supabase";
 import {
   useCreditCards,
   useAccounts,
@@ -140,8 +141,10 @@ export default function CreditCardsPage() {
   const { create: createTransaction } = useTransactions();
 
   const useDemo = !!user?.is_anonymous;
+  const [demoCardsState, setDemoCardsState] = useState<any[]>(demoCreditCards);
+
   const cards = useDemo
-    ? demoCreditCards.map((c: any) => ({
+    ? demoCardsState.map((c: any) => ({
         ...c,
         ...computeCardStats(c, c.bills ?? []),
       }))
@@ -182,6 +185,25 @@ export default function CreditCardsPage() {
     const dueDayNum = parseInt(form.dueDay) || 10;
     const interestVal = parseFloat(form.interestRate.replace(",", ".")) || 0;
 
+    const now = new Date();
+    const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const month1 = addMonthsYm(curMonth, 1);
+    const month2 = addMonthsYm(curMonth, 2);
+    const month3 = addMonthsYm(curMonth, 3);
+    const month4 = addMonthsYm(curMonth, 4);
+    const month5 = addMonthsYm(curMonth, 5);
+
+    const defaultCatId = categories?.[0]?.id || "";
+
+    const initialItems = [
+      { amountStr: initialBillCurrent, month: curMonth, label: "Fatura Mês Atual" },
+      { amountStr: initialBillMonth1, month: month1, label: "Fatura +1m" },
+      { amountStr: initialBillMonth2, month: month2, label: "Fatura +2m" },
+      { amountStr: initialBillMonth3, month: month3, label: "Fatura +3m" },
+      { amountStr: initialBillMonth4, month: month4, label: "Fatura +4m" },
+      { amountStr: initialBillMonth5, month: month5, label: "Fatura +5m" },
+    ];
+
     if (!useDemo) {
       const cardPayload = {
         name: form.name,
@@ -196,6 +218,14 @@ export default function CreditCardsPage() {
 
       if (editingCard) {
         await update(editingCard.id, cardPayload);
+        // Exclui lançamentos anteriores de faturas em aberto para sobrescrever com novos valores
+        await supabase
+          .from("transactions")
+          .delete()
+          .eq("user_id", user!.id)
+          .eq("credit_card_id", targetCardId)
+          .or("description.ilike.%Fatura em aberto%,description.ilike.%Saldo em aberto%,description.ilike.%Parcela/Fatura%");
+
         toast.success("Cartão atualizado com sucesso!");
       } else {
         const newCard = await create(cardPayload);
@@ -206,25 +236,6 @@ export default function CreditCardsPage() {
       }
 
       if (targetCardId) {
-        const now = new Date();
-        const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-        const month1 = addMonthsYm(curMonth, 1);
-        const month2 = addMonthsYm(curMonth, 2);
-        const month3 = addMonthsYm(curMonth, 3);
-        const month4 = addMonthsYm(curMonth, 4);
-        const month5 = addMonthsYm(curMonth, 5);
-
-        const defaultCatId = categories?.[0]?.id || "";
-
-        const initialItems = [
-          { amountStr: initialBillCurrent, month: curMonth, label: "Fatura Mês Atual" },
-          { amountStr: initialBillMonth1, month: month1, label: "Fatura +1m" },
-          { amountStr: initialBillMonth2, month: month2, label: "Fatura +2m" },
-          { amountStr: initialBillMonth3, month: month3, label: "Fatura +3m" },
-          { amountStr: initialBillMonth4, month: month4, label: "Fatura +4m" },
-          { amountStr: initialBillMonth5, month: month5, label: "Fatura +5m" },
-        ];
-
         for (const item of initialItems) {
           const val = parseBRLAmount(item.amountStr);
           if (val > 0 && defaultCatId) {
@@ -245,7 +256,60 @@ export default function CreditCardsPage() {
       }
       await refetchCards();
     } else {
-      toast.info("Modo demonstração não altera dados.");
+      // MODO DEMONSTRAÇÃO / TESTE: Atualiza o estado local em memória imediatamente
+      const newBills: any[] = [];
+      initialItems.forEach((item, idx) => {
+        const val = parseBRLAmount(item.amountStr);
+        if (val > 0) {
+          const { dueDate, closingDate } = billDatesForMonth(item.month, closingDayNum, dueDayNum);
+          newBills.push({
+            id: `demo-bill-${Date.now()}-${idx}`,
+            user_id: user?.id || "user-1",
+            credit_card_id: editingCard?.id || `demo-card-${Date.now()}`,
+            month: item.month,
+            total_amount: val,
+            is_paid: false,
+            due_date: dueDate,
+            closing_date: closingDate,
+            created_at: Date.now(),
+          });
+        }
+      });
+
+      if (editingCard) {
+        setDemoCardsState((prev) =>
+          prev.map((c) =>
+            c.id === editingCard.id
+              ? {
+                  ...c,
+                  name: form.name,
+                  limit: limitVal,
+                  closing_day: closingDayNum,
+                  due_day: dueDayNum,
+                  color: form.color,
+                  interest_rate: interestVal,
+                  bills: newBills,
+                }
+              : c
+          )
+        );
+        toast.success("Cartão atualizado com sucesso!");
+      } else {
+        const newCardObj = {
+          id: `demo-card-${Date.now()}`,
+          user_id: user?.id || "user-1",
+          name: form.name,
+          limit: limitVal,
+          closing_day: closingDayNum,
+          due_day: dueDayNum,
+          color: form.color,
+          interest_rate: interestVal,
+          created_at: Date.now(),
+          bills: newBills,
+        };
+        setDemoCardsState((prev) => [...prev, newCardObj]);
+        toast.success("Cartão adicionado com sucesso!");
+      }
     }
 
     setDialogOpen(false);
