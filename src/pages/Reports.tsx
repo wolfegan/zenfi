@@ -7,6 +7,7 @@ import {
   useCategories,
 } from "@/hooks/use-supabase";
 import { motion } from "framer-motion";
+import { MonthComparisonCard } from "@/components/MonthComparisonCard";
 import {
   FileText,
   Download,
@@ -180,6 +181,8 @@ export default function Reports() {
             </Button>
           </div>
         </div>
+
+        <MonthComparisonCard selectedMonth={`${selectedYear}-${String(new Date().getMonth() + 1).padStart(2, "0")}`} />
 
         <motion.div
           initial={{ opacity: 0, y: 8 }}

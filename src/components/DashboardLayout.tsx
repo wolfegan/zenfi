@@ -24,6 +24,8 @@ import {
   Plus,
   Calculator,
   Sparkles,
+  Calendar as CalendarIcon,
+  RefreshCw,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -37,6 +39,8 @@ import { BugReportModal } from "@/components/BugReportModal";
 import { QuickTransactionModal } from "@/components/QuickTransactionModal";
 import { FinancialCalculatorModal } from "@/components/FinancialCalculatorModal";
 import { PurchaseSimulatorModal } from "@/components/PurchaseSimulatorModal";
+import { FinancialCalendarModal } from "@/components/FinancialCalendarModal";
+import { SubscriptionsModal } from "@/components/SubscriptionsModal";
 
 export function openCalculator() {
   window.dispatchEvent(new CustomEvent("zenfi:open-calculator"));
@@ -44,6 +48,14 @@ export function openCalculator() {
 
 export function openSimulator() {
   window.dispatchEvent(new CustomEvent("zenfi:open-simulator"));
+}
+
+export function openCalendar() {
+  window.dispatchEvent(new CustomEvent("zenfi:open-calendar"));
+}
+
+export function openSubscriptions() {
+  window.dispatchEvent(new CustomEvent("zenfi:open-subscriptions"));
 }
 
 const navItems = [
@@ -99,6 +111,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [quickModalOpen, setQuickModalOpen] = useState(false);
   const [calcModalOpen, setCalcModalOpen] = useState(false);
   const [simulatorModalOpen, setSimulatorModalOpen] = useState(false);
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [subsModalOpen, setSubsModalOpen] = useState(false);
 
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
@@ -119,13 +133,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handleOpenCalc = () => setCalcModalOpen(true);
     const handleOpenSim = () => setSimulatorModalOpen(true);
+    const handleOpenCal = () => setCalendarModalOpen(true);
+    const handleOpenSub = () => setSubsModalOpen(true);
 
     window.addEventListener("zenfi:open-calculator", handleOpenCalc);
     window.addEventListener("zenfi:open-simulator", handleOpenSim);
+    window.addEventListener("zenfi:open-calendar", handleOpenCal);
+    window.addEventListener("zenfi:open-subscriptions", handleOpenSub);
 
     return () => {
       window.removeEventListener("zenfi:open-calculator", handleOpenCalc);
       window.removeEventListener("zenfi:open-simulator", handleOpenSim);
+      window.removeEventListener("zenfi:open-calendar", handleOpenCal);
+      window.removeEventListener("zenfi:open-subscriptions", handleOpenSub);
     };
   }, []);
 
@@ -196,6 +216,28 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             Ferramentas
           </span>
         </div>
+
+        <button
+          onClick={() => {
+            setSidebarOpen(false);
+            setCalendarModalOpen(true);
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2 text-xs rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all font-medium"
+        >
+          <CalendarIcon className="w-4 h-4 text-blue-500 shrink-0" />
+          <span>Calendário Financeiro</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setSidebarOpen(false);
+            setSubsModalOpen(true);
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2 text-xs rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all font-medium"
+        >
+          <RefreshCw className="w-4 h-4 text-purple-500 shrink-0" />
+          <span>Assinaturas & Recorrências</span>
+        </button>
 
         <button
           onClick={() => {
@@ -453,6 +495,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <QuickTransactionModal open={quickModalOpen} onOpenChange={setQuickModalOpen} />
       <FinancialCalculatorModal open={calcModalOpen} onOpenChange={setCalcModalOpen} />
       <PurchaseSimulatorModal open={simulatorModalOpen} onOpenChange={setSimulatorModalOpen} />
+      <FinancialCalendarModal open={calendarModalOpen} onOpenChange={setCalendarModalOpen} />
+      <SubscriptionsModal open={subsModalOpen} onOpenChange={setSubsModalOpen} />
     </div>
   );
 }

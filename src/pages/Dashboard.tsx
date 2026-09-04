@@ -17,7 +17,9 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { DashboardLayout, openCalculator, openSimulator } from "@/components/DashboardLayout";
+import { DashboardLayout, openCalculator, openSimulator, openCalendar, openSubscriptions } from "@/components/DashboardLayout";
+import { BurnRateCard } from "@/components/BurnRateCard";
+import { MonthComparisonCard } from "@/components/MonthComparisonCard";
 import {
   Select,
   SelectContent,
@@ -50,6 +52,7 @@ import {
   FileText,
   Calculator,
   Sparkles,
+  RefreshCw,
 } from "lucide-react";
 import { OFXImportModal } from "@/components/OFXImportModal";
 import { PayBillModal } from "@/components/PayBillModal";
@@ -865,6 +868,24 @@ export default function Dashboard() {
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <button
+              onClick={openCalendar}
+              className="h-9 px-3 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border/80 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0"
+              title="Calendário financeiro e fluxo de caixa diário"
+            >
+              <Calendar className="w-3.5 h-3.5 text-blue-500" />
+              <span>Calendário</span>
+            </button>
+
+            <button
+              onClick={openSubscriptions}
+              className="h-9 px-3 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border/80 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0"
+              title="Assinaturas e custos fixos recorrentes"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-purple-500" />
+              <span>Assinaturas</span>
+            </button>
+
+            <button
               onClick={openCalculator}
               className="h-9 px-3 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border/80 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0"
               title="Calculadora de contas rápida (não altera transações)"
@@ -903,6 +924,16 @@ export default function Dashboard() {
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        {/* Burn-Rate Pace Alert & Month Comparison Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <BurnRateCard
+            totalIncome={displayIncome}
+            totalExpenses={displayExpenses}
+            selectedMonth={selectedMonth}
+          />
+          <MonthComparisonCard selectedMonth={selectedMonth} />
         </div>
 
         {/* 4 Main Summary Cards Grid */}
