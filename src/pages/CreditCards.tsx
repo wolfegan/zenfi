@@ -120,6 +120,8 @@ export default function CreditCardsPage() {
   const [initialBillMonth1, setInitialBillMonth1] = useState("");
   const [initialBillMonth2, setInitialBillMonth2] = useState("");
   const [initialBillMonth3, setInitialBillMonth3] = useState("");
+  const [initialBillMonth4, setInitialBillMonth4] = useState("");
+  const [initialBillMonth5, setInitialBillMonth5] = useState("");
 
   const {
     data: realCards,
@@ -164,6 +166,8 @@ export default function CreditCardsPage() {
     setInitialBillMonth1("");
     setInitialBillMonth2("");
     setInitialBillMonth3("");
+    setInitialBillMonth4("");
+    setInitialBillMonth5("");
     setEditingCard(null);
   };
 
@@ -188,45 +192,53 @@ export default function CreditCardsPage() {
         interest_rate: interestVal,
       };
 
+      let targetCardId = editingCard?.id;
+
       if (editingCard) {
         await update(editingCard.id, cardPayload);
         toast.success("Cartão atualizado com sucesso!");
       } else {
         const newCard = await create(cardPayload);
         if (newCard) {
+          targetCardId = newCard.id;
           toast.success("Cartão adicionado com sucesso!");
+        }
+      }
 
-          // Process initial open bills for upcoming months if entered
-          const curMonth = currentBillMonth(closingDayNum, dueDayNum);
-          const month1 = addMonthsYm(curMonth, 1);
-          const month2 = addMonthsYm(curMonth, 2);
-          const month3 = addMonthsYm(curMonth, 3);
+      if (targetCardId) {
+        const curMonth = currentBillMonth(closingDayNum, dueDayNum);
+        const month1 = addMonthsYm(curMonth, 1);
+        const month2 = addMonthsYm(curMonth, 2);
+        const month3 = addMonthsYm(curMonth, 3);
+        const month4 = addMonthsYm(curMonth, 4);
+        const month5 = addMonthsYm(curMonth, 5);
 
-          const defaultCatId = categories?.[0]?.id || "";
+        const defaultCatId = categories?.[0]?.id || "";
 
-          const initialItems = [
-            { amountStr: initialBillCurrent, month: curMonth, label: "Fatura Atual" },
-            { amountStr: initialBillMonth1, month: month1, label: "Próxima Fatura (+1m)" },
-            { amountStr: initialBillMonth2, month: month2, label: "Fatura +2 meses" },
-            { amountStr: initialBillMonth3, month: month3, label: "Fatura +3 meses" },
-          ];
+        const initialItems = [
+          { amountStr: initialBillCurrent, month: curMonth, label: "Fatura Atual" },
+          { amountStr: initialBillMonth1, month: month1, label: "Próxima Fatura (+1m)" },
+          { amountStr: initialBillMonth2, month: month2, label: "Fatura +2m" },
+          { amountStr: initialBillMonth3, month: month3, label: "Fatura +3m" },
+          { amountStr: initialBillMonth4, month: month4, label: "Fatura +4m" },
+          { amountStr: initialBillMonth5, month: month5, label: "Fatura +5m" },
+        ];
 
-          for (const item of initialItems) {
-            const val = parseBRLAmount(item.amountStr);
-            if (val > 0 && defaultCatId) {
-              const { dueDate } = billDatesForMonth(item.month, closingDayNum, dueDayNum);
-              await createTransaction({
-                category_id: defaultCatId,
-                amount: val,
-                date: dueDate,
-                type: "expense",
-                description: `Saldo em aberto inicial (${item.label})`,
-                is_fixed: false,
-                is_credit_card: true,
-                credit_card_id: newCard.id,
-                payment_method: "Cartão",
-              });
-            }
+        for (const item of initialItems) {
+          const val = parseBRLAmount(item.amountStr);
+          if (val > 0 && defaultCatId) {
+            const { dueDate } = billDatesForMonth(item.month, closingDayNum, dueDayNum);
+            await createTransaction({
+              category_id: defaultCatId,
+              amount: val,
+              date: dueDate,
+              type: "expense",
+              description: `Parcela/Fatura em aberto (${item.label})`,
+              is_fixed: false,
+              is_credit_card: true,
+              credit_card_id: targetCardId,
+              payment_method: "Cartão",
+            });
           }
         }
       }
@@ -377,60 +389,78 @@ export default function CreditCardsPage() {
                     </div>
                   </div>
 
-                  {!editingCard && (
-                    <div className="p-3.5 rounded-2xl bg-secondary/40 border border-border/60 space-y-3">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                        <Layers className="w-3.5 h-3.5 text-primary" />
-                        <span>Faturas em Aberto Iniciais (Opcional)</span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Se você já tem faturas ou compras parceladas em aberto para este cartão, informe os saldos abaixo:
-                      </p>
+                  <div className="p-3.5 rounded-2xl bg-secondary/40 border border-border/60 space-y-3">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                      <Layers className="w-3.5 h-3.5 text-primary" />
+                      <span>Parcelas & Faturas em Aberto (Mês Atual e Futuros)</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Informe o valor das parcelas e faturas que já estão em aberto para este cartão nos próximos meses:
+                    </p>
 
-                      <div className="grid grid-cols-2 gap-2.5 pt-1">
-                        <div>
-                          <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                            Fatura Mês Atual (R$)
-                          </label>
-                          <BRLCurrencyInput
-                            value={initialBillCurrent}
-                            onChangeValue={setInitialBillCurrent}
-                            placeholder="R$ 0,00"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                            Próximo Mês (+1m) (R$)
-                          </label>
-                          <BRLCurrencyInput
-                            value={initialBillMonth1}
-                            onChangeValue={setInitialBillMonth1}
-                            placeholder="R$ 0,00"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                            +2 Meses (R$)
-                          </label>
-                          <BRLCurrencyInput
-                            value={initialBillMonth2}
-                            onChangeValue={setInitialBillMonth2}
-                            placeholder="R$ 0,00"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                            +3 Meses (R$)
-                          </label>
-                          <BRLCurrencyInput
-                            value={initialBillMonth3}
-                            onChangeValue={setInitialBillMonth3}
-                            placeholder="R$ 0,00"
-                          />
-                        </div>
+                    <div className="grid grid-cols-2 gap-2.5 pt-1">
+                      <div>
+                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                          Fatura Mês Atual (R$)
+                        </label>
+                        <BRLCurrencyInput
+                          value={initialBillCurrent}
+                          onChangeValue={setInitialBillCurrent}
+                          placeholder="R$ 0,00"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                          Próximo Mês (+1m) (R$)
+                        </label>
+                        <BRLCurrencyInput
+                          value={initialBillMonth1}
+                          onChangeValue={setInitialBillMonth1}
+                          placeholder="R$ 0,00"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                          +2 Meses (R$)
+                        </label>
+                        <BRLCurrencyInput
+                          value={initialBillMonth2}
+                          onChangeValue={setInitialBillMonth2}
+                          placeholder="R$ 0,00"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                          +3 Meses (R$)
+                        </label>
+                        <BRLCurrencyInput
+                          value={initialBillMonth3}
+                          onChangeValue={setInitialBillMonth3}
+                          placeholder="R$ 0,00"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                          +4 Meses (R$)
+                        </label>
+                        <BRLCurrencyInput
+                          value={initialBillMonth4}
+                          onChangeValue={setInitialBillMonth4}
+                          placeholder="R$ 0,00"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                          +5 Meses (R$)
+                        </label>
+                        <BRLCurrencyInput
+                          value={initialBillMonth5}
+                          onChangeValue={setInitialBillMonth5}
+                          placeholder="R$ 0,00"
+                        />
                       </div>
                     </div>
-                  )}
+                  </div>
 
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
@@ -570,6 +600,28 @@ export default function CreditCardsPage() {
                               color: card.color,
                               interestRate: String(card.interest_rate ?? ""),
                             });
+
+                            const curMonth = currentBillMonth(card.closing_day, card.due_day);
+                            const m1 = addMonthsYm(curMonth, 1);
+                            const m2 = addMonthsYm(curMonth, 2);
+                            const m3 = addMonthsYm(curMonth, 3);
+                            const m4 = addMonthsYm(curMonth, 4);
+                            const m5 = addMonthsYm(curMonth, 5);
+
+                            const bCur = allBills.find((b: any) => b.month === curMonth);
+                            const b1 = allBills.find((b: any) => b.month === m1);
+                            const b2 = allBills.find((b: any) => b.month === m2);
+                            const b3 = allBills.find((b: any) => b.month === m3);
+                            const b4 = allBills.find((b: any) => b.month === m4);
+                            const b5 = allBills.find((b: any) => b.month === m5);
+
+                            setInitialBillCurrent(bCur?.total_amount ? formatCurrencyInput(bCur.total_amount) : "");
+                            setInitialBillMonth1(b1?.total_amount ? formatCurrencyInput(b1.total_amount) : "");
+                            setInitialBillMonth2(b2?.total_amount ? formatCurrencyInput(b2.total_amount) : "");
+                            setInitialBillMonth3(b3?.total_amount ? formatCurrencyInput(b3.total_amount) : "");
+                            setInitialBillMonth4(b4?.total_amount ? formatCurrencyInput(b4.total_amount) : "");
+                            setInitialBillMonth5(b5?.total_amount ? formatCurrencyInput(b5.total_amount) : "");
+
                             setDialogOpen(true);
                           }}
                         >
