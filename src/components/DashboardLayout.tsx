@@ -68,6 +68,10 @@ export function openTransfer() {
   window.dispatchEvent(new CustomEvent("zenfi:open-transfer"));
 }
 
+export function openQuickTransaction() {
+  window.dispatchEvent(new CustomEvent("zenfi:open-quick-transaction"));
+}
+
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/transactions", label: "Transações", icon: ArrowDownUp },
@@ -135,12 +139,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const handleOpenCal = () => setCalendarModalOpen(true);
     const handleOpenSub = () => setSubsModalOpen(true);
     const handleOpenTrf = () => setTransferModalOpen(true);
+    const handleOpenQuick = () => setQuickModalOpen(true);
 
     window.addEventListener("zenfi:open-calculator", handleOpenCalc);
     window.addEventListener("zenfi:open-simulator", handleOpenSim);
     window.addEventListener("zenfi:open-calendar", handleOpenCal);
     window.addEventListener("zenfi:open-subscriptions", handleOpenSub);
     window.addEventListener("zenfi:open-transfer", handleOpenTrf);
+    window.addEventListener("zenfi:open-quick-transaction", handleOpenQuick);
 
     return () => {
       window.removeEventListener("zenfi:open-calculator", handleOpenCalc);
@@ -148,6 +154,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       window.removeEventListener("zenfi:open-calendar", handleOpenCal);
       window.removeEventListener("zenfi:open-subscriptions", handleOpenSub);
       window.removeEventListener("zenfi:open-transfer", handleOpenTrf);
+      window.removeEventListener("zenfi:open-quick-transaction", handleOpenQuick);
     };
   }, []);
 

@@ -17,7 +17,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { DashboardLayout, openCalculator, openSimulator, openCalendar, openSubscriptions } from "@/components/DashboardLayout";
+import { DashboardLayout, openCalculator, openSimulator, openCalendar, openSubscriptions, openTransfer, openQuickTransaction } from "@/components/DashboardLayout";
 import { usePrivacy } from "@/lib/privacy";
 import { PrivacyValue } from "@/components/PrivacyValue";
 import { BurnRateCard } from "@/components/BurnRateCard";
@@ -32,6 +32,7 @@ import {
 import {
   ArrowDown,
   ArrowUp,
+  ArrowLeftRight,
   Wallet,
   PiggyBank,
   Info,
@@ -839,100 +840,173 @@ export default function Dashboard() {
 
         </div>
 
-        {/* Hero Header Bar (Title, Privacy Eye & Month Filter) */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card/80 p-4 sm:p-5 rounded-2xl border border-border/60 shadow-xs">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-xs">
-              <Landmark className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-bold tracking-tight">Visão Geral Financeira</h1>
+        {/* ========================================================================= */}
+        {/* 1. HERO BANNER PRINCIPAL (Saldo Total & Patrimônio Líquido - Top Focus) */}
+        {/* ========================================================================= */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-br from-card via-card to-primary/10 p-6 sm:p-8 shadow-sm group"
+        >
+          {/* Background Decorative Element */}
+          <div className="absolute -right-12 -top-12 w-56 h-56 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+            {/* Left: Greeting & Main Balances */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Saldo Total em Conta
+                </span>
                 <button
                   onClick={toggleHideBalance}
-                  className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                  className="p-1 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
                   title={hideBalance ? "Exibir valores" : "Ocultar valores"}
                 >
-                  {hideBalance ? <EyeOff className="w-4 h-4 text-primary" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+                  {hideBalance ? (
+                    <EyeOff className="w-4 h-4 text-primary" />
+                  ) : (
+                    <Eye className="w-4 h-4 text-muted-foreground" />
+                  )}
                 </button>
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-primary/15 text-primary font-bold">
+                  {MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label || selectedMonth}
+                </span>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Resumo do mês de {MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label || selectedMonth}
-              </p>
+
+              {/* Big Main Balance */}
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight tabular-nums text-foreground">
+                  {formatCurrency(totalAccountsBalance)}
+                </h1>
+              </div>
+
+              {/* Patrimônio Líquido Subtext */}
+              <div className="flex items-center gap-3 text-xs text-muted-foreground pt-0.5">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                  Patrimônio Líquido: <strong className="text-foreground">{formatCurrency(netWorth)}</strong>
+                </span>
+                <span>·</span>
+                <span>{accounts.length} conta(s) ativa(s)</span>
+              </div>
+            </div>
+
+            {/* Right: Month Selector & Quick Bank Badges */}
+            <div className="flex flex-col items-start md:items-end gap-3 shrink-0">
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-full md:w-[190px] h-10 text-xs rounded-xl bg-background/80 border-border/80 shadow-xs font-semibold">
+                    <SelectValue placeholder="Selecione o mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTH_OPTIONS.map((m) => (
+                      <SelectItem key={m.value} value={m.value} className="text-xs">
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Quick Account Chips */}
+              {accounts && accounts.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap max-w-md md:justify-end">
+                  {accounts.slice(0, 3).map((acc: any) => (
+                    <div
+                      key={acc.id}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-background/90 border border-border/60 text-[11px] font-semibold text-muted-foreground shadow-2xs"
+                    >
+                      <div
+                        className="w-3.5 h-3.5 rounded-md flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: acc.color }}
+                      >
+                        <BankLogo bankKeyOrName={acc.name} type={acc.type} className="w-2.5 h-2.5 text-white" />
+                      </div>
+                      <span className="truncate max-w-[80px]">{acc.name}</span>
+                      <span className="text-foreground font-bold tabular-nums">
+                        {formatCurrency(acc.balance)}
+                      </span>
+                    </div>
+                  ))}
+                  {accounts.length > 3 && (
+                    <a
+                      href="/accounts"
+                      className="text-[10px] text-primary font-bold hover:underline px-1"
+                    >
+                      +{accounts.length - 3} mais
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
+        </motion.div>
 
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={openCalendar}
-              className="h-9 px-3 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border/80 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0"
-              title="Calendário financeiro e fluxo de caixa diário"
-            >
-              <Calendar className="w-3.5 h-3.5 text-blue-500" />
-              <span>Calendário</span>
-            </button>
+        {/* ========================================================================= */}
+        {/* 2. BARRA DE AÇÕES RÁPIDAS (Quick Actions Hub Bar) */}
+        {/* ========================================================================= */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            onClick={openQuickTransaction}
+            className="h-10 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-sm shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nova Transação</span>
+          </button>
 
-            <button
-              onClick={openSubscriptions}
-              className="h-9 px-3 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border/80 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0"
-              title="Assinaturas e custos fixos recorrentes"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-purple-500" />
-              <span>Assinaturas</span>
-            </button>
+          <button
+            onClick={openTransfer}
+            className="h-10 px-3.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-900 dark:text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+          >
+            <ArrowLeftRight className="w-4 h-4 text-cyan-500" />
+            <span>Transferência</span>
+          </button>
 
-            <button
-              onClick={openCalculator}
-              className="h-9 px-3 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border/80 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0"
-              title="Calculadora de contas rápida (não altera transações)"
-            >
-              <Calculator className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Calculadora</span>
-            </button>
+          <button
+            onClick={() => setOfxOpen(true)}
+            className="h-10 px-3.5 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border/80 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+          >
+            <FileText className="w-4 h-4 text-primary" />
+            <span>Importar OFX</span>
+          </button>
 
-            <button
-              onClick={openSimulator}
-              className="h-9 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0"
-              title="Simular parcelas e impacto financeiro nos próximos meses"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Simular Compra</span>
-            </button>
+          <button
+            onClick={openCalendar}
+            className="h-10 px-3.5 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border/80 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+          >
+            <Calendar className="w-4 h-4 text-blue-500" />
+            <span>Calendário</span>
+          </button>
 
-            <button
-              onClick={() => setOfxOpen(true)}
-              className="h-9 px-3 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border/80 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0"
-            >
-              <FileText className="w-3.5 h-3.5 text-primary" />
-              <span>Importar OFX</span>
-            </button>
+          <button
+            onClick={openSubscriptions}
+            className="h-10 px-3.5 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border/80 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+          >
+            <RefreshCw className="w-4 h-4 text-purple-500" />
+            <span>Assinaturas</span>
+          </button>
 
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-full sm:w-[170px] h-9 text-xs rounded-xl bg-background border-border">
-                <SelectValue placeholder="Selecione o mês" />
-              </SelectTrigger>
-              <SelectContent>
-                {MONTH_OPTIONS.map((m) => (
-                  <SelectItem key={m.value} value={m.value} className="text-xs">
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <button
+            onClick={openCalculator}
+            className="h-10 px-3.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-900 dark:text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+          >
+            <Calculator className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Calculadora</span>
+          </button>
+
+          <button
+            onClick={openSimulator}
+            className="h-10 px-3.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            <span>Simular Compra</span>
+          </button>
         </div>
 
-        {/* Burn-Rate Pace Alert & Month Comparison Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <BurnRateCard
-            totalIncome={displayIncome}
-            totalExpenses={displayExpenses}
-            selectedMonth={selectedMonth}
-          />
-          <MonthComparisonCard selectedMonth={selectedMonth} />
-        </div>
-
-        {/* 4 Main Summary Cards Grid */}
+        {/* ========================================================================= */}
+        {/* 3. 4 CARDS INDICADORES FINANCEIROS PRINCIPAIS */}
+        {/* ========================================================================= */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Saldo Atual em Contas */}
           <motion.div
@@ -1039,9 +1113,23 @@ export default function Dashboard() {
           </motion.div>
         </div>
 
-        {/* Main Dashboard Desktop & Mobile Grid */}
+        {/* ========================================================================= */}
+        {/* 4. BURN-RATE PACE ALERT & MONTH COMPARISON GRID */}
+        {/* ========================================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <BurnRateCard
+            totalIncome={displayIncome}
+            totalExpenses={displayExpenses}
+            selectedMonth={selectedMonth}
+          />
+          <MonthComparisonCard selectedMonth={selectedMonth} />
+        </div>
+
+        {/* ========================================================================= */}
+        {/* 5. MAIN ANALYTICS & ACCOUNTS DASHBOARD (2 Columns Grid) */}
+        {/* ========================================================================= */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {/* Left Column (lg:col-span-2) — Analytics, Charts & Active Cards */}
+          {/* Left Column (lg:col-span-2) — Balanço & Categorias */}
           <div className="lg:col-span-2 space-y-6">
             {/* Balanço & Evolução Mensal Chart */}
             <motion.div
@@ -1186,8 +1274,73 @@ export default function Dashboard() {
                 </p>
               )}
             </motion.div>
+          </div>
 
-            {/* Cartões de Crédito Ativos */}
+          {/* Right Column (lg:col-span-1) — Contas Bancárias & Cartões Ativos */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Contas Bancárias & Benefícios List Widget */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18 }}
+              className="p-6 rounded-2xl border bg-card shadow-xs"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-bold tracking-tight flex items-center gap-2">
+                    <Landmark className="w-4 h-4 text-primary" />
+                    Suas Contas & Benefícios
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Saldos disponíveis atualizados</p>
+                </div>
+                <a href="/accounts" className="text-xs text-primary font-semibold hover:underline">
+                  Todas →
+                </a>
+              </div>
+
+              {accounts && accounts.length > 0 ? (
+                <div className="space-y-3">
+                  {accounts.map((acc: any) => (
+                    <div
+                      key={acc.id}
+                      className="p-3 rounded-xl border border-border/60 bg-background flex items-center justify-between gap-3 hover:border-primary/40 transition-all"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-2xs"
+                          style={{ backgroundColor: acc.color }}
+                        >
+                          <BankLogo bankKeyOrName={acc.name} type={acc.type} className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold truncate">{acc.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {acc.type === "checking"
+                              ? "Conta Corrente"
+                              : acc.type === "savings"
+                                ? "Poupança"
+                                : acc.type?.startsWith("benefit_")
+                                  ? "Vale / Benefício"
+                                  : "Conta Bancária"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs font-bold tabular-nums">
+                          {formatCurrency(acc.balance)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-xs text-muted-foreground">
+                  Nenhum cartão ou conta cadastrada. <a href="/accounts" className="text-primary underline">Cadastrar conta</a>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Cartões de Crédito Ativos Widget */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1196,15 +1349,18 @@ export default function Dashboard() {
             >
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-sm font-bold tracking-tight">Cartões de Crédito</h3>
+                  <h3 className="text-sm font-bold tracking-tight flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-purple-500" />
+                    Cartões de Crédito
+                  </h3>
                   <p className="text-xs text-muted-foreground">Faturas e limites disponíveis</p>
                 </div>
                 <a href="/credit-cards" className="text-xs text-primary font-semibold hover:underline">
-                  Gerenciar cartões →
+                  Gerenciar →
                 </a>
               </div>
               {realCreditCards && realCreditCards.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-3">
                   {realCreditCards.map((card: any) => {
                     const bill = card.currentBill;
                     const billOpen = bill
@@ -1227,40 +1383,40 @@ export default function Dashboard() {
                               ? "Vence amanhã"
                               : `Vence em ${dias} dias`;
                     return (
-                    <div key={card.id} className="p-4 rounded-xl border border-border/60 bg-background">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs" style={{ backgroundColor: card.color }}>
-                            <BankLogo bankKeyOrName={card.name} className="w-4.5 h-4.5 text-white" />
+                      <div key={card.id} className="p-3.5 rounded-xl border border-border/60 bg-background">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-2xs" style={{ backgroundColor: card.color }}>
+                              <BankLogo bankKeyOrName={card.name} className="w-4 h-4 text-white" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold truncate">{card.name}</p>
+                              <p className={`text-[10px] ${dias != null && dias <= 3 ? "text-warning font-medium" : "text-muted-foreground"}`}>
+                                {dueTxt}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold truncate">{card.name}</p>
-                            <p className={`text-[10px] ${dias != null && dias <= 3 ? "text-warning font-medium" : "text-muted-foreground"}`}>
-                              {dueTxt}
+                          <div className="text-right shrink-0">
+                            <p className="text-xs font-bold text-purple-600 dark:text-purple-400 tabular-nums">
+                              {formatCurrency(billOpen)}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              Disp.: {formatCurrency(card.available ?? Math.max(0, card.limit - (card.used ?? 0)))}
                             </p>
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-xs font-bold text-purple-600 dark:text-purple-400 tabular-nums">
-                            {formatCurrency(billOpen)}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            Disp.: {formatCurrency(card.available ?? Math.max(0, card.limit - (card.used ?? 0)))}
-                          </p>
-                        </div>
+                        {billOpen > 0 && !bill?.is_paid && (
+                          <button
+                            onClick={() => {
+                              setPayingBill(bill);
+                              setPayBillOpen(true);
+                            }}
+                            className="mt-2.5 w-full text-[11px] font-semibold py-1.5 rounded-lg border border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 transition-colors"
+                          >
+                            Pagar fatura
+                          </button>
+                        )}
                       </div>
-                      {billOpen > 0 && !bill?.is_paid && (
-                        <button
-                          onClick={() => {
-                            setPayingBill(bill);
-                            setPayBillOpen(true);
-                          }}
-                          className="mt-3 w-full text-[11px] font-semibold py-1.5 rounded-lg border border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 transition-colors"
-                        >
-                          Pagar fatura
-                        </button>
-                      )}
-                    </div>
                     );
                   })}
                 </div>
