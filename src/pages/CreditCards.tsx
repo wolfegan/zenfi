@@ -206,7 +206,8 @@ export default function CreditCardsPage() {
       }
 
       if (targetCardId) {
-        const curMonth = currentBillMonth(closingDayNum, dueDayNum);
+        const now = new Date();
+        const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
         const month1 = addMonthsYm(curMonth, 1);
         const month2 = addMonthsYm(curMonth, 2);
         const month3 = addMonthsYm(curMonth, 3);
@@ -216,8 +217,8 @@ export default function CreditCardsPage() {
         const defaultCatId = categories?.[0]?.id || "";
 
         const initialItems = [
-          { amountStr: initialBillCurrent, month: curMonth, label: "Fatura Atual" },
-          { amountStr: initialBillMonth1, month: month1, label: "Próxima Fatura (+1m)" },
+          { amountStr: initialBillCurrent, month: curMonth, label: "Fatura Mês Atual" },
+          { amountStr: initialBillMonth1, month: month1, label: "Fatura +1m" },
           { amountStr: initialBillMonth2, month: month2, label: "Fatura +2m" },
           { amountStr: initialBillMonth3, month: month3, label: "Fatura +3m" },
           { amountStr: initialBillMonth4, month: month4, label: "Fatura +4m" },
@@ -399,66 +400,80 @@ export default function CreditCardsPage() {
                     </p>
 
                     <div className="grid grid-cols-2 gap-2.5 pt-1">
-                      <div>
-                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                          Fatura Mês Atual (R$)
-                        </label>
-                        <BRLCurrencyInput
-                          value={initialBillCurrent}
-                          onChangeValue={setInitialBillCurrent}
-                          placeholder="R$ 0,00"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                          Próximo Mês (+1m) (R$)
-                        </label>
-                        <BRLCurrencyInput
-                          value={initialBillMonth1}
-                          onChangeValue={setInitialBillMonth1}
-                          placeholder="R$ 0,00"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                          +2 Meses (R$)
-                        </label>
-                        <BRLCurrencyInput
-                          value={initialBillMonth2}
-                          onChangeValue={setInitialBillMonth2}
-                          placeholder="R$ 0,00"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                          +3 Meses (R$)
-                        </label>
-                        <BRLCurrencyInput
-                          value={initialBillMonth3}
-                          onChangeValue={setInitialBillMonth3}
-                          placeholder="R$ 0,00"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                          +4 Meses (R$)
-                        </label>
-                        <BRLCurrencyInput
-                          value={initialBillMonth4}
-                          onChangeValue={setInitialBillMonth4}
-                          placeholder="R$ 0,00"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                          +5 Meses (R$)
-                        </label>
-                        <BRLCurrencyInput
-                          value={initialBillMonth5}
-                          onChangeValue={setInitialBillMonth5}
-                          placeholder="R$ 0,00"
-                        />
-                      </div>
+                      {(() => {
+                        const now = new Date();
+                        const getLabel = (offset: number) => {
+                          const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+                          const name = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+                          const fmt = name.charAt(0).toUpperCase() + name.slice(1);
+                          return offset === 0 ? `${fmt} (Mês Atual)` : `${fmt} (+${offset}m)`;
+                        };
+
+                        return (
+                          <>
+                            <div>
+                              <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                                {getLabel(0)} (R$)
+                              </label>
+                              <BRLCurrencyInput
+                                value={initialBillCurrent}
+                                onChangeValue={setInitialBillCurrent}
+                                placeholder="R$ 0,00"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                                {getLabel(1)} (R$)
+                              </label>
+                              <BRLCurrencyInput
+                                value={initialBillMonth1}
+                                onChangeValue={setInitialBillMonth1}
+                                placeholder="R$ 0,00"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                                {getLabel(2)} (R$)
+                              </label>
+                              <BRLCurrencyInput
+                                value={initialBillMonth2}
+                                onChangeValue={setInitialBillMonth2}
+                                placeholder="R$ 0,00"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                                {getLabel(3)} (R$)
+                              </label>
+                              <BRLCurrencyInput
+                                value={initialBillMonth3}
+                                onChangeValue={setInitialBillMonth3}
+                                placeholder="R$ 0,00"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                                {getLabel(4)} (R$)
+                              </label>
+                              <BRLCurrencyInput
+                                value={initialBillMonth4}
+                                onChangeValue={setInitialBillMonth4}
+                                placeholder="R$ 0,00"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                                {getLabel(5)} (R$)
+                              </label>
+                              <BRLCurrencyInput
+                                value={initialBillMonth5}
+                                onChangeValue={setInitialBillMonth5}
+                                placeholder="R$ 0,00"
+                              />
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -601,7 +616,8 @@ export default function CreditCardsPage() {
                               interestRate: String(card.interest_rate ?? ""),
                             });
 
-                            const curMonth = currentBillMonth(card.closing_day, card.due_day);
+                            const now = new Date();
+                            const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
                             const m1 = addMonthsYm(curMonth, 1);
                             const m2 = addMonthsYm(curMonth, 2);
                             const m3 = addMonthsYm(curMonth, 3);
