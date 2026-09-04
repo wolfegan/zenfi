@@ -1,4 +1,4 @@
-import { DashboardLayout } from "@/components/DashboardLayout";
+import { DashboardLayout, openSimulator } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -258,7 +258,17 @@ export default function CreditCardsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={openSimulator}
+              className="text-xs h-9 font-semibold border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-300 hover:bg-amber-500/20"
+            >
+              <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
+              Simular Compra Futura
+            </Button>
+
             {cards && cards.length > 0 && (
               <Button
                 size="sm"

@@ -17,7 +17,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { DashboardLayout } from "@/components/DashboardLayout";
+import { DashboardLayout, openCalculator, openSimulator } from "@/components/DashboardLayout";
 import {
   Select,
   SelectContent,
@@ -48,6 +48,8 @@ import {
   Eye,
   EyeOff,
   FileText,
+  Calculator,
+  Sparkles,
 } from "lucide-react";
 import { OFXImportModal } from "@/components/OFXImportModal";
 import { PayBillModal } from "@/components/PayBillModal";
@@ -862,6 +864,24 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={openCalculator}
+              className="h-9 px-3 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border/80 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0"
+              title="Calculadora de contas rápida (não altera transações)"
+            >
+              <Calculator className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Calculadora</span>
+            </button>
+
+            <button
+              onClick={openSimulator}
+              className="h-9 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0"
+              title="Simular parcelas e impacto financeiro nos próximos meses"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>Simular Compra</span>
+            </button>
+
             <button
               onClick={() => setOfxOpen(true)}
               className="h-9 px-3 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border/80 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0"

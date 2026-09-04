@@ -22,6 +22,8 @@ import {
   Sun,
   Bug,
   Plus,
+  Calculator,
+  Sparkles,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -33,6 +35,16 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { BugReportModal } from "@/components/BugReportModal";
 import { QuickTransactionModal } from "@/components/QuickTransactionModal";
+import { FinancialCalculatorModal } from "@/components/FinancialCalculatorModal";
+import { PurchaseSimulatorModal } from "@/components/PurchaseSimulatorModal";
+
+export function openCalculator() {
+  window.dispatchEvent(new CustomEvent("zenfi:open-calculator"));
+}
+
+export function openSimulator() {
+  window.dispatchEvent(new CustomEvent("zenfi:open-simulator"));
+}
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -85,6 +97,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [bugModalOpen, setBugModalOpen] = useState(false);
   const [quickModalOpen, setQuickModalOpen] = useState(false);
+  const [calcModalOpen, setCalcModalOpen] = useState(false);
+  const [simulatorModalOpen, setSimulatorModalOpen] = useState(false);
+
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
       return document.documentElement.classList.contains("dark");
@@ -99,6 +114,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       document.documentElement.classList.remove("dark");
     }
   }, [darkMode]);
+
+  // Global event listeners for tool modals
+  useEffect(() => {
+    const handleOpenCalc = () => setCalcModalOpen(true);
+    const handleOpenSim = () => setSimulatorModalOpen(true);
+
+    window.addEventListener("zenfi:open-calculator", handleOpenCalc);
+    window.addEventListener("zenfi:open-simulator", handleOpenSim);
+
+    return () => {
+      window.removeEventListener("zenfi:open-calculator", handleOpenCalc);
+      window.removeEventListener("zenfi:open-simulator", handleOpenSim);
+    };
+  }, []);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -160,6 +189,35 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             />
           </motion.div>
         ))}
+
+        {/* Ferramentas Práticas */}
+        <div className="pt-4 pb-1 px-3">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            Ferramentas
+          </span>
+        </div>
+
+        <button
+          onClick={() => {
+            setSidebarOpen(false);
+            setCalcModalOpen(true);
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2 text-xs rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all font-medium"
+        >
+          <Calculator className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <span>Calculadora Rápida</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setSidebarOpen(false);
+            setSimulatorModalOpen(true);
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2 text-xs rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all font-medium"
+        >
+          <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+          <span>Simular Compras Futuras</span>
+        </button>
       </nav>
 
       {/* Bottom actions */}
@@ -295,7 +353,21 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             />
             <span className="text-sm font-semibold">Zenfi</span>
           </Link>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1.5">
+            <button
+              onClick={() => setCalcModalOpen(true)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary transition-colors text-emerald-600 dark:text-emerald-400"
+              title="Calculadora"
+            >
+              <Calculator className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setSimulatorModalOpen(true)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary transition-colors text-amber-500"
+              title="Simulador de Compras"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
             <button
               onClick={() => setDarkMode(!darkMode)}
               className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary transition-colors"
@@ -379,6 +451,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       <BugReportModal open={bugModalOpen} onOpenChange={setBugModalOpen} />
       <QuickTransactionModal open={quickModalOpen} onOpenChange={setQuickModalOpen} />
+      <FinancialCalculatorModal open={calcModalOpen} onOpenChange={setCalcModalOpen} />
+      <PurchaseSimulatorModal open={simulatorModalOpen} onOpenChange={setSimulatorModalOpen} />
     </div>
   );
 }
+
