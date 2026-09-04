@@ -91,21 +91,16 @@ export function TransferModal({
 
     try {
       if (!useDemo) {
-        // 1. Subtrai saldo da conta de origem
-        await supabase
-          .from("accounts")
-          .update({ balance: Number(fromAcc.balance) - amount })
-          .eq("id", fromAcc.id);
+        const expenseCatId =
+          categories?.find((c: any) => c.type === "expense")?.id ||
+          categories?.[0]?.id ||
+          "";
+        const incomeCatId =
+          categories?.find((c: any) => c.type === "income")?.id ||
+          categories?.[0]?.id ||
+          "";
 
-        // 2. Soma saldo na conta de destino
-        await supabase
-          .from("accounts")
-          .update({ balance: Number(toAcc.balance) + amount })
-          .eq("id", toAcc.id);
-
-        const defaultCatId = categories?.[0]?.id || "";
-
-        // 3. Registra saída da conta de origem
+        // 1. Registra saída da conta de origem (createTransaction já ajusta o saldo via adjustAccountBalance no banco)
         await createTransaction({
           account_id: fromAcc.id,
           type: "expense",
@@ -114,14 +109,14 @@ export function TransferModal({
           description: description.trim()
             ? `Transferência p/ ${toAcc.name}: ${description.trim()}`
             : `Transferência para ${toAcc.name}`,
-          category_id: defaultCatId,
+          category_id: expenseCatId,
           payment_method: "pix",
           is_fixed: false,
           is_credit_card: false,
           credit_card_id: null,
         });
 
-        // 4. Registra entrada na conta de destino
+        // 2. Registra entrada na conta de destino (createTransaction já ajusta o saldo via adjustAccountBalance no banco)
         await createTransaction({
           account_id: toAcc.id,
           type: "income",
@@ -130,7 +125,7 @@ export function TransferModal({
           description: description.trim()
             ? `Transferência rcbda de ${fromAcc.name}: ${description.trim()}`
             : `Transferência recebida de ${fromAcc.name}`,
-          category_id: defaultCatId,
+          category_id: incomeCatId,
           payment_method: "pix",
           is_fixed: false,
           is_credit_card: false,
@@ -138,6 +133,10 @@ export function TransferModal({
         });
 
         await refetchAccounts();
+      } else {
+        // Modo Demonstração: atualiza os saldos em memória
+        fromAcc.balance = Number(fromAcc.balance) - amount;
+        toAcc.balance = Number(toAcc.balance) + amount;
       }
 
       toast.success(
