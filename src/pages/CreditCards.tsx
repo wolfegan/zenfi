@@ -110,6 +110,7 @@ export default function CreditCardsPage() {
   const [form, setForm] = useState({
     name: "",
     limit: "",
+    customUsedLimit: "",
     closingDay: "5",
     dueDay: "10",
     color: "#0a0a0a",
@@ -160,6 +161,7 @@ export default function CreditCardsPage() {
     setForm({
       name: "",
       limit: "",
+      customUsedLimit: "",
       closingDay: "5",
       dueDay: "10",
       color: "#0a0a0a",
@@ -204,10 +206,13 @@ export default function CreditCardsPage() {
       { amountStr: initialBillMonth5, month: month5, label: "Fatura +5m" },
     ];
 
+    const customUsedVal = form.customUsedLimit ? parseBRLAmount(form.customUsedLimit) : null;
+
     if (!useDemo) {
       const cardPayload = {
         name: form.name,
         limit: limitVal,
+        custom_used_amount: customUsedVal,
         closing_day: closingDayNum,
         due_day: dueDayNum,
         color: form.color,
@@ -284,6 +289,7 @@ export default function CreditCardsPage() {
                   ...c,
                   name: form.name,
                   limit: limitVal,
+                  custom_used_amount: customUsedVal,
                   closing_day: closingDayNum,
                   due_day: dueDayNum,
                   color: form.color,
@@ -300,6 +306,7 @@ export default function CreditCardsPage() {
           user_id: user?.id || "user-1",
           name: form.name,
           limit: limitVal,
+          custom_used_amount: customUsedVal,
           closing_day: closingDayNum,
           due_day: dueDayNum,
           color: form.color,
@@ -408,6 +415,20 @@ export default function CreditCardsPage() {
                       onChangeValue={(val) => setForm({ ...form, limit: val })}
                       placeholder="R$ 0,00"
                     />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                      Limite Utilizado Real no Banco (opcional)
+                    </label>
+                    <BRLCurrencyInput
+                      value={form.customUsedLimit}
+                      onChangeValue={(val) => setForm({ ...form, customUsedLimit: val })}
+                      placeholder="Ex: R$ 600,02 (opcional)"
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Preencha se o limite utilizado exibido no app do seu banco for diferente da soma das faturas.
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -646,8 +667,11 @@ export default function CreditCardsPage() {
                         </div>
                         <div>
                           <p className="text-sm font-bold tracking-tight">{card.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Fechamento dia {card.closing_day} · Vence dia {card.due_day}
+                          <p className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span>Fechamento dia {card.closing_day} · Vence dia {card.due_day}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">
+                              Melhor dia compra dia {card.closing_day >= 28 ? "01" : String(card.closing_day + 1).padStart(2, "0")}
+                            </span>
                           </p>
                         </div>
                       </div>
@@ -674,6 +698,7 @@ export default function CreditCardsPage() {
                             setForm({
                               name: card.name,
                               limit: formatCurrencyInput(card.limit),
+                              customUsedLimit: card.custom_used_amount ? formatCurrencyInput(card.custom_used_amount) : "",
                               closingDay: card.closing_day.toString(),
                               dueDay: card.due_day.toString(),
                               color: card.color,

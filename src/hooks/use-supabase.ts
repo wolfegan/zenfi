@@ -1036,7 +1036,12 @@ export function computeCardStats(
   card: CreditCard,
   bills: CreditCardBill[],
 ): Omit<CreditCardWithBills, keyof CreditCard | "bills"> {
-  const used = bills.reduce((s, b) => s + billOutstanding(b), 0);
+  const sumBills = bills.reduce((s, b) => s + billOutstanding(b), 0);
+  const customUsed =
+    (card as any).custom_used_amount != null && Number((card as any).custom_used_amount) > 0
+      ? Number((card as any).custom_used_amount)
+      : null;
+  const used = customUsed !== null ? customUsed : sumBills;
   const limit = Number(card.limit) || 0;
   const available = Math.max(0, limit - used);
   const utilization = limit > 0 ? (used / limit) * 100 : 0;
