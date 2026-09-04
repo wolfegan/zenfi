@@ -425,7 +425,7 @@ export default function CreditCardsPage() {
                     <BRLCurrencyInput
                       value={form.customUsedLimit}
                       onChangeValue={(val) => setForm({ ...form, customUsedLimit: val })}
-                      placeholder="Ex: R$ 600,02 (opcional)"
+                      placeholder="R$ 0,00 (opcional)"
                     />
                     <p className="text-[10px] text-muted-foreground mt-1">
                       Preencha se o limite utilizado exibido no app do seu banco for diferente da soma das faturas.
@@ -699,7 +699,10 @@ export default function CreditCardsPage() {
                             setForm({
                               name: card.name,
                               limit: formatCurrencyInput(card.limit),
-                              customUsedLimit: card.custom_used_amount ? formatCurrencyInput(card.custom_used_amount) : "",
+                              customUsedLimit:
+                                card.custom_used_amount != null && card.custom_used_amount !== undefined
+                                  ? formatCurrencyInput(Number(card.custom_used_amount))
+                                  : "",
                               closingDay: card.closing_day.toString(),
                               dueDay: card.due_day.toString(),
                               color: card.color,

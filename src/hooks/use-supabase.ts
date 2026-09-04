@@ -1037,9 +1037,14 @@ export function computeCardStats(
   bills: CreditCardBill[],
 ): Omit<CreditCardWithBills, keyof CreditCard | "bills"> {
   const sumBills = bills.reduce((s, b) => s + billOutstanding(b), 0);
+  const rawCustom = (card as any).custom_used_amount;
   const customUsed =
-    (card as any).custom_used_amount != null && Number((card as any).custom_used_amount) > 0
-      ? Number((card as any).custom_used_amount)
+    rawCustom !== undefined &&
+    rawCustom !== null &&
+    rawCustom !== "" &&
+    !isNaN(Number(rawCustom)) &&
+    Number(rawCustom) >= 0
+      ? Number(rawCustom)
       : null;
   const used = customUsed !== null ? customUsed : sumBills;
   const limit = Number(card.limit) || 0;
@@ -1109,7 +1114,13 @@ export function useCreditCards() {
     ) => {
       await supabase.from("credit_cards").update(updates).eq("id", id);
       setData((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+        prev.map((c) => {
+          if (c.id === id) {
+            const updatedCard = { ...c, ...updates };
+            return { ...updatedCard, ...computeCardStats(updatedCard, c.bills) };
+          }
+          return c;
+        }),
       );
     },
     [],

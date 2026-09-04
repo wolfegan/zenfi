@@ -121,6 +121,7 @@ export interface CreditCard {
   user_id: string;
   name: string;
   limit: number;
+  custom_used_amount?: number | null;
   closing_day: number;
   due_day: number;
   color: string;
